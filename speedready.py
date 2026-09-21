@@ -24,12 +24,12 @@ DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'font_text':'Inter','text_size':19,'font_word':'JetBrainsMono Nerd Font','word_size':64,
  'bg':'#101012','fg':'#e8e6e3','dim':'#5c5c60','pivot':'#ff5252','highlight':'#2f5d45','panel':'#18181b','accent':'#ff5252',
  'sentence_pause':2.5,'comma_pause':1.5,'paragraph_pause':3.0,'long_word_len':10,'long_word_pause':1.3,
- 'dim_read':True,'hide_bars_when_playing':True,'pivot_guides':True,'page_words':300,'context_words':40,
+ 'follow_margin':0.3,'dim_read':True,'hide_bars_when_playing':True,'pivot_guides':True,'page_words':300,'context_words':40,
  'dict_langs':'en',                 # wiktionaries to ask, in order (e.g. 'en,de'). Each one costs a request per lookup, Wikimedia rate-limits bursts
  'web_dicts':'de=https://www.duden.de/rechtschreibung/{word}, *=https://{lang}.wiktionary.org/wiki/{word}',  # lang=url, * = fallback
  'txt_lang':'de','save_vocab':True,
 }
-RANGES={'wpm':(100,1000,10),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16,160,2),'long_word_len':(4,30,1),'page_words':(50,2000,50),'context_words':(10,200,10)}
+RANGES={'wpm':(50,1500,5),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16,160,2),'long_word_len':(4,30,1),'page_words':(50,2000,50),'follow_margin':(0.0,0.49,0.05),'context_words':(10,200,10)}
 SECTION={'de':'German','en':'English','fr':'French','es':'Spanish','it':'Italian','pt':'Portuguese','nl':'Dutch','ru':'Russian','sv':'Swedish','pl':'Polish'}
 POS='Noun|Proper noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Numeral|Article|Particle|Determiner|Contraction|Phrase'
 BLOCK={'p','div','br','h1','h2','h3','h4','h5','h6','li','blockquote','tr','section','article','dd','dt','pre','hr'}
@@ -140,7 +140,7 @@ class WordView(Gtk.TextView):
         if not(s.a<=i<s.b):return
         e=min(i+n-1,s.b-1);st=b.get_iter_at_offset(s.offs[i-s.a]);en=b.get_iter_at_offset(s.offs[e-s.a]+len(s.win.book.words[e]))
         b.apply_tag(s.cur,st,en);dim and b.apply_tag(s.read,b.get_start_iter(),st)
-        s.scroll_mark_onscreen(b.create_mark(None,en,False))
+        s.scroll_to_mark(b.create_mark(None,en,False),s.win.cfg['follow_margin'],False,0,0)  # scrolls only when the word leaves the middle band
 
 class Win(Adw.ApplicationWindow):
     def __init__(s,app,path):
@@ -157,8 +157,8 @@ class Win(Adw.ApplicationWindow):
         hb.pack_start(B('document-open-symbolic','Open (O)',s.open));s.playbtn=B('media-playback-start-symbolic','Play (space)',s.toggle);hb.pack_start(s.playbtn)
         s.modebtn=Gtk.Button(tooltip_text='Mode (M)');s.modebtn.set_focus_on_click(False);s.modebtn.connect('clicked',lambda *_:s.toggle_mode());hb.pack_start(s.modebtn)
         s.chunk=Gtk.SpinButton.new_with_range(1,8,1);s.chunk.set_tooltip_text('words per step ( [ ] )');s.chunk.connect('value-changed',lambda w:s.cfg.__setitem__('chunk',int(w.get_value())));hb.pack_start(s.chunk)
-        s.wpm=Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,100,1000,10);s.wpm.set_size_request(220,-1);s.wpm.set_draw_value(True);s.wpm.set_value_pos(Gtk.PositionType.RIGHT)
-        s.wpm.set_tooltip_text('words per minute (↑ ↓)');s.wpm.set_can_focus(False);s.wpm.connect('value-changed',lambda w:s.cfg.__setitem__('wpm',int(w.get_value())));hb.pack_start(s.wpm)
+        s.wpm=Gtk.SpinButton.new_with_range(50,1500,5);s.wpm.set_increments(5,25);s.wpm.set_tooltip_text('words per minute (↑ ↓ = 5, shift = 25)');s.wpm.set_width_chars(5)
+        s.wpm.connect('value-changed',lambda w:s.cfg.__setitem__('wpm',int(w.get_value())));hb.pack_start(s.wpm);hb.pack_start(Gtk.Label(label='wpm',css_classes=['dim-label']))
         hb.pack_end(B('emblem-system-symbolic','Settings (S)',s.settings));hb.pack_end(B('view-fullscreen-symbolic','Fullscreen (F11)',s.toggle_full))
         # body
         s.pacer=WordView(s,left_margin=48,right_margin=48,top_margin=32,bottom_margin=32,pixels_below_lines=6,css_classes=['pacer'])
@@ -206,7 +206,7 @@ class Win(Adw.ApplicationWindow):
     def toggle_full(s):s.unfullscreen() if s.is_fullscreen() else s.fullscreen()
     def key(s,ctl,kv,code,state):
         if isinstance(s.get_focus(),Gtk.Text):return False
-        K=Gdk;acts={K.KEY_space:s.toggle,K.KEY_Left:lambda:s.jump(-10),K.KEY_Right:lambda:s.jump(10),K.KEY_Up:lambda:s.wpm.set_value(s.cfg['wpm']+20),K.KEY_Down:lambda:s.wpm.set_value(s.cfg['wpm']-20),
+        K=Gdk;acts={K.KEY_space:s.toggle,K.KEY_Left:lambda:s.jump(-10),K.KEY_Right:lambda:s.jump(10),K.KEY_Up:lambda:s.wpm.set_value(s.cfg['wpm']+(25 if state&Gdk.ModifierType.SHIFT_MASK else 5)),K.KEY_Down:lambda:s.wpm.set_value(s.cfg['wpm']-(25 if state&Gdk.ModifierType.SHIFT_MASK else 5)),
               K.KEY_Page_Down:lambda:s.jump(s.cfg['page_words']),K.KEY_Page_Up:lambda:s.jump(-s.cfg['page_words']),
               K.KEY_bracketleft:lambda:s.chunk.set_value(s.cfg['chunk']-1),K.KEY_bracketright:lambda:s.chunk.set_value(s.cfg['chunk']+1),K.KEY_m:s.toggle_mode,K.KEY_r:s.replay,
               K.KEY_d:lambda:s.lookup(s.i),K.KEY_o:s.open,K.KEY_s:s.settings,K.KEY_F11:s.toggle_full,K.KEY_Escape:s.unfullscreen}
@@ -326,7 +326,7 @@ class Win(Adw.ApplicationWindow):
     # ---- settings
     def settings(s):
         d=Adw.PreferencesDialog(title='Settings');page=Adw.PreferencesPage();d.add(page)
-        groups={'Reading':('mode','wpm','chunk','dim_read','hide_bars_when_playing','pivot_guides','page_words','context_words'),
+        groups={'Reading':('mode','wpm','chunk','follow_margin','dim_read','hide_bars_when_playing','pivot_guides','page_words','context_words'),
                 'Pauses':('sentence_pause','comma_pause','paragraph_pause','long_word_len','long_word_pause'),
                 'Look':('font_text','text_size','font_word','word_size','bg','fg','dim','pivot','highlight','panel','accent'),
                 'Dictionary':('dict_langs','web_dicts','txt_lang','save_vocab')}

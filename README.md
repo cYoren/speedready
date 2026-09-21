@@ -23,7 +23,7 @@ Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwai
 | space | play / pause |
 | ← → | ±10 words |
 | PageUp / PageDown | ±one page |
-| ↑ ↓ | speed |
+| ↑ ↓ | speed ±5 (shift: ±25) |
 | [ ] | words per step |
 | M | pacer / rsvp |
 | R | replay sentence |
