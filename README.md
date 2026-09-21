@@ -4,7 +4,7 @@ Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwai
 
 - **Pacer**: the whole text on screen, a highlight sweeps through at your pace, read words dim behind it
 - **RSVP**: one word (or chunk) flashed at a time with a red pivot letter
-- Click any word: you jump there and get a dictionary popup (lemmatized, en + de Wiktionary, Duden button for German). Close it and the flow resumes from that word
+- Click a word to continue from there. Double-click it for a dictionary popup (lemmatized, Wiktionary, Duden button for German); close it and the flow resumes from that word
 - Every lookup lands in `~/.config/speedready/vocab.tsv` with its sentence, importable into Anki as-is
 - Remembers your position per book and reopens the last book
 - Everything is configurable in the settings dialog (fonts, colours, pauses, chunk size, dictionaries)
@@ -28,5 +28,5 @@ Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwai
 | M | pacer / rsvp |
 | R | replay sentence |
 | D | define current word |
-| click / ctrl+click | go there + dictionary / just go there |
+| click / double-click | continue from there / dictionary popup |
 | F11, S, O | fullscreen, settings, open |
