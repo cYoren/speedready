@@ -2,11 +2,11 @@
 """Speedready: pacer + RSVP reader for epub/txt, built for language learners. GTK4 / libadwaita.
 
 space play/pause · ←/→ ±10 words · PageUp/PageDown ±page · ↑/↓ speed · [ ] chunk size · M mode · R replay sentence
-click a word = go there + dictionary popup (flow resumes when you close it) · ctrl+click = just go there
+click a word = continue from there · double-click = dictionary popup (flow resumes when you close it)
 D define current word · F11 fullscreen · S settings · O open
 Lookups are appended to ~/.config/speedready/vocab.tsv, importable into Anki as-is.
 """
-import bisect,html,json,os,re,sys,threading,urllib.error,urllib.parse,urllib.request,zipfile,posixpath
+import bisect,html,json,os,re,sys,threading,time,urllib.error,urllib.parse,urllib.request,zipfile,posixpath
 from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -25,7 +25,7 @@ DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'bg':'#101012','fg':'#e8e6e3','dim':'#5c5c60','pivot':'#ff5252','highlight':'#2f5d45','panel':'#18181b','accent':'#ff5252',
  'sentence_pause':2.5,'comma_pause':1.5,'paragraph_pause':3.0,'long_word_len':10,'long_word_pause':1.3,
  'dim_read':True,'hide_bars_when_playing':True,'pivot_guides':True,'page_words':300,'context_words':40,
- 'dict_langs':'en,de',              # wiktionaries to ask, in order. en uses the definition API and shows only the book-language section
+ 'dict_langs':'en',                 # wiktionaries to ask, in order (e.g. 'en,de'). Each one costs a request per lookup, Wikimedia rate-limits bursts
  'web_dicts':'de=https://www.duden.de/rechtschreibung/{word}, *=https://{lang}.wiktionary.org/wiki/{word}',  # lang=url, * = fallback
  'txt_lang':'de','save_vocab':True,
 }
@@ -33,7 +33,7 @@ RANGES={'wpm':(100,1000,10),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16
 SECTION={'de':'German','en':'English','fr':'French','es':'Spanish','it':'Italian','pt':'Portuguese','nl':'Dutch','ru':'Russian','sv':'Swedish','pl':'Polish'}
 POS='Noun|Proper noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Numeral|Article|Particle|Determiner|Contraction|Phrase'
 BLOCK={'p','div','br','h1','h2','h3','h4','h5','h6','li','blockquote','tr','section','article','dd','dt','pre','hr'}
-END_RE=re.compile(r'[.!?…]["\'”’)»]*$');COMMA_RE=re.compile(r'[,;:]["\'”’)»]*$');UA={'User-Agent':'speedready/1 (personal desktop reader)'}
+END_RE=re.compile(r'[.!?…]["\'”’)»]*$');COMMA_RE=re.compile(r'[,;:]["\'”’)»]*$');UA={'User-Agent':'Speedready/1.0 (https://github.com/cYoren/speedready) python-urllib'}
 
 # ---------------------------------------------------------------- book
 class Html(HTMLParser):
@@ -74,16 +74,17 @@ class Book:
 # ---------------------------------------------------------------- dictionary
 class Dict:
     """Wiktionary lookups, at most 3 requests per word, cached on disk."""
-    def __init__(s):s.cache=json.loads(CACHE.read_text()) if CACHE.exists() else {}
-    def get(s,url):
-        if url not in s.cache:
-            try:s.cache[url]=json.load(urllib.request.urlopen(urllib.request.Request(url,headers=UA),timeout=8))
-            except urllib.error.HTTPError as e:
-                if e.code==404:s.cache[url]=None
-                elif e.code==429:raise RuntimeError('Wiktionary rate limit hit, wait a few seconds')
-                else:raise
-            CACHE.write_text(json.dumps(s.cache))
-        return s.cache[url]
+    def __init__(s):s.cache=json.loads(CACHE.read_text()) if CACHE.exists() else {};s.last=0
+    def get(s,url,retry=True):
+        if url in s.cache:return s.cache[url]
+        time.sleep(max(0,s.last+0.6-time.time()));s.last=time.time()  # ponytail: crude throttle, Wikimedia 429s on bursts
+        try:s.cache[url]=json.load(urllib.request.urlopen(urllib.request.Request(url,headers=UA),timeout=8))
+        except urllib.error.HTTPError as e:
+            if e.code==404:s.cache[url]=None
+            elif e.code==429 and retry:time.sleep(float(e.headers.get('Retry-After') or 5));return s.get(url,retry=False)
+            elif e.code==429:raise RuntimeError('Wiktionary rate limit hit, wait a minute')
+            else:raise
+        CACHE.write_text(json.dumps(s.cache));return s.cache[url]
     def en(s,word,lang):  # en.wiktionary definition API: only the book-language section
         d=s.get(f'https://en.wiktionary.org/api/rest_v1/page/definition/{urllib.parse.quote(word)}')
         out=[]
@@ -98,14 +99,14 @@ class Dict:
         if t and wl!=lang and lang in SECTION:m=re.search(rf'^== {SECTION[lang]} ==\n(.*?)(?=^== |\Z)',t,re.S|re.M);t=m.group(1) if m else ''
         return re.sub(r'\n{3,}','\n\n',t.strip())[:2500]
     def lookup(s,word,lemma,lang,langs):
-        """-> [(source, text)], gloss for Anki. en gets the form and the lemma, other wiktionaries just the lemma: max 3 requests."""
-        out=[];glosses={}
+        """-> [(source, text)], gloss for Anki. Lemma first, the inflected form only if the lemma has no entry: 1 request per wiktionary."""
+        out=[];gloss=''
         for wl in langs:
-            for cand in dict.fromkeys([word,lemma] if wl=='en' else [lemma]):
+            for cand in dict.fromkeys([lemma,word]):
                 t=s.en(cand,lang) if wl=='en' else s.extract(wl,cand,lang)
-                if not t and cand!=cand.lower():t=s.en(cand.lower(),lang) if wl=='en' else s.extract(wl,cand.lower(),lang)
-                if t:out.append((f'{cand}  ·  {wl}.wiktionary',t));glosses.setdefault(cand==lemma,re.sub(r'\s+',' ',t)[:300] if wl=='en' else s.gloss(t,cand))
-        return out,glosses.get(True) or glosses.get(False,'')
+                if t:
+                    out.append((f'{cand}  ·  {wl}.wiktionary',t));gloss=gloss or (re.sub(r'\s+',' ',t)[:300] if wl=='en' else s.gloss(t,cand));break
+        return out,gloss
     @staticmethod
     def gloss(t,cand):
         m=re.search(rf'^===+ (?:{POS}) ===+\n(.*?)(?=^==|\Z)',t,re.S|re.M)
@@ -128,8 +129,8 @@ class WordView(Gtk.TextView):
         if not s.offs:return
         bx,by=s.window_to_buffer_coords(Gtk.TextWindowType.WIDGET,int(x),int(y));ok,it=s.get_iter_at_location(bx,by)
         i=s.a+max(0,bisect.bisect_right(s.offs,it.get_offset())-1)
-        if g.get_current_event_state()&Gdk.ModifierType.CONTROL_MASK:s.win.goto(i,keep_playing=True)
-        else:s.win.lookup(i,anchor=(s,s.word_rect(i)))
+        if n==2:s.win.lookup(i,anchor=(s,s.word_rect(i)))
+        else:s.win.goto(i,keep_playing=True)
     def word_rect(s,i):
         b=s.buf;st=b.get_iter_at_offset(s.offs[i-s.a]);en=b.get_iter_at_offset(s.offs[i-s.a]+len(s.win.book.words[i]))
         l1,l2=s.get_iter_location(st),s.get_iter_location(en);x,y=s.buffer_to_window_coords(Gtk.TextWindowType.WIDGET,l1.x,l1.y)
@@ -161,7 +162,7 @@ class Win(Adw.ApplicationWindow):
         hb.pack_end(B('emblem-system-symbolic','Settings (S)',s.settings));hb.pack_end(B('view-fullscreen-symbolic','Fullscreen (F11)',s.toggle_full))
         # body
         s.pacer=WordView(s,left_margin=48,right_margin=48,top_margin=32,bottom_margin=32,pixels_below_lines=6,css_classes=['pacer'])
-        sw=Gtk.ScrolledWindow(child=Adw.Clamp(child=s.pacer,maximum_size=900,tightening_threshold=700),vexpand=True,hscrollbar_policy=Gtk.PolicyType.NEVER)
+        sw=Adw.Clamp(child=Gtk.ScrolledWindow(child=s.pacer,hscrollbar_policy=Gtk.PolicyType.NEVER),maximum_size=900,tightening_threshold=700,vexpand=True)
         s.cv=Gtk.DrawingArea(vexpand=True);s.cv.set_draw_func(s.draw_word)
         g=Gtk.GestureClick();g.connect('pressed',lambda *_:s.lookup(s.i));s.cv.add_controller(g)
         s.ctx=WordView(s,left_margin=24,right_margin=24,top_margin=12,bottom_margin=12,css_classes=['ctx']);s.ctx.set_size_request(-1,130)
@@ -170,13 +171,11 @@ class Win(Adw.ApplicationWindow):
         s.pbar=Gtk.ProgressBar(css_classes=['osd'])
         s.tv=Adw.ToolbarView(content=s.stack,top_bar_style=Adw.ToolbarStyle.FLAT);s.tv.add_top_bar(hb);s.tv.add_bottom_bar(s.pbar);s.set_content(s.tv)
         # dictionary popup
-        s.pop=Gtk.Popover(autohide=True);s.pop.set_size_request(460,-1);s.pop.set_parent(s.cv);s.pop.connect('closed',lambda *_:s.resume and s.play())
-        box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6,margin_top=6,margin_bottom=6,margin_start=6,margin_end=6);s.pop.set_child(box)
-        row=Gtk.Box(spacing=8);s.pop_title=Gtk.Label(xalign=0,hexpand=True,css_classes=['title-3'],ellipsize=Pango.EllipsizeMode.END);row.append(s.pop_title)
-        s.webbtn=Gtk.Button(label='↗');s.webbtn.connect('clicked',lambda *_:s.webdict());row.append(s.webbtn);box.append(row)
-        s.defn=Gtk.TextView(editable=False,cursor_visible=False,wrap_mode=Gtk.WrapMode.WORD_CHAR,left_margin=8,right_margin=8,top_margin=6,bottom_margin=6,css_classes=['defn'])
+        s.pop=Adw.Dialog(content_width=560,content_height=440,follows_content_size=False);s.pop.connect('closed',lambda *_:s.resume and s.play())
+        s.pop_title=Adw.WindowTitle();hb2=Adw.HeaderBar(title_widget=s.pop_title);s.webbtn=Gtk.Button(icon_name='web-browser-symbolic',tooltip_text='open in web dictionary');s.webbtn.connect('clicked',lambda *_:s.webdict());hb2.pack_end(s.webbtn)
+        s.defn=Gtk.TextView(editable=False,cursor_visible=False,wrap_mode=Gtk.WrapMode.WORD_CHAR,left_margin=20,right_margin=20,top_margin=12,bottom_margin=12,css_classes=['defn'])
         db=s.defn.get_buffer();s.tag_src=db.create_tag('src');s.tag_b=db.create_tag('b',weight=Pango.Weight.BOLD)
-        box.append(Gtk.ScrolledWindow(child=s.defn,min_content_height=200,max_content_height=440,propagate_natural_height=True,hscrollbar_policy=Gtk.PolicyType.NEVER))
+        pv=Adw.ToolbarView(content=Gtk.ScrolledWindow(child=s.defn,hscrollbar_policy=Gtk.PolicyType.NEVER));pv.add_top_bar(hb2);s.pop.set_child(pv)
         k=Gtk.EventControllerKey();k.connect('key-pressed',s.key);s.add_controller(k)
         s.connect('close-request',lambda *_:s.save())
         s.apply()
@@ -195,7 +194,7 @@ class Win(Adw.ApplicationWindow):
         .pacer{{font-family:"{c['font_text']}";font-size:{c['text_size']}px;}}
         .ctx,.defn{{font-family:"{c['font_text']}";font-size:{c['text_size']-3}px;}}
         .ctx text{{background-color:{c['panel']};}}
-        popover>contents{{background-color:{c['panel']};color:{c['fg']};}}
+        dialog .defn text{{background-color:transparent;}}
         progressbar trough{{min-height:3px;background-color:{c['panel']};}}progressbar progress{{min-height:3px;background-color:{c['accent']};}}
         headerbar{{background-color:transparent;}}''')
         for t in(s.pacer,s.ctx):t.cur.set_property('background',c['highlight']);t.read.set_property('foreground',c['dim'])
@@ -294,10 +293,7 @@ class Win(Adw.ApplicationWindow):
         try:lemma=simplemma.lemmatize(w,lang=b.lang) if simplemma else w
         except Exception:lemma=w
         s.word,s.lemma=w,lemma;s.req+=1;s.show_def(w,lemma,[('','…')])
-        parent,rect=anchor or (s.cv,None)
-        if s.pop.get_parent() is not parent:s.pop.unparent();s.pop.set_parent(parent)
-        if rect is None:rect=Gdk.Rectangle();rect.x,rect.y,rect.width,rect.height=parent.get_width()//2,parent.get_height()//2,1,1
-        s.pop.set_pointing_to(rect);s.pop.popup()
+        s.pop.present(s)
         threading.Thread(target=s.fetch,args=(s.req,w,lemma,b.lang,b.sentence(i),b.name),daemon=True).start()
     def fetch(s,req,w,lemma,lang,sent,bookname):
         try:out,gloss=s.dict.lookup(w,lemma,lang,[x.strip() for x in s.cfg['dict_langs'].split(',') if x.strip()])
@@ -306,7 +302,7 @@ class Win(Adw.ApplicationWindow):
         GLib.idle_add(s.show_def,w,lemma,out or [('not found','No entry. Try the ↗ button.')])
         out and gloss and s.add_vocab(w,lemma,gloss,sent,bookname)
     def show_def(s,w,lemma,entries):
-        s.pop_title.set_text(w+(f'  →  {lemma}' if lemma!=w else ''));b=s.defn.get_buffer();b.set_text('')
+        s.pop_title.set_title(w);s.pop_title.set_subtitle(f'→ {lemma}' if lemma!=w else '');b=s.defn.get_buffer();b.set_text('')
         for src,t in entries:src and b.insert_with_tags(b.get_end_iter(),src+'\n',s.tag_src);b.insert(b.get_end_iter(),t+'\n\n')
         return False
     def web_url(s):
@@ -315,7 +311,7 @@ class Win(Adw.ApplicationWindow):
         if 'duden' in url:w=w.translate(str.maketrans({'ä':'ae','ö':'oe','ü':'ue','Ä':'Ae','Ö':'Oe','Ü':'Ue','ß':'sz'}))
         return url.format(word=urllib.parse.quote(w),lang=lang)
     def webdict(s):
-        url=s.web_url();s.pop.popdown()
+        url=s.web_url();s.pop.close()
         try:
             gi.require_version('WebKit','6.0');from gi.repository import WebKit
         except (ValueError,ImportError):return Gtk.UriLauncher(uri=url).launch(s,None,None)
