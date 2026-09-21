@@ -4,9 +4,10 @@ Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwai
 
 - **Pacer**: the whole text on screen, a highlight sweeps through at your pace, read words dim behind it
 - **RSVP**: one word (or chunk) flashed at a time with a red pivot letter
-- Click a word to continue from there. Double-click it for a dictionary popup (lemmatized, Wiktionary, Duden button for German); close it and the flow resumes from that word
+- Click a word to continue from there. Double-click it for a dictionary popup (lemmatized; en.wiktionary glosses plus the Duden meanings for German, browser button for the full page); close it and the flow resumes from that word
 - Right-click a word you don't know: it gets a subtle underline everywhere it occurs and the pacer lingers on it. Your list lives in `unknown.txt`
-- `P` reads the current sentence aloud (piper TTS, offline, German voice downloaded on first use); the dictionary popup has a pronounce button
+- `P` reads the current sentence aloud (piper TTS, offline, voice downloaded on first use); the popup has a pronounce button
+- `A` read-along: piper reads sentence by sentence and the highlight follows the voice. WPM sets the speech speed
 - Chapter list from the epub's TOC (works around broken anchors by finding the headings in the text)
 - Every lookup lands in `~/.config/speedready/vocab.tsv` with its sentence, importable into Anki as-is
 - Remembers your position per book and reopens the last book
@@ -33,5 +34,6 @@ Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwai
 | D | define current word |
 | click / double-click / right-click | continue from there / dictionary popup / mark unknown |
 | P | speak sentence |
+| A | read-along |
 | C | chapters |
 | F11, S, O | fullscreen, settings, open |

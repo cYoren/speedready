@@ -3,7 +3,7 @@
 
 space play/pause · ←/→ ±10 words · PageUp/PageDown ±page · ↑/↓ speed (shift: coarse) · [ ] chunk size · M mode · R replay sentence
 click a word = continue from there · double-click = dictionary popup (flow resumes when you close it) · right-click = mark unknown
-D define current word · P speak current sentence · C chapters · F11 fullscreen · S settings · O open
+D define current word · P speak current sentence · A read-along (speech drives the pace) · C chapters · F11 fullscreen · S settings · O open
 Lookups are appended to ~/.config/speedready/vocab.tsv, importable into Anki as-is. Unknown words live in unknown.txt (one lemma per line).
 """
 import bisect,html,json,os,re,shutil,subprocess,sys,threading,time,urllib.error,urllib.parse,urllib.request,wave,zipfile,posixpath
@@ -26,12 +26,12 @@ DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'bg':'#101012','fg':'#e8e6e3','dim':'#5c5c60','pivot':'#ff5252','highlight':'#2f5d45','panel':'#18181b','accent':'#ff5252','unknown':'#e0a030',
  'sentence_pause':2.5,'comma_pause':1.5,'paragraph_pause':3.0,'long_word_len':10,'long_word_pause':1.3,'unknown_pause':1.8,
  'follow_margin':0.3,'dim_read':True,'hide_bars_when_playing':True,'pivot_guides':True,'page_words':300,'context_words':40,
- 'dict_langs':'en',                 # wiktionaries to ask, in order (e.g. 'en,de'). Each one costs a request per lookup, Wikimedia rate-limits bursts
+ 'dict_langs':'en,duden',           # sources in order: a wiktionary language code or 'duden' (German only). Wikimedia rate-limits bursts, so keep it short
  'web_dicts':'de=https://www.duden.de/rechtschreibung/{word}, *=https://{lang}.wiktionary.org/wiki/{word}',  # lang=url, * = fallback
  'tts_voices':'de=de_DE-thorsten-medium, en=en_US-lessac-medium, fr=fr_FR-siwis-medium, es=es_ES-davefx-medium, it=it_IT-riccardo-x_low, pt=pt_PT-tugão-medium',  # piper voices, downloaded on first use
- 'txt_lang':'de','save_vocab':True,
+ 'tts_speed':1.0,'txt_lang':'de','save_vocab':True,
 }
-RANGES={'wpm':(50,1500,5),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16,160,2),'long_word_len':(4,30,1),'page_words':(50,2000,50),'context_words':(10,200,10),'follow_margin':(0.0,0.49,0.05)}
+RANGES={'wpm':(50,1500,5),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16,160,2),'long_word_len':(4,30,1),'page_words':(50,2000,50),'context_words':(10,200,10),'follow_margin':(0.0,0.49,0.05),'tts_speed':(0.5,2.0,0.05)}
 SECTION={'de':'German','en':'English','fr':'French','es':'Spanish','it':'Italian','pt':'Portuguese','nl':'Dutch','ru':'Russian','sv':'Swedish','pl':'Polish'}
 POS='Noun|Proper noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Numeral|Article|Particle|Determiner|Contraction|Phrase'
 BLOCK={'p','div','br','h1','h2','h3','h4','h5','h6','li','blockquote','tr','section','article','dd','dt','pre','hr'}
@@ -140,10 +140,10 @@ class Book:
 class Dict:
     """Wiktionary lookups, one request per wiktionary, cached on disk."""
     def __init__(s):s.cache=json.loads(CACHE.read_text()) if CACHE.exists() else {};s.last=0
-    def get(s,url,retry=True):
+    def get(s,url,retry=True,raw=False):
         if url in s.cache:return s.cache[url]
         time.sleep(max(0,s.last+0.6-time.time()));s.last=time.time()  # ponytail: crude throttle, Wikimedia 429s on bursts
-        try:s.cache[url]=json.load(urllib.request.urlopen(urllib.request.Request(url,headers=UA),timeout=8))
+        try:r=urllib.request.urlopen(urllib.request.Request(url,headers=UA),timeout=8);s.cache[url]=r.read().decode('utf-8','replace') if raw else json.load(r)
         except urllib.error.HTTPError as e:
             if e.code==404:s.cache[url]=None
             elif e.code==429 and retry:time.sleep(float(e.headers.get('Retry-After') or 5));return s.get(url,retry=False)
@@ -161,13 +161,21 @@ class Dict:
         d=s.get(f'https://{wl}.wiktionary.org/w/api.php?{q}');t=next(iter(d['query']['pages'].values())).get('extract','') if d else ''
         if t and wl!=lang and lang in SECTION:m=re.search(rf'^== {SECTION[lang]} ==\n(.*?)(?=^== |\Z)',t,re.S|re.M);t=m.group(1) if m else ''
         return re.sub(r'\n{3,}','\n\n',t.strip())[:2500]
+    def duden(s,word):
+        w=word.translate(str.maketrans({'ä':'ae','ö':'oe','ü':'ue','Ä':'Ae','Ö':'Oe','Ü':'Ue','ß':'sz'}))
+        h=s.get(f'https://www.duden.de/rechtschreibung/{urllib.parse.quote(w)}',raw=True) or ''
+        txt=lambda x:html.unescape(re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',x))).strip()
+        kind=re.search(r'Wortart:.*?<dd[^>]*>(.*?)</dd>',h,re.S);means=[txt(m) for m in re.findall(r'<div class="enumeration__text">(.*?)</div>',h,re.S)]
+        if not means:m=re.search(r'<div[^>]*id="bedeutung".*?<p>(.*?)</p>',h,re.S);means=[txt(m.group(1))] if m else []
+        return (txt(kind.group(1))+'\n' if kind else '')+'\n'.join(f'  {k}. {x}' for k,x in enumerate(means[:8],1)) if means else ''
     def lookup(s,word,lemma,lang,langs):
         """-> [(source, text)], gloss for Anki. Lemma first, the inflected form only if the lemma has no entry."""
         out=[];gloss=''
         for wl in langs:
+            if wl=='duden' and lang!='de':continue
             for cand in dict.fromkeys([lemma,word]):
-                t=s.en(cand,lang) if wl=='en' else s.extract(wl,cand,lang)
-                if t:out.append((f'{cand}  ·  {wl}.wiktionary',t));gloss=gloss or (re.sub(r'\s+',' ',t)[:300] if wl=='en' else s.gloss(t,cand));break
+                t=s.duden(cand) if wl=='duden' else s.en(cand,lang) if wl=='en' else s.extract(wl,cand,lang)
+                if t:out.append((f'{cand}  ·  {"Duden" if wl=="duden" else wl+".wiktionary"}',t));gloss=gloss or (s.gloss(t,cand) if wl not in('en','duden') else re.sub(r'\s+',' ',t)[:300]);break
         return out,gloss
     @staticmethod
     def gloss(t,cand):
@@ -176,26 +184,40 @@ class Dict:
 
 class TTS:
     """Piper text to speech; voices are fetched from HuggingFace on first use."""
-    def __init__(s):s.voices={};s.proc=None;s.lock=threading.Lock()
+    def __init__(s):
+        s.voices={};s.rate={};s.proc=None;s.lock=threading.Lock();VOICES.mkdir(parents=True,exist_ok=True)
+        for f in VOICES.glob('ra-*.wav'):f.unlink()
+        s.player=next((p for p in(['pw-play'],['paplay'],['aplay','-q'],['ffplay','-nodisp','-autoexit','-loglevel','quiet']) if shutil.which(p[0])),None)
     def voice(s,name,status):
         if name in s.voices:return s.voices[name]
         from piper import PiperVoice
-        VOICES.mkdir(parents=True,exist_ok=True);loc,who,q=name.split('-',2);sub=f'{loc.split("_")[0]}/{loc}/{who}/{q}'
+        loc,who,q=name.split('-',2);sub=f'{loc.split("_")[0]}/{loc}/{who}/{q}'
         for ext in('.onnx','.onnx.json'):
             f=VOICES/(name+ext)
             if not f.exists():status(f'downloading voice {name}…');urllib.request.urlretrieve(f'https://huggingface.co/rhasspy/piper-voices/resolve/main/{sub}/{name}{ext}',f)
         s.voices[name]=PiperVoice.load(str(VOICES/(name+'.onnx')));return s.voices[name]
+    def synth(s,text,name,status,scale=1.0):
+        """-> (wav path, seconds). Cached per text+speed."""
+        from piper import SynthesisConfig
+        with s.lock:
+            v=s.voice(name,status);wav=VOICES/f'ra-{abs(hash((text,name,round(scale,2)))):x}.wav'
+            if not wav.exists():
+                with wave.open(str(wav),'wb') as f:v.synthesize_wav(text,f,SynthesisConfig(length_scale=scale))
+        with wave.open(str(wav)) as f:return wav,f.getnframes()/f.getframerate()
+    def natural_rate(s,name,status):  # words per second of this voice at speed 1
+        if name not in s.rate:
+            txt='Die Mühle im Koselbruch mahlte Tag für Tag, werktags und sonntags, vom frühen Morgen an bis zum Einbruch der Dunkelheit.' if name.startswith('de') else 'The quick brown fox jumps over the lazy dog while the sun sets slowly behind the distant hills.'
+            s.rate[name]=len(txt.split())/s.synth(txt,name,status)[1]
+        return s.rate[name]
+    def play(s,wav):
+        s.stop_audio()
+        if not s.player:raise RuntimeError('no audio player found (pw-play/paplay/aplay/ffplay)')
+        s.proc=subprocess.Popen(s.player+[str(wav)])
+    def stop_audio(s):s.proc and s.proc.poll() is None and s.proc.kill()
     def say(s,text,name,status):
         def go():
-            with s.lock:
-                try:
-                    v=s.voice(name,status);wav=VOICES/'say.wav'
-                    with wave.open(str(wav),'wb') as f:v.synthesize_wav(text,f)
-                    s.proc and s.proc.poll() is None and s.proc.kill()
-                    player=next((p for p in(['pw-play'],['paplay'],['aplay','-q'],['ffplay','-nodisp','-autoexit','-loglevel','quiet']) if shutil.which(p[0])),None)
-                    if not player:return status('no audio player found (pw-play/paplay/aplay/ffplay)')
-                    s.proc=subprocess.Popen(player+[str(wav)]);status('')
-                except Exception as e:status(f'speech failed: {e}')
+            try:wav,_=s.synth(text,name,status);s.play(wav);status('')
+            except Exception as e:status(f'speech failed: {e}')
         threading.Thread(target=go,daemon=True).start()
 
 # ---------------------------------------------------------------- widgets
@@ -244,7 +266,7 @@ class Win(Adw.ApplicationWindow):
         s.pos=json.loads(POS_FILE.read_text()) if POS_FILE.exists() else {}
         s.seen={l.split('\t')[1].lower() for l in VOCAB.read_text().splitlines() if '\t' in l and not l.startswith('#')} if VOCAB.exists() else set()
         s.unknown=set(UNKNOWN.read_text().split()) if UNKNOWN.exists() else set()
-        s.book=None;s.i=0;s.timer=None;s.dict=Dict();s.tts=TTS();s.req=0;s.resume=False;s.css=Gtk.CssProvider()
+        s.book=None;s.i=0;s.timer=None;s.playing=False;s.ra=False;s.token=0;s.dict=Dict();s.tts=TTS();s.req=0;s.resume=False;s.css=Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),s.css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         Adw.StyleManager.get_default().set_color_scheme(Adw.ColorScheme.PREFER_DARK)
         # header
@@ -255,9 +277,10 @@ class Win(Adw.ApplicationWindow):
         s.chunk=Gtk.SpinButton.new_with_range(1,8,1);s.chunk.set_tooltip_text('words per step ( [ ] )');s.chunk.connect('value-changed',lambda w:s.cfg.__setitem__('chunk',int(w.get_value())));hb.pack_start(s.chunk)
         s.wpm=Gtk.SpinButton.new_with_range(50,1500,5);s.wpm.set_increments(5,25);s.wpm.set_tooltip_text('words per minute (↑ ↓ = 5, shift = 25)');s.wpm.set_width_chars(5)
         s.wpm.connect('value-changed',lambda w:s.cfg.__setitem__('wpm',int(w.get_value())));hb.pack_start(s.wpm);hb.pack_start(Gtk.Label(label='wpm',css_classes=['dim-label']))
-        s.chapters=Gtk.ListBox(css_classes=['navigation-sidebar']);s.chapters.connect('row-activated',lambda lb,row:(s.chapbtn.popdown(),s.goto(row.idx,keep_playing=True)))
-        s.chapbtn=Gtk.MenuButton(icon_name='view-list-symbolic',tooltip_text='Chapters (C)',popover=Gtk.Popover(child=Gtk.ScrolledWindow(child=s.chapters,propagate_natural_height=True,max_content_height=600,min_content_width=300,hscrollbar_policy=Gtk.PolicyType.NEVER)))
+        s.chapters=Gtk.ListBox(css_classes=['navigation-sidebar','chapters'],selection_mode=Gtk.SelectionMode.SINGLE);s.chapters.connect('row-activated',lambda lb,row:(s.split.set_show_sidebar(False),s.goto(row.idx,keep_playing=True)))
+        s.chapbtn=B('view-list-symbolic','Chapters (C)',lambda:s.split.set_show_sidebar(not s.split.get_show_sidebar()))
         hb.pack_end(B('emblem-system-symbolic','Settings (S)',s.settings));hb.pack_end(B('view-fullscreen-symbolic','Fullscreen (F11)',s.toggle_full));hb.pack_end(s.chapbtn)
+        s.rabtn=Gtk.ToggleButton(icon_name='audio-speakers-symbolic',tooltip_text='Read along: speech sets the pace (A)');s.rabtn.set_focus_on_click(False);s.rabtn.connect('toggled',lambda b:s.set_ra(b.get_active()));hb.pack_end(s.rabtn)
         hb.pack_end(B('audio-volume-high-symbolic','Speak sentence (P)',s.speak))
         # body
         s.pacer=WordView(s,left_margin=48,right_margin=48,top_margin=32,bottom_margin=32,pixels_below_lines=6,css_classes=['pacer'])
@@ -268,7 +291,9 @@ class Win(Adw.ApplicationWindow):
         rsvp=Gtk.Box(orientation=Gtk.Orientation.VERTICAL);rsvp.append(s.cv);rsvp.append(s.ctx)
         s.stack=Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE);s.stack.add_named(sw,'pacer');s.stack.add_named(rsvp,'rsvp')
         s.pbar=Gtk.ProgressBar(css_classes=['osd'])
-        s.tv=Adw.ToolbarView(content=s.stack,top_bar_style=Adw.ToolbarStyle.FLAT);s.tv.add_top_bar(hb);s.tv.add_bottom_bar(s.pbar);s.set_content(s.tv)
+        side=Gtk.ScrolledWindow(child=s.chapters,hscrollbar_policy=Gtk.PolicyType.NEVER);side.set_size_request(320,-1)
+        s.split=Adw.OverlaySplitView(content=s.stack,sidebar=side,collapsed=True,show_sidebar=False,max_sidebar_width=460,sidebar_width_fraction=0.35)
+        s.tv=Adw.ToolbarView(content=s.split,top_bar_style=Adw.ToolbarStyle.FLAT);s.tv.add_top_bar(hb);s.tv.add_bottom_bar(s.pbar);s.set_content(s.tv)
         # dictionary popup
         s.pop=Adw.Dialog(content_width=560,content_height=440,follows_content_size=False);s.pop.connect('closed',lambda *_:s.resume and s.play())
         s.pop_title=Adw.WindowTitle();hb2=Adw.HeaderBar(title_widget=s.pop_title)
@@ -297,6 +322,7 @@ class Win(Adw.ApplicationWindow):
         .ctx,.defn{{font-family:"{c['font_text']}";font-size:{c['text_size']-3}px;}}
         .ctx text{{background-color:{c['panel']};}}
         progressbar trough{{min-height:3px;background-color:{c['panel']};}}progressbar progress{{min-height:3px;background-color:{c['accent']};}}
+        .chapters label{{font-family:"{c['font_text']}";font-size:{c['text_size']-2}px;}}
         headerbar{{background-color:transparent;}}''')
         for t in(s.pacer,s.ctx):t.cur.set_property('background',c['highlight']);t.read.set_property('foreground',c['dim']);t.unk.set_property('underline-rgba',Gdk.RGBA(*[int(c['unknown'][i:i+2],16)/255 for i in(1,3,5)],1))
         s.tag_src.set_property('foreground',c['dim'])
@@ -311,7 +337,7 @@ class Win(Adw.ApplicationWindow):
         acts={K.KEY_space:s.toggle,K.KEY_Left:lambda:s.jump(-10),K.KEY_Right:lambda:s.jump(10),K.KEY_Up:lambda:s.wpm.set_value(s.cfg['wpm']+big),K.KEY_Down:lambda:s.wpm.set_value(s.cfg['wpm']-big),
               K.KEY_Page_Down:lambda:s.jump(s.cfg['page_words']),K.KEY_Page_Up:lambda:s.jump(-s.cfg['page_words']),
               K.KEY_bracketleft:lambda:s.chunk.set_value(s.cfg['chunk']-1),K.KEY_bracketright:lambda:s.chunk.set_value(s.cfg['chunk']+1),K.KEY_m:s.toggle_mode,K.KEY_r:s.replay,
-              K.KEY_d:lambda:s.lookup(s.i),K.KEY_p:s.speak,K.KEY_c:s.chapbtn.popup,K.KEY_o:s.open,K.KEY_s:s.settings,K.KEY_F11:s.toggle_full,K.KEY_Escape:s.unfullscreen}
+              K.KEY_d:lambda:s.lookup(s.i),K.KEY_p:s.speak,K.KEY_a:lambda:s.rabtn.set_active(not s.ra),K.KEY_c:lambda:s.split.set_show_sidebar(not s.split.get_show_sidebar()),K.KEY_o:s.open,K.KEY_s:s.settings,K.KEY_F11:s.toggle_full,K.KEY_Escape:s.unfullscreen}
         if kv in acts:acts[kv]();return True
         return False
 
@@ -326,7 +352,7 @@ class Win(Adw.ApplicationWindow):
         if not s.book.n:s.book=None;return s.status('No text found in that file')
         s.i=min(s.pos.get(s.book.name,0),s.book.n-1);s.pos['_last']=p;s.set_title(f'Speedready · {s.book.name}');s.pacer.a=s.pacer.b=0
         s.chapters.remove_all()
-        for t,i in s.book.chapters:row=Gtk.ListBoxRow(child=Gtk.Label(label=t,xalign=0,ellipsize=Pango.EllipsizeMode.END,margin_start=8,margin_end=8,margin_top=4,margin_bottom=4));row.idx=i;s.chapters.append(row)
+        for t,i in s.book.chapters:row=Gtk.ListBoxRow(child=Gtk.Label(label=t,xalign=0,wrap=True,margin_start=10,margin_end=10,margin_top=6,margin_bottom=6));row.idx=i;s.chapters.append(row)
         s.chapbtn.set_sensitive(bool(s.book.chapters));s.show();s.save()
     def status(s,msg):GLib.idle_add(s.prog.set_subtitle,msg)
     def save(s):
@@ -345,7 +371,7 @@ class Win(Adw.ApplicationWindow):
         b,c,i=s.book,s.cfg,s.i;n=s.chunk_len(i);cw=c['context_words']
         if c['mode']=='rsvp':s.cv.queue_draw();s.ctx.render(max(0,i-cw),min(b.n,i+cw));s.ctx.highlight(i,n,c['dim_read'])
         else:s.pacer.b or s.pacer.render(0,b.n);s.pacer.highlight(i,n,c['dim_read'])
-        s.prog.set_title(b.chapter(i) or b.name);s.prog.set_subtitle(f'{i+1:,} / {b.n:,}   ·   {(b.n-i)//c["wpm"]} min left');s.pbar.set_fraction(i/b.n)
+        s.prog.set_title(b.chapter(i) or b.name);k=bisect.bisect_right(b.chapter_idx,i)-1;k>=0 and s.chapters.select_row(s.chapters.get_row_at_index(k));s.prog.set_subtitle(f'{i+1:,} / {b.n:,}   ·   {(b.n-i)//c["wpm"]} min left');s.pbar.set_fraction(i/b.n)
     def draw_word(s,area,cr,W,H):
         if not s.book:return
         c=s.cfg;chunk=s.book.words[s.i:s.i+s.chunk_len(s.i)];w=' '.join(chunk);mid=len(chunk)//2
@@ -370,23 +396,53 @@ class Win(Adw.ApplicationWindow):
         if s.i+n<b.n and b.is_para_start(s.i+n):d=max(d,60000/c['wpm']*c['paragraph_pause'])
         s.timer=GLib.timeout_add(int(d),s.step)
     def step(s):
-        s.i+=s.chunk_len(s.i)
+        s.timer=None;s.i+=s.chunk_len(s.i)
         if s.i<s.book.n:s.tick()
         else:s.i=s.book.n-1;s.stop()
         return False
     def play(s):
         s.resume=False
-        if not s.book or s.timer:return
-        s.playbtn.set_icon_name('media-playback-pause-symbolic')
+        if not s.book or s.playing:return
+        s.playing=True;s.token+=1;s.playbtn.set_icon_name('media-playback-pause-symbolic')
         if s.cfg['hide_bars_when_playing']:s.tv.set_reveal_top_bars(False)
-        s.tick()
+        s.ra_sentence() if s.ra else s.tick()
     def stop(s):
         if s.timer:GLib.source_remove(s.timer);s.timer=None
-        s.playbtn.set_icon_name('media-playback-start-symbolic');s.tv.set_reveal_top_bars(True);s.save()
-    def toggle(s):s.stop() if s.timer else s.play()
+        s.playing=False;s.token+=1;s.tts.stop_audio();s.playbtn.set_icon_name('media-playback-start-symbolic');s.tv.set_reveal_top_bars(True);s.save()
+    # read-along: piper reads each sentence, the highlight follows the audio, WPM sets the speech speed
+    def set_ra(s,on):
+        s.ra=on
+        if s.playing:s.stop();s.play()
+    def ra_scale(s,name):return max(0.5,min(2.0,s.tts.natural_rate(name,s.status)*60/s.cfg['wpm']))*s.cfg['tts_speed']
+    def ra_sentence(s):
+        b=s.book;a=b.sent_start(s.i);e=b.sent_end(a);name=table(s.cfg['tts_voices']).get(b.lang)
+        if not name:s.status(f'no voice for "{b.lang}", falling back to the pacer');s.rabtn.set_active(False);return
+        tok=s.token;text=' '.join(b.words[a:e])
+        def go():
+            try:wav,secs=s.tts.synth(text,name,s.status,s.ra_scale(name))
+            except Exception as ex:return s.status(f'speech failed: {ex}')
+            GLib.idle_add(s.ra_play,tok,a,e,wav,secs)
+            if e<b.n:  # prefetch the next sentence while this one plays
+                try:s.tts.synth(' '.join(b.words[e:b.sent_end(e)]),name,s.status,s.ra_scale(name))
+                except Exception:pass
+        threading.Thread(target=go,daemon=True).start()
+    def ra_play(s,tok,a,e,wav,secs):
+        if tok!=s.token or not s.playing:return False
+        try:s.tts.play(wav)
+        except Exception as ex:s.status(str(ex));s.stop();return False
+        ws=s.book.words[a:e];tot=sum(len(w)+1 for w in ws);s.ra_d=[secs*1000*(len(w)+1)/tot for w in ws];s.ra_a,s.ra_e=a,e;s.i=a;s.ra_tick();return False
+    def ra_tick(s):
+        s.show();s.timer=GLib.timeout_add(int(s.ra_d[s.i-s.ra_a]),s.ra_step)
+    def ra_step(s):
+        s.timer=None;s.i+=1
+        if s.i<s.ra_e:s.ra_tick()
+        elif s.i<s.book.n:s.ra_sentence()
+        else:s.i=s.book.n-1;s.stop()
+        return False
+    def toggle(s):s.stop() if s.playing else s.play()
     def goto(s,i,keep_playing=False):
         if not s.book or i is None:return
-        was=bool(s.timer);s.stop();s.i=max(0,min(s.book.n-1,i));s.show();keep_playing and was and s.play()
+        was=s.playing;s.stop();s.i=max(0,min(s.book.n-1,i));s.show();keep_playing and was and s.play()
     def jump(s,d):s.book and s.goto(s.i+d,keep_playing=True)
     def replay(s):s.book and s.goto(s.book.sent_start(s.i),keep_playing=True)
 
@@ -402,7 +458,7 @@ class Win(Adw.ApplicationWindow):
     # ---- dictionary / speech
     def lookup(s,i):
         if not s.book or i is None:return
-        was=bool(s.timer);s.goto(i);s.resume=was  # flow resumes from here when the popup closes
+        was=s.playing;s.goto(i);s.resume=was  # flow resumes from here when the popup closes
         b=s.book;w=strip(b.words[i]);lemma=lemma_of(w,b.lang)
         if not w:return
         s.word,s.lemma=w,lemma;s.req+=1;s.show_def(w,lemma,[('','…')]);s.unkbtn.set_active(lemma in s.unknown);s.pop.present(s)
@@ -421,13 +477,7 @@ class Win(Adw.ApplicationWindow):
         t=table(s.cfg['web_dicts']);lang=s.book.lang;url=t.get(lang) or t.get('*') or 'https://{lang}.wiktionary.org/wiki/{word}';w=s.lemma or s.word
         if 'duden' in url:w=w.translate(str.maketrans({'ä':'ae','ö':'oe','ü':'ue','Ä':'Ae','Ö':'Oe','Ü':'Ue','ß':'sz'}))
         return url.format(word=urllib.parse.quote(w),lang=lang)
-    def webdict(s):
-        url=s.web_url();s.pop.close()
-        try:
-            gi.require_version('WebKit','6.0');from gi.repository import WebKit
-        except (ValueError,ImportError):return Gtk.UriLauncher(uri=url).launch(s,None,None)
-        wv=WebKit.WebView();wv.load_uri(url);d=Adw.Dialog(title=s.word,content_width=980,content_height=760)
-        t=Adw.ToolbarView(content=wv);t.add_top_bar(Adw.HeaderBar());d.set_child(t);d.connect('closed',lambda *_:s.resume and s.play());d.present(s)
+    def webdict(s):Gtk.UriLauncher(uri=s.web_url()).launch(s,None,None)
     def say(s,text):
         if not s.book or not text:return
         name=table(s.cfg['tts_voices']).get(s.book.lang)
