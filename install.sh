@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 [[ -x .venv/bin/python ]] || /usr/bin/python3 -m venv --system-site-packages .venv
-.venv/bin/pip install -q simplemma   # or: safe-install .venv/bin/pip install simplemma
+.venv/bin/pip install -q simplemma piper-tts   # or: safe-install .venv/bin/pip install simplemma piper-tts
 ID=io.github.cyoren.speedready
 install -Dm644 icon.svg "$HOME/.local/share/icons/hicolor/scalable/apps/$ID.svg"
 install -Dm644 /dev/stdin "$HOME/.local/share/applications/$ID.desktop" <<DESK
