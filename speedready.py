@@ -5,8 +5,9 @@ space play/pause · ←/→ ±10 words · PageUp/PageDown ±page · ↑/↓ spee
 click a word = continue from there · double-click = dictionary popup (flow resumes when you close it) · right-click = mark unknown
 D define current word · P speak from here to the end of the sentence (again = stop) · A read-along (speech drives the pace) · C chapters · F11 fullscreen · S settings · O open
 Lookups are appended to ~/.config/speedready/vocab.tsv, importable into Anki as-is. Unknown words live in unknown.txt (one lemma per line).
+Beginner mode (settings): a gloss in your mother tongue sits above each word; tap the gloss to mark the word learned.
 """
-import bisect,html,json,os,re,shutil,subprocess,sys,threading,time,urllib.error,urllib.parse,urllib.request,wave,zipfile,posixpath
+import bisect,html,json,os,re,shutil,sqlite3,subprocess,sys,threading,time,urllib.error,urllib.parse,urllib.request,wave,zipfile,posixpath
 from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -18,7 +19,8 @@ except ImportError:simplemma=None
 APP_ID='io.github.cyoren.speedready'
 DIR=Path.home()/'.config/speedready';DIR.mkdir(parents=True,exist_ok=True)
 CFG_FILE,POS_FILE,VOCAB,CACHE,UNKNOWN=DIR/'config.json',DIR/'positions.json',DIR/'vocab.tsv',DIR/'dict-cache.json',DIR/'unknown.txt'
-VOICES=Path.home()/'.cache/speedready/voices'
+VOICES=Path.home()/'.cache/speedready/voices';PACKS=Path.home()/'.cache/speedready/packs'
+PACK_URL='https://github.com/cYoren/speedready/releases/download/packs/gloss-{src}-{tgt}.sqlite'
 DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'mode':'pacer',                    # pacer = highlight sweeps through the text · rsvp = one flash at a time
  'wpm':300,'chunk':1,               # words per step
@@ -30,8 +32,9 @@ DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'web_dicts':'de=https://www.duden.de/rechtschreibung/{word}, *=https://{lang}.wiktionary.org/wiki/{word}',  # lang=url, * = fallback
  'tts_voices':'de=de_DE-thorsten-medium, en=en_US-lessac-medium, fr=fr_FR-siwis-medium, es=es_ES-davefx-medium, it=it_IT-riccardo-x_low, pt=pt_PT-tugão-medium',  # piper voices, downloaded on first use
  'tts_speed':1.0,'txt_lang':'de','save_vocab':True,
+ 'beginner':False,'native_lang':'pt','gloss_threshold':0,'gloss':'#8ab4f8',  # beginner mode: mother-tongue gloss above every word you haven't learned yet (offline pack, downloaded once)
 }
-RANGES={'wpm':(50,1500,5),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16,160,2),'long_word_len':(4,30,1),'page_words':(50,2000,50),'context_words':(10,200,10),'follow_margin':(0.0,0.49,0.05),'tts_speed':(0.5,2.0,0.05)}
+RANGES={'wpm':(50,1500,5),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16,160,2),'long_word_len':(4,30,1),'page_words':(50,2000,50),'context_words':(10,200,10),'follow_margin':(0.0,0.49,0.05),'tts_speed':(0.5,2.0,0.05),'gloss_threshold':(0,5000,100)}
 SECTION={'de':'German','en':'English','fr':'French','es':'Spanish','it':'Italian','pt':'Portuguese','nl':'Dutch','ru':'Russian','sv':'Swedish','pl':'Polish'}
 POS='Noun|Proper noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Numeral|Article|Particle|Determiner|Contraction|Phrase'
 BLOCK={'p','div','br','h1','h2','h3','h4','h5','h6','li','blockquote','tr','section','article','dd','dt','pre','hr'}
@@ -127,6 +130,7 @@ class Book:
             ws=para.split()
             if ws:s.para_start.append(len(s.words));s.words.extend(ws)
     def is_para_start(s,i):k=bisect.bisect_left(s.para_start,i);return k<len(s.para_start) and s.para_start[k]==i
+    def para_of(s,i):return s.para_start[bisect.bisect_right(s.para_start,i)-1]
     def sent_start(s,i):
         while i>0 and not s.is_para_start(i) and not END_RE.search(s.words[i-1]):i-=1
         return i
@@ -220,6 +224,51 @@ class TTS:
             except Exception as e:status(f'speech failed: {e}')
         threading.Thread(target=go,daemon=True).start()
 
+class Gloss:
+    """Offline gloss pack (tools/build_pack.py) + the learner's 'learned' list. None until the pack is on disk."""
+    def __init__(s,src,tgt,status,on_ready):
+        s.src,s.tgt=src,tgt;s.path=PACKS/f'gloss-{src}-{tgt}.sqlite';s.learned_file=DIR/f'learned-{src}-{tgt}.txt'
+        s.learned=set(s.learned_file.read_text().split()) if s.learned_file.exists() else set();s.cache={};s.db=None
+        if s.path.exists():s.db=sqlite3.connect(s.path,check_same_thread=False)
+        else:threading.Thread(target=s.fetch,args=(status,on_ready),daemon=True).start()
+    def fetch(s,status,on_ready):
+        PACKS.mkdir(parents=True,exist_ok=True);tmp=s.path.with_suffix('.part')
+        try:
+            status(f'downloading {s.src}→{s.tgt} dictionary…');urllib.request.urlretrieve(PACK_URL.format(src=s.src,tgt=s.tgt),tmp,lambda n,b,t:status(f'downloading {s.src}→{s.tgt} dictionary… {n*b*100//max(t,1)}%'))
+            tmp.rename(s.path);s.db=sqlite3.connect(s.path,check_same_thread=False);status('');GLib.idle_add(on_ready)
+        except Exception as e:status(f'no {s.src}→{s.tgt} dictionary pack: {e}')
+    def lemma(s,w):
+        if not s.db:return w
+        for c in dict.fromkeys((w,w.lower(),w.capitalize())):
+            r=s.db.execute('SELECT lemma FROM forms WHERE form=?',(c,)).fetchone()
+            if r:return r[0]
+            if s.db.execute('SELECT 1 FROM gloss WHERE word=? LIMIT 1',(c,)).fetchone():return c
+        return w
+    def raw(s,w):
+        """-> (gloss, lemma) ignoring the learned list, or (None, lemma)."""
+        w=strip(w)
+        if not w or not s.db:return None,w
+        if w not in s.cache:
+            l=s.lemma(w);r=s.db.execute('SELECT tgt FROM gloss WHERE word IN (?,?,?) ORDER BY prio LIMIT 1',(l,w,w.lower())).fetchone()
+            s.cache[w]=(s.short(r[0]) if r else None,l)
+        return s.cache[w]
+    @staticmethod
+    def short(g,limit=18):  # 'house, building, home (in various phrases)' -> 'house, building'
+        out=[]
+        for part in re.split(r'[,;]',re.sub(r'\([^)]*\)','',g.split(';')[0])):
+            part=part.strip()
+            if part and len(', '.join(out+[part]))<=limit:out.append(part)
+        return ', '.join(out) or g[:limit]
+    def get(s,w,threshold=0):
+        g,l=s.raw(w)
+        if g is None or l in s.learned or l.lower()==g.lower():return None
+        if threshold and s.db:
+            r=s.db.execute('SELECT rank FROM freq WHERE word=?',(strip(w).lower(),)).fetchone()
+            if r and r[0]<=threshold:return None
+        return g
+    def learn(s,lemma,flag=True):
+        (s.learned.add if flag else s.learned.discard)(lemma);s.learned_file.write_text('\n'.join(sorted(s.learned))+'\n')
+
 # ---------------------------------------------------------------- widgets
 class WordView(Gtk.TextView):
     """Read-only text showing words[a:b] with paragraph breaks; maps clicks back to word indices."""
@@ -259,6 +308,46 @@ class WordView(Gtk.TextView):
         b.apply_tag(s.cur,st,en);dim and b.apply_tag(s.read,b.get_start_iter(),st)
         s.scroll_to_mark(b.create_mark(None,en,False),s.win.cfg['follow_margin'],False,0,0)  # scrolls only when the word leaves the middle band
 
+class PageView(Gtk.Box):
+    """Beginner mode: one page of words as widgets, one wrap box per paragraph, gloss label above each word."""
+    def __init__(s,win):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL,spacing=22,margin_top=28,margin_bottom=28,margin_start=24,margin_end=24);s.win=win;s.a=s.b=0;s.cells=[];s.cur=set();s.vadj=None
+    def render(s,a,b):
+        while (c:=s.get_first_child()):s.remove(c)
+        bk,g,c=s.win.book,s.win.gloss,s.win.cfg;s.a,s.b=a,b;s.cells=[];s.cur=set();fb=None
+        for i in range(a,b):
+            if fb is None or (i>a and bk.is_para_start(i)):fb=Adw.WrapBox(child_spacing=0,line_spacing=4,halign=Gtk.Align.START);s.append(fb)  # a real flow layout; Gtk.FlowBox is a grid
+            cell=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,css_classes=['cell']);gl=Gtk.Label(label=s.gloss_for(i),css_classes=['gloss']);wl=Gtk.Label(label=bk.words[i],css_classes=['w'])
+            cell.append(gl);cell.append(wl);bk.lemmas[i] in s.win.unknown and cell.add_css_class('unk')
+            k=Gtk.GestureClick();k.connect('pressed',lambda k,n,x,y,i=i:s.win.lookup(i) if n==2 else s.win.goto(i,keep_playing=True));cell.add_controller(k)
+            k=Gtk.GestureClick(button=3);k.connect('pressed',lambda k,n,x,y,i=i:s.win.toggle_unknown(i));cell.add_controller(k)
+            k=Gtk.GestureClick();k.connect('pressed',lambda k,n,x,y,i=i:(k.set_state(Gtk.EventSequenceState.CLAIMED),s.win.learn(i)));gl.add_controller(k)
+            s.cells.append(cell);fb.append(cell)
+    def gloss_for(s,i):
+        """The gloss, cut to items that fit above the word ('in, inside, within' over 'im' -> 'in')."""
+        w=s.win.book.words[i];g=s.win.gloss and s.win.gloss.get(w,s.win.cfg['gloss_threshold'])
+        if not g:return ''
+        room=int(len(w)*1.7)+3;items=[x.strip() for x in g.split(',')];out=[]
+        for x in items:
+            if len(', '.join(out+[x]))<=room:out.append(x)
+            else:break
+        return ', '.join(out) or items[0][:room]
+    def refresh_gloss(s):
+        for k,cell in enumerate(s.cells):cell.get_first_child().set_label(s.gloss_for(s.a+k))
+    def mark_unknown(s,only=None):
+        for k,cell in enumerate(s.cells):
+            l=s.win.book.lemmas[s.a+k]
+            if only is None or l==only:(cell.add_css_class if l in s.win.unknown else cell.remove_css_class)('unk')
+    def highlight(s,i,n,dim):
+        new={k for k in range(i-s.a,i+n-s.a) if 0<=k<len(s.cells)}
+        for k in s.cur-new:s.cells[k].remove_css_class('cur')
+        for k in new-s.cur:s.cells[k].add_css_class('cur')
+        s.cur=new
+        for k,cell in enumerate(s.cells):(cell.add_css_class if dim and k<i-s.a else cell.remove_css_class)('read')  # ponytail: 300 class updates per step, fine
+        if new and s.vadj:
+            cell=s.cells[min(new)];ok,r=cell.compute_bounds(s);page=s.vadj.get_page_size();v=s.vadj.get_value();m=page*s.win.cfg['follow_margin']
+            if ok and (r.origin.y<v+m or r.origin.y+r.size.height>v+page-m):s.vadj.set_value(max(0,r.origin.y-page*0.35))
+
 class Win(Adw.ApplicationWindow):
     def __init__(s,app,path):
         super().__init__(application=app,title='Speedready',default_width=1100,default_height=760,icon_name=APP_ID)
@@ -266,7 +355,7 @@ class Win(Adw.ApplicationWindow):
         s.pos=json.loads(POS_FILE.read_text()) if POS_FILE.exists() else {}
         s.seen={l.split('\t')[1].lower() for l in VOCAB.read_text().splitlines() if '\t' in l and not l.startswith('#')} if VOCAB.exists() else set()
         s.unknown=set(UNKNOWN.read_text().split()) if UNKNOWN.exists() else set()
-        s.book=None;s.i=0;s.timer=None;s.playing=False;s.ra=False;s.token=0;s.dict=Dict();s.tts=TTS();s.req=0;s.resume=False;s.css=Gtk.CssProvider()
+        s.book=None;s.i=0;s.timer=None;s.playing=False;s.ra=False;s.token=0;s.dict=Dict();s.tts=TTS();s.gloss=None;s.req=0;s.resume=False;s.css=Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),s.css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         Adw.StyleManager.get_default().set_color_scheme(Adw.ColorScheme.PREFER_DARK)
         # header
@@ -289,7 +378,8 @@ class Win(Adw.ApplicationWindow):
         g=Gtk.GestureClick();g.connect('pressed',lambda *_:s.lookup(s.i));s.cv.add_controller(g)
         s.ctx=WordView(s,left_margin=24,right_margin=24,top_margin=12,bottom_margin=12,css_classes=['ctx']);s.ctx.set_size_request(-1,130)
         rsvp=Gtk.Box(orientation=Gtk.Orientation.VERTICAL);rsvp.append(s.cv);rsvp.append(s.ctx)
-        s.stack=Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE);s.stack.add_named(sw,'pacer');s.stack.add_named(rsvp,'rsvp')
+        s.page=PageView(s);psw=Gtk.ScrolledWindow(child=Adw.Clamp(child=s.page,maximum_size=900,tightening_threshold=700),hscrollbar_policy=Gtk.PolicyType.NEVER,vexpand=True);s.page.vadj=psw.get_vadjustment()
+        s.stack=Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE);s.stack.add_named(sw,'pacer');s.stack.add_named(rsvp,'rsvp');s.stack.add_named(psw,'page')
         s.pbar=Gtk.ProgressBar(css_classes=['osd'])
         side=Gtk.ScrolledWindow(child=s.chapters,hscrollbar_policy=Gtk.PolicyType.NEVER);side.set_size_request(320,-1)
         s.split=Adw.OverlaySplitView(content=s.stack,sidebar=side,collapsed=True,show_sidebar=False,max_sidebar_width=460,sidebar_width_fraction=0.35)
@@ -300,6 +390,7 @@ class Win(Adw.ApplicationWindow):
         for icon,tip,cb in(('web-browser-symbolic','open in web dictionary',s.webdict),('audio-volume-high-symbolic','pronounce',lambda:s.say(s.word))):
             b=Gtk.Button(icon_name=icon,tooltip_text=tip);b.connect('clicked',lambda *_,cb=cb:cb());hb2.pack_end(b)
         s.unkbtn=Gtk.ToggleButton(label='unknown');s.unkbtn.connect('toggled',lambda b:s.set_unknown(s.lemma,b.get_active()));hb2.pack_start(s.unkbtn)
+        s.learnbtn=Gtk.ToggleButton(label='learned',visible=False);s.learnbtn.connect('toggled',lambda b:s.gloss and s.set_learned(s.gloss.raw(s.word)[1],b.get_active()));hb2.pack_start(s.learnbtn)
         s.defn=Gtk.TextView(editable=False,cursor_visible=False,wrap_mode=Gtk.WrapMode.WORD_CHAR,left_margin=20,right_margin=20,top_margin=12,bottom_margin=12,css_classes=['defn'])
         db=s.defn.get_buffer();s.tag_src=db.create_tag('src')
         pv=Adw.ToolbarView(content=Gtk.ScrolledWindow(child=s.defn,hscrollbar_policy=Gtk.PolicyType.NEVER));pv.add_top_bar(hb2);s.pop.set_child(pv)
@@ -323,12 +414,15 @@ class Win(Adw.ApplicationWindow):
         .ctx text{{background-color:{c['panel']};}}
         progressbar trough{{min-height:3px;background-color:{c['panel']};}}progressbar progress{{min-height:3px;background-color:{c['accent']};}}
         .chapters label{{font-family:"{c['font_text']}";font-size:{c['text_size']-2}px;}}
+.cell{{padding:1px 4px;border-radius:6px;}}.cell label.w{{font-family:"{c['font_text']}";font-size:{c['text_size']}px;}}
+        .cell label.gloss{{font-family:"{c['font_text']}";font-size:{max(8,c['text_size']-7)}px;color:{c['gloss']};min-height:{c['text_size']-4}px;}}
+        .cell.cur{{background-color:{c['highlight']};}}.cell.read label.w{{color:{c['dim']};}}.cell.unk label.w{{text-decoration-line:underline;text-decoration-color:{c['unknown']};}}
         headerbar{{background-color:transparent;}}''')
         for t in(s.pacer,s.ctx):t.cur.set_property('background',c['highlight']);t.read.set_property('foreground',c['dim']);t.unk.set_property('underline-rgba',Gdk.RGBA(*[int(c['unknown'][i:i+2],16)/255 for i in(1,3,5)],1))
         s.tag_src.set_property('foreground',c['dim'])
         s.wpm.set_value(c['wpm']);s.chunk.set_value(c['chunk']);s.set_mode(c['mode'])
     def set_mode(s,m):
-        s.cfg['mode']=m;s.modebtn.set_label('Pacer' if m=='pacer' else 'RSVP');s.stack.set_visible_child_name(m);s.pacer.a=s.pacer.b=0;s.show()
+        s.cfg['mode']=m;s.modebtn.set_label('Pacer' if m=='pacer' else 'RSVP');s.stack.set_visible_child_name('page' if m=='pacer' and s.cfg['beginner'] else m);s.pacer.a=s.pacer.b=0;s.page.a=s.page.b=0;s.show()
     def toggle_mode(s):s.set_mode('rsvp' if s.cfg['mode']=='pacer' else 'pacer')
     def toggle_full(s):s.unfullscreen() if s.is_fullscreen() else s.fullscreen()
     def key(s,ctl,kv,code,state):
@@ -353,7 +447,11 @@ class Win(Adw.ApplicationWindow):
         s.i=min(s.pos.get(s.book.name,0),s.book.n-1);s.pos['_last']=p;s.set_title(f'Speedready · {s.book.name}');s.pacer.a=s.pacer.b=0
         s.chapters.remove_all()
         for t,i in s.book.chapters:row=Gtk.ListBoxRow(child=Gtk.Label(label=t,xalign=0,wrap=True,margin_start=10,margin_end=10,margin_top=6,margin_bottom=6));row.idx=i;s.chapters.append(row)
-        s.chapbtn.set_sensitive(bool(s.book.chapters));s.show();s.save()
+        s.chapbtn.set_sensitive(bool(s.book.chapters));s.setup_gloss();s.show();s.save()
+    def setup_gloss(s):
+        want=s.cfg['beginner'] and s.book and s.book.lang!=s.cfg['native_lang']
+        if want and not(s.gloss and (s.gloss.src,s.gloss.tgt)==(s.book.lang,s.cfg['native_lang'])):s.gloss=Gloss(s.book.lang,s.cfg['native_lang'],s.status,lambda:(s.page.refresh_gloss(),s.show()) and False)
+        if not want:s.gloss=None
     def status(s,msg):GLib.idle_add(s.prog.set_subtitle,msg)
     def save(s):
         if s.book:s.pos[s.book.name]=s.i
@@ -370,6 +468,10 @@ class Win(Adw.ApplicationWindow):
         if not s.book:return
         b,c,i=s.book,s.cfg,s.i;n=s.chunk_len(i);cw=c['context_words']
         if c['mode']=='rsvp':s.cv.queue_draw();s.ctx.render(max(0,i-cw),min(b.n,i+cw));s.ctx.highlight(i,n,c['dim_read'])
+        elif c['beginner']:
+            p=s.page
+            if not(p.a<=i and i+n<=p.b):a=b.para_of(i);k=bisect.bisect_right(b.para_start,a+c['page_words']);p.render(a,min(b.n,b.para_start[k] if k<len(b.para_start) else b.n))
+            p.highlight(i,n,c['dim_read'])
         else:s.pacer.b or s.pacer.render(0,b.n);s.pacer.highlight(i,n,c['dim_read'])
         s.prog.set_title(b.chapter(i) or b.name);k=bisect.bisect_right(b.chapter_idx,i)-1;k>=0 and s.chapters.select_row(s.chapters.get_row_at_index(k));s.prog.set_subtitle(f'{i+1:,} / {b.n:,}   ·   {(b.n-i)//c["wpm"]} min left');s.pbar.set_fraction(i/b.n)
     def draw_word(s,area,cr,W,H):
@@ -385,6 +487,8 @@ class Win(Adw.ApplicationWindow):
             cr.stroke()
         for lay_,x,col in((L,cx-pw/2-L.get_pixel_size()[0],c['fg']),(P,cx-pw/2,c['pivot']),(R,cx+pw/2,c['fg'])):
             rgb(col);cr.move_to(x,cy-ph/2);PangoCairo.show_layout(cr,lay_)
+        if s.gloss and (gl:=' · '.join(g for g in (s.gloss.get(x,c['gloss_threshold']) for x in chunk) if g)):
+            G=area.create_pango_layout(gl);G.set_font_description(Pango.FontDescription(f'{c["font_text"]} {c["word_size"]//3}px'));gw,gh=G.get_pixel_size();rgb(c['gloss']);cr.move_to(cx-gw/2,cy+ph*1.1);PangoCairo.show_layout(cr,G)
 
     # ---- playback
     def tick(s):
@@ -452,8 +556,13 @@ class Win(Adw.ApplicationWindow):
     def set_unknown(s,lemma,flag):
         if not lemma or (lemma in s.unknown)==flag:return
         (s.unknown.add if flag else s.unknown.discard)(lemma);UNKNOWN.write_text('\n'.join(sorted(s.unknown))+'\n')
-        for t in(s.pacer,s.ctx):t.b and t.mark_unknown(only=lemma)
+        for t in(s.pacer,s.ctx,s.page):t.b and t.mark_unknown(only=lemma)
         s.status(f'{len(s.unknown)} unknown words')
+
+    def learn(s,i):s.gloss and s.set_learned(s.gloss.raw(s.book.words[i])[1],True)
+    def set_learned(s,lemma,flag):
+        if not s.gloss or (lemma in s.gloss.learned)==flag:return
+        s.gloss.learn(lemma,flag);s.page.refresh_gloss();s.cfg['mode']=='rsvp' and s.cv.queue_draw();s.status(f'{len(s.gloss.learned)} words learned')
 
     # ---- dictionary / speech
     def lookup(s,i):
@@ -461,7 +570,8 @@ class Win(Adw.ApplicationWindow):
         was=s.playing;s.goto(i);s.resume=was  # flow resumes from here when the popup closes
         b=s.book;w=strip(b.words[i]);lemma=lemma_of(w,b.lang)
         if not w:return
-        s.word,s.lemma=w,lemma;s.req+=1;s.show_def(w,lemma,[('','…')]);s.unkbtn.set_active(lemma in s.unknown);s.pop.present(s)
+        s.word,s.lemma=w,lemma;s.req+=1;s.show_def(w,lemma,[('','…')]);s.unkbtn.set_active(lemma in s.unknown)
+        s.learnbtn.set_visible(bool(s.gloss));s.gloss and s.learnbtn.set_active(s.gloss.raw(w)[1] in s.gloss.learned);s.pop.present(s)
         threading.Thread(target=s.fetch,args=(s.req,w,lemma,b.lang,b.sentence(i),b.name),daemon=True).start()
     def fetch(s,req,w,lemma,lang,sent,bookname):
         try:out,gloss=s.dict.lookup(w,lemma,lang,[x.strip() for x in s.cfg['dict_langs'].split(',') if x.strip()])
@@ -471,6 +581,7 @@ class Win(Adw.ApplicationWindow):
         out and gloss and s.add_vocab(w,lemma,gloss,sent,bookname)
     def show_def(s,w,lemma,entries):
         s.pop_title.set_title(w);s.pop_title.set_subtitle(f'→ {lemma}' if lemma!=w.lower() else '');b=s.defn.get_buffer();b.set_text('')
+        if s.gloss and (g:=s.gloss.raw(w)[0]):b.insert_with_tags(b.get_end_iter(),f'{s.cfg["native_lang"]}: ',s.tag_src);b.insert(b.get_end_iter(),g+'\n\n')
         for src,t in entries:src and b.insert_with_tags(b.get_end_iter(),src+'\n',s.tag_src);b.insert(b.get_end_iter(),t+'\n\n')
         return False
     def web_url(s):
@@ -499,8 +610,9 @@ class Win(Adw.ApplicationWindow):
         groups={'Reading':('mode','wpm','chunk','follow_margin','dim_read','hide_bars_when_playing','pivot_guides','page_words','context_words'),
                 'Pauses':('sentence_pause','comma_pause','paragraph_pause','long_word_len','long_word_pause','unknown_pause'),
                 'Look':('font_text','text_size','font_word','word_size','bg','fg','dim','pivot','highlight','panel','accent','unknown'),
-                'Dictionary & speech':('dict_langs','web_dicts','tts_voices','txt_lang','save_vocab')}
-        def upd(k,v):s.cfg[k]=v;CFG_FILE.write_text(json.dumps(s.cfg,indent=1));s.apply()
+                'Dictionary & speech':('dict_langs','web_dicts','tts_voices','txt_lang','save_vocab'),
+                'Beginner mode':('beginner','native_lang','gloss_threshold','gloss')}
+        def upd(k,v):s.cfg[k]=v;CFG_FILE.write_text(json.dumps(s.cfg,indent=1));k in('beginner','native_lang') and s.setup_gloss();s.apply()
         for gname,keys in groups.items():
             g=Adw.PreferencesGroup(title=gname);page.add(g)
             for k in keys:
