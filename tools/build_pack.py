@@ -51,7 +51,10 @@ def build(src,tgt,d,out):
         glosses=[]
         for s in e.get('senses',[]):
             fo=s.get('form_of') or s.get('alt_of')
-            if fo:forms.setdefault(w,fo[0].get('word',w));continue
+            if fo:
+                base=fo[0].get('word',w)
+                if ' ' not in base and len(base)<=30:forms.setdefault(w,base)  # kaikki sometimes stores a description here ('the third person singular or plural')
+                continue
             if 'form-of' in s.get('tags',[]) or 'alt-of' in s.get('tags',[]):continue
             for g in s.get('glosses',[])[:1]:
                 if not SKIP_GLOSS.match(g):glosses.append(g)
