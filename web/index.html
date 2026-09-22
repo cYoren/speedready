@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>Speedready</title>
+<meta name="description" content="Leia em alemão no seu ritmo, com tradução em português acima de cada palavra.">
+<meta name="theme-color" content="#101012">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Speedready">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#101012; --fg:#e8e6e3; --dim:#8a8a90; --panel:#1b1b1f; --line:#2a2a30;
+  --accent:#ff5252; --gloss:#8ab4f8; --hl:#2f5d45; --unk:#e0a030;
+  --pad:16px; --radius:14px;
+}
+:root[data-theme="light"]{
+  --bg:#faf9f7; --fg:#1a1a1c; --dim:#6b6b72; --panel:#ffffff; --line:#e3e1dd;
+  --accent:#d32f2f; --gloss:#1a56b8; --hl:#c8e6d0; --unk:#a86b00;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overscroll-behavior:none}
+body{
+  background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif;
+  display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{background:var(--line)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.icon{width:44px;min-width:44px;padding:0;font-size:19px}
+
+/* ---------- top bar ---------- */
+header{display:flex;align-items:center;gap:8px;padding:8px var(--pad);border-bottom:1px solid var(--line);min-height:56px}
+#chapter{flex:1;min-width:0;text-align:center;line-height:1.25}
+#chapter b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chapter span{display:block;font-size:11px;color:var(--dim)}
+#bar{height:3px;background:var(--line)}
+#fill{height:100%;width:0;background:var(--accent);transition:width .2s}
+
+/* ---------- reader ---------- */
+main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:18px var(--pad) 40vh}
+#page{max-width:680px;margin:0 auto;font-size:var(--size,19px);line-height:1.15}
+.p{margin:0 0 1.15em;display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 2px}
+.c{display:flex;flex-direction:column;align-items:center;padding:1px 3px;border-radius:7px;line-height:1.2}
+.c .g{font-size:.56em;color:var(--gloss);line-height:1.4;min-height:1.4em;white-space:nowrap}
+.c.cur{background:var(--hl)}
+.c.read .w{color:var(--dim)}
+.c.unk .w{text-decoration:underline;text-decoration-color:var(--unk);text-underline-offset:3px}
+body.plain .c .g{display:none}
+body.plain .p{gap:0 5px}
+
+/* ---------- bottom controls ---------- */
+footer{
+  position:sticky;bottom:0;background:color-mix(in srgb,var(--bg) 92%,transparent);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;
+  padding:8px var(--pad) calc(8px + env(safe-area-inset-bottom));
+}
+#speed{display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+#speed button{width:40px;height:42px;font-size:20px}
+#wpm{min-width:58px;text-align:center;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
+#play{flex:1;height:46px}
+
+/* ---------- sheets ---------- */
+.sheet{
+  position:fixed;inset:0;z-index:20;display:none;
+  background:rgba(0,0,0,.45);align-items:flex-end;justify-content:center;
+}
+.sheet.on{display:flex}
+.sheet>div{
+  background:var(--panel);width:100%;max-width:560px;max-height:82vh;overflow-y:auto;
+  border-radius:20px 20px 0 0;padding:14px var(--pad) calc(18px + env(safe-area-inset-bottom));
+  animation:up .22s ease-out;
+}
+@keyframes up{from{transform:translateY(100%)}}
+.grab{width:38px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 12px}
+.sheet h2{margin:0 0 4px;font-size:22px}
+.sheet h3{margin:16px 0 8px;font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);min-height:52px}
+.row:last-child{border-bottom:0}
+.row label{flex:1}
+.row small{display:block;color:var(--dim);font-size:12px;margin-top:2px}
+.list button{display:block;width:100%;text-align:left;padding:13px 10px;border-radius:10px;border-bottom:1px solid var(--line)}
+.list button:active{background:var(--line)}
+.list button.on{color:var(--accent);font-weight:600}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.actions .btn{flex:1 1 44%}
+
+/* word sheet */
+#w-word{font-size:30px;font-weight:600;line-height:1.1}
+#w-lemma{color:var(--dim);font-size:14px;margin-top:2px}
+#w-gloss{color:var(--gloss);font-size:24px;margin:14px 0 2px}
+#w-more{color:var(--dim);font-size:14px;line-height:1.5;white-space:pre-wrap;margin-top:10px}
+
+/* switch */
+.sw{width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;transition:background .15s;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw.on{background:var(--accent)}
+.sw.on::after{transform:translateX(20px)}
+
+#splash{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;padding:32px;text-align:center}
+#splash h1{font-size:26px;margin:0}
+#splash p{color:var(--dim);margin:0;max-width:320px;line-height:1.5}
+#pct{font-variant-numeric:tabular-nums;color:var(--accent);font-size:15px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <h1>Speedready</h1>
+  <p id="splash-msg">Preparando o dicionário…</p>
+  <div id="pct">0%</div>
+</div>
+
+<header>
+  <button class="btn icon" id="b-library" aria-label="Livros">☰</button>
+  <div id="chapter"><b>Speedready</b><span></span></div>
+  <button class="btn icon" id="b-settings" aria-label="Ajustes">⚙</button>
+</header>
+<div id="bar"><div id="fill"></div></div>
+
+<main id="main"><div id="page"></div></main>
+
+<footer>
+  <button class="btn icon" id="b-back" aria-label="Voltar uma frase">↺</button>
+  <button class="btn primary" id="play">▶ Começar</button>
+  <div id="speed">
+    <button id="slower" aria-label="Mais devagar">−</button>
+    <div id="wpm">120</div>
+    <button id="faster" aria-label="Mais rápido">+</button>
+  </div>
+</footer>
+
+<!-- word sheet -->
+<div class="sheet" id="s-word"><div>
+  <div class="grab"></div>
+  <div id="w-word"></div>
+  <div id="w-lemma"></div>
+  <div id="w-gloss"></div>
+  <div id="w-more"></div>
+  <div class="actions">
+    <button class="btn" id="w-speak">🔊 Ouvir</button>
+    <button class="btn" id="w-here">▶ Ler daqui</button>
+    <button class="btn" id="w-learned">✓ Já sei</button>
+    <button class="btn" id="w-web">Dicionário ↗</button>
+  </div>
+</div></div>
+
+<!-- library sheet -->
+<div class="sheet" id="s-library"><div>
+  <div class="grab"></div>
+  <h2>Livros</h2>
+  <h3>Capítulos</h3>
+  <div class="list" id="chapters"></div>
+  <h3>Abrir outro livro</h3>
+  <div class="row">
+    <label>Arquivo .epub ou .txt<small>Escolha um arquivo do seu celular</small></label>
+  </div>
+  <input type="file" id="file" accept=".epub,.txt,application/epub+zip,text/plain" style="width:100%">
+  <div class="actions"><button class="btn" id="b-starter">Voltar ao livro de contos</button></div>
+</div></div>
+
+<!-- settings sheet -->
+<div class="sheet" id="s-settings"><div>
+  <div class="grab"></div>
+  <h2>Ajustes</h2>
+  <div class="row"><label>Tradução acima das palavras<small>Mostra o português de cada palavra que você ainda não marcou como sabida</small></label><div class="sw on" id="t-gloss"></div></div>
+  <div class="row"><label>Modo escuro</label><div class="sw on" id="t-dark"></div></div>
+  <div class="row"><label>Tamanho do texto</label>
+    <button class="btn icon" id="size-down">A−</button><button class="btn icon" id="size-up">A+</button></div>
+  <div class="row"><label>Ler em voz alta ao avançar<small>A voz do celular lê cada frase e o texto acompanha</small></label><div class="sw" id="t-tts"></div></div>
+  <h3>Seu progresso</h3>
+  <div class="row"><label>Palavras que você já sabe</label><b id="n-learned">0</b></div>
+  <div class="actions"><button class="btn" id="b-forget">Esquecer todas</button></div>
+  <h3>Sobre</h3>
+  <p style="color:var(--dim);font-size:13px;line-height:1.5;margin:0">
+    Dicionário alemão→português offline (Wiktionary, MUSE). Livro inicial: Japanische Märchen, domínio público (Project Gutenberg).
+    Tudo funciona sem internet depois da primeira abertura.
+  </p>
+</div></div>
+
+<script>
+//////////////////// state ////////////////////
+const LS={get:(k,d)=>{try{const v=localStorage.getItem('sr:'+k);return v===null?d:JSON.parse(v)}catch{return d}},
+          set:(k,v)=>{try{localStorage.setItem('sr:'+k,JSON.stringify(v))}catch{}}};
+const S={dict:null,book:null,i:0,timer:null,playing:false,cells:[],pageA:0,pageB:0,
+         wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',true),
+         size:LS.get('size',19),tts:LS.get('tts',false),learned:new Set(LS.get('learned',[])),
+         voice:null,speaking:false};
+const $=s=>document.querySelector(s), page=$('#page');
+const strip=w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
+
+//////////////////// dictionary ////////////////////
+function glossOf(word){            // -> [gloss|null, lemma]
+  const w=strip(word); if(!w||!S.dict) return [null,w];
+  const o=S.dict.o[w.toLowerCase()]; if(o) return [o[0],o[1]];
+  const lemma=S.dict.f[w]||S.dict.f[w.toLowerCase()]||
+              (S.dict.g[w]?w:null)||S.dict.f[w[0].toUpperCase()+w.slice(1)]||
+              (S.dict.g[w.toLowerCase()]?w.toLowerCase():w);
+  return [S.dict.g[lemma]||S.dict.g[w]||S.dict.g[w.toLowerCase()]||null,lemma];
+}
+const isLearned=lemma=>S.learned.has(lemma);
+function showGloss(word){
+  const[g,l]=glossOf(word);
+  if(!g||isLearned(l)||l.toLowerCase()===g.toLowerCase())return '';
+  return fit(g,strip(word));
+}
+function fit(gloss,word){          // keep only what fits above the word, so the line stays readable
+  const room=Math.round(word.length*1.7)+3;
+  if(gloss.length<=room)return gloss;
+  const parts=gloss.split(/[;,]/).map(x=>x.trim()).filter(Boolean);
+  let out='';
+  for(const p of parts){const next=out?out+', '+p:p; if(next.length>room)break; out=next}
+  return out||parts[0].slice(0,room);
+}
+
+//////////////////// book ////////////////////
+function paraOf(i){let lo=0,hi=S.book.para.length-1,r=0;while(lo<=hi){const m=(lo+hi)>>1;if(S.book.para[m]<=i){r=m;lo=m+1}else hi=m-1}return S.book.para[r]}
+function isParaStart(i){return S.book.para.includes(i)}
+function sentEnd(i){const w=S.book.words;while(i<w.length-1&&!/[.!?…»"']$/.test(w[i])&&!isParaStart(i+1))i++;return i+1}
+function sentStart(i){const w=S.book.words;while(i>0&&!isParaStart(i)&&!/[.!?…»"']$/.test(w[i-1]))i--;return i}
+function chapterOf(i){let t='';for(const[name,at]of S.book.chapters){if(at<=i)t=name;else break}return t||S.book.title}
+
+//////////////////// rendering ////////////////////
+const PAGE=340;
+function renderPage(i){
+  const b=S.book, a=paraOf(Math.max(0,i-40));
+  let end=a; while(end<b.words.length && end-a<PAGE) end++;
+  end=b.words.length; // whole book renders fine for these sizes; keeps scrolling natural
+  if(b.words.length>12000){ end=Math.min(b.words.length, a+PAGE*6); }
+  S.pageA=a; S.pageB=end; S.cells=[];
+  const frag=document.createDocumentFragment();
+  let p=document.createElement('div'); p.className='p'; frag.appendChild(p);
+  for(let k=a;k<end;k++){
+    if(k>a&&isParaStart(k)){p=document.createElement('div');p.className='p';frag.appendChild(p)}
+    const c=document.createElement('span'); c.className='c'; c.dataset.i=k;
+    const g=document.createElement('span'); g.className='g'; g.textContent=S.gloss?showGloss(b.words[k]):'';
+    const w=document.createElement('span'); w.className='w'; w.textContent=b.words[k];
+    c.append(g,w); p.appendChild(c); S.cells.push(c);
+  }
+  page.replaceChildren(frag);
+}
+function refreshGlosses(){
+  if(!S.cells.length)return;
+  for(let k=0;k<S.cells.length;k++)
+    S.cells[k].firstChild.textContent=S.gloss?showGloss(S.book.words[S.pageA+k]):'';
+}
+let curCell=null;
+function highlight(i,scroll){
+  const c=S.cells[i-S.pageA]; if(!c)return;
+  if(curCell)curCell.classList.remove('cur');
+  c.classList.add('cur'); curCell=c;
+  if(scroll){
+    const r=c.getBoundingClientRect(), m=$('#main').getBoundingClientRect();
+    if(r.top<m.top+m.height*0.28||r.bottom>m.top+m.height*0.72)
+      $('#main').scrollBy({top:r.top-(m.top+m.height*0.35),behavior:'smooth'});
+  }
+}
+function updateHeader(){
+  $('#chapter b').textContent=chapterOf(S.i);
+  const left=Math.max(0,Math.round((S.book.words.length-S.i)/S.wpm));
+  $('#chapter span').textContent=`${(S.i+1).toLocaleString('pt-BR')} / ${S.book.words.length.toLocaleString('pt-BR')} · ${left} min`;
+  $('#fill').style.width=(100*S.i/S.book.words.length)+'%';
+}
+function show(scroll=true){highlight(S.i,scroll);updateHeader();saveSoon()}
+
+//////////////////// playback ////////////////////
+function delay(i){
+  const w=S.book.words[i]; let d=60000/S.wpm;
+  if(/[.!?…]["'»)]*$/.test(w))d*=2.4; else if(/[,;:]["'»)]*$/.test(w))d*=1.5;
+  if(w.length>=10)d*=1.25;
+  const[,l]=glossOf(w); if(!isLearned(l)&&showGloss(w))d*=1.35;   // linger on words she is still learning
+  return d;
+}
+function step(){
+  S.i++;
+  if(S.i>=S.book.words.length){S.i=S.book.words.length-1;pause();return}
+  show(); S.timer=setTimeout(step,delay(S.i));
+}
+function play(){
+  if(S.playing)return;
+  S.playing=true; $('#play').textContent='❚❚ Pausar';
+  if(S.tts){speakFrom(S.i)} else {show();S.timer=setTimeout(step,delay(S.i))}
+}
+function pause(){
+  S.playing=false; clearTimeout(S.timer); S.timer=null;
+  speechSynthesis.cancel(); S.speaking=false;
+  $('#play').textContent='▶ Continuar'; save();
+}
+const toggle=()=>S.playing?pause():play();
+
+//////////////////// speech ////////////////////
+function pickVoice(){
+  const v=speechSynthesis.getVoices().filter(v=>v.lang.toLowerCase().startsWith('de'));
+  S.voice=v.find(v=>/google|siri|anna|petra|markus/i.test(v.name))||v[0]||null;
+}
+speechSynthesis.addEventListener?.('voiceschanged',pickVoice); pickVoice();
+function speak(text){
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='de-DE'; if(S.voice)u.voice=S.voice; u.rate=Math.min(1.4,Math.max(.5,S.wpm/170));
+  speechSynthesis.speak(u); return u;
+}
+function speakFrom(i){                     // read-along: the voice sets the pace
+  const a=i, b=sentEnd(a), words=S.book.words.slice(a,b), text=words.join(' ');
+  S.i=a; show();
+  const u=speak(text); S.speaking=true;
+  let k=0;
+  u.onboundary=e=>{                        // iOS fires word boundaries; walk the highlight with them
+    if(e.name&&e.name!=='word')return;
+    let pos=0;
+    for(let n=0;n<words.length;n++){ if(pos>=e.charIndex){k=n;break} pos+=words[n].length+1 }
+    S.i=Math.min(a+k,b-1); show();
+  };
+  u.onend=()=>{
+    S.speaking=false; if(!S.playing)return;
+    if(b>=S.book.words.length){pause();return}
+    speakFrom(b);
+  };
+  u.onerror=()=>{S.speaking=false;if(S.playing){S.tts=false;LS.set('tts',false);$('#t-tts').classList.remove('on');show();S.timer=setTimeout(step,delay(S.i))}};
+}
+
+//////////////////// word sheet ////////////////////
+let sheetWord=null;
+function openWord(i){
+  pause(); S.i=i; show(false);
+  const word=S.book.words[i], [g,l]=glossOf(word); sheetWord={word:strip(word),lemma:l};
+  $('#w-word').textContent=strip(word);
+  $('#w-lemma').textContent=(l&&l.toLowerCase()!==strip(word).toLowerCase())?'forma de: '+l:'';
+  $('#w-gloss').textContent=g||'—';
+  $('#w-more').textContent=g?'':'Esta palavra não está no dicionário offline. Toque em Dicionário para ver na internet.';
+  $('#w-learned').textContent=isLearned(l)?'↩ Ainda não sei':'✓ Já sei';
+  openSheet('#s-word');
+}
+function markLearned(){
+  if(!sheetWord)return;
+  const l=sheetWord.lemma;
+  if(isLearned(l))S.learned.delete(l); else S.learned.add(l);
+  LS.set('learned',[...S.learned]); $('#n-learned').textContent=S.learned.size;
+  refreshGlosses(); closeSheets();
+}
+
+//////////////////// sheets ////////////////////
+function openSheet(sel){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));$(sel).classList.add('on')}
+function closeSheets(){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'))}
+document.querySelectorAll('.sheet').forEach(s=>s.addEventListener('click',e=>{if(e.target===s)closeSheets()}));
+
+//////////////////// persistence ////////////////////
+let saveTimer=null;
+const bookKey=()=>'pos:'+(S.book?.id||'starter');
+function save(){if(S.book)LS.set(bookKey(),S.i)}
+function saveSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(save,700)}
+addEventListener('pagehide',save); addEventListener('blur',save);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();save()}});
+
+//////////////////// loading books ////////////////////
+async function loadBook(book,startAt){
+  S.book=book; S.i=Math.min(startAt??LS.get(bookKey(),0),book.words.length-1);
+  renderPage(S.i); show(); buildChapters(); LS.set('lastBook',book.id==='starter'?'starter':null);
+  requestAnimationFrame(()=>{const c=S.cells[S.i-S.pageA];if(c)c.scrollIntoView({block:'center'})});
+}
+function buildChapters(){
+  const box=$('#chapters'); box.replaceChildren();
+  if(!S.book.chapters.length){box.textContent='Este livro não tem capítulos.';return}
+  S.book.chapters.forEach(([name,at])=>{
+    const b=document.createElement('button'); b.textContent=name;
+    b.onclick=()=>{closeSheets();pause();S.i=at;renderPage(S.i);show();
+      requestAnimationFrame(()=>S.cells[S.i-S.pageA]?.scrollIntoView({block:'center'}))};
+    box.appendChild(b);
+  });
+}
+function textToBook(text,title,id){
+  const words=[],para=[];
+  for(const p of text.split(/\n\s*\n|\r\n\s*\r\n/)){
+    const ws=p.split(/\s+/).filter(Boolean);
+    if(ws.length){para.push(words.length);words.push(...ws)}
+  }
+  return {id,title,lang:'de',words,para,chapters:[]};
+}
+// --- epub via the browser's own zip inflater (no library) ---
+async function epubToBook(file){
+  const buf=new Uint8Array(await file.arrayBuffer()), dv=new DataView(buf.buffer);
+  let eocd=buf.length-22;
+  while(eocd>0&&dv.getUint32(eocd,true)!==0x06054b50)eocd--;
+  if(eocd<=0)throw new Error('Arquivo .epub inválido');
+  let n=dv.getUint16(eocd+10,true), off=dv.getUint32(eocd+16,true);
+  const files={};
+  for(let k=0;k<n;k++){
+    const nameLen=dv.getUint16(off+28,true),extra=dv.getUint16(off+30,true),cmt=dv.getUint16(off+32,true);
+    const method=dv.getUint16(off+10,true),local=dv.getUint32(off+42,true),csize=dv.getUint32(off+20,true);
+    const name=new TextDecoder().decode(buf.subarray(off+46,off+46+nameLen));
+    files[name]={method,local,csize}; off+=46+nameLen+extra+cmt;
+  }
+  async function read(name){
+    const f=files[name]; if(!f)return null;
+    const nl=dv.getUint16(f.local+26,true), el=dv.getUint16(f.local+28,true);
+    const start=f.local+30+nl+el, raw=buf.subarray(start,start+f.csize);
+    if(f.method===0)return new TextDecoder('utf-8').decode(raw);
+    const ds=new DecompressionStream('deflate-raw');
+    const out=new Response(new Blob([raw]).stream().pipeThrough(ds));
+    return new TextDecoder('utf-8').decode(await out.arrayBuffer());
+  }
+  const container=await read('META-INF/container.xml');
+  const opfPath=container.match(/full-path="([^"]+)"/)[1];
+  const opf=await read(opfPath), dir=opfPath.replace(/[^/]*$/,'');
+  const items={}; for(const m of opf.matchAll(/<item\b[^>]*>/g)){
+    const id=(m[0].match(/id="([^"]+)"/)||[])[1], href=(m[0].match(/href="([^"]+)"/)||[])[1];
+    if(id&&href)items[id]=href;
+  }
+  const parser=new DOMParser(); let words=[],para=[],chapters=[];
+  for(const m of opf.matchAll(/<itemref\b[^>]*idref="([^"]+)"/g)){
+    const href=items[m[1]]; if(!href)continue;
+    const html=await read(dir+decodeURIComponent(href)); if(!html)continue;
+    const doc=parser.parseFromString(html,'text/html');
+    doc.querySelectorAll('style,script').forEach(e=>e.remove());
+    const head=doc.querySelector('h1,h2');
+    if(head&&head.textContent.trim())chapters.push([head.textContent.trim().replace(/\s+/g,' ').slice(0,60),words.length]);
+    for(const el of doc.body.querySelectorAll('p,div,li,h1,h2,h3,blockquote')){
+      if(el.querySelector('p,div,li'))continue;
+      const ws=(el.textContent||'').split(/\s+/).filter(Boolean);
+      if(ws.length){para.push(words.length);words.push(...ws)}
+    }
+  }
+  if(!words.length)throw new Error('Não encontrei texto neste .epub');
+  const title=(opf.match(/<dc:title[^>]*>([^<]+)/)||[])[1]||file.name.replace(/\.epub$/i,'');
+  return {id:'f:'+file.name+':'+file.size,title,lang:(opf.match(/<dc:language[^>]*>(\w\w)/)||[])[1]||'de',words,para,chapters};
+}
+
+//////////////////// boot ////////////////////
+async function fetchJSON(url,onProgress){
+  const res=await fetch(url); if(!res.ok)throw new Error(url+' '+res.status);
+  const total=+res.headers.get('content-length')||0;
+  if(!res.body||!total)return res.json();
+  const reader=res.body.getReader(); const chunks=[]; let got=0;
+  for(;;){const{done,value}=await reader.read(); if(done)break; chunks.push(value); got+=value.length; onProgress?.(got/total)}
+  return JSON.parse(new TextDecoder().decode(await new Blob(chunks).arrayBuffer()));
+}
+async function boot(){
+  applyTheme(); applySize(); $('#wpm').textContent=S.wpm;
+  $('#t-gloss').classList.toggle('on',S.gloss); $('#t-dark').classList.toggle('on',S.dark);
+  $('#t-tts').classList.toggle('on',S.tts); $('#n-learned').textContent=S.learned.size;
+  document.body.classList.toggle('plain',!S.gloss);
+  try{
+    S.dict=await fetchJSON('dict-de-pt.json',p=>$('#pct').textContent=Math.round(p*100)+'%');
+    $('#splash-msg').textContent='Abrindo o livro…';
+    const book=await fetchJSON('starter-de.json'); book.id='starter';
+    await loadBook(book);
+    $('#splash').classList.add('hidden');
+  }catch(e){
+    $('#splash-msg').textContent='Não consegui carregar: '+e.message+'. Verifique a internet e recarregue a página.';
+    $('#pct').textContent='';
+  }
+}
+function applyTheme(){document.documentElement.dataset.theme=S.dark?'dark':'light';
+  $('meta[name=theme-color]').setAttribute('content',S.dark?'#101012':'#faf9f7')}
+function applySize(){page.style.setProperty('--size',S.size+'px')}
+
+//////////////////// events ////////////////////
+$('#play').onclick=toggle;
+$('#b-back').onclick=()=>{const was=S.playing;pause();S.i=sentStart(Math.max(0,S.i-1));show();if(was)play()};
+$('#faster').onclick=()=>setWpm(S.wpm+10); $('#slower').onclick=()=>setWpm(S.wpm-10);
+function setWpm(v){S.wpm=Math.max(40,Math.min(800,v));$('#wpm').textContent=S.wpm;LS.set('wpm',S.wpm);updateHeader()}
+page.addEventListener('click',e=>{
+  const g=e.target.closest('.g'), c=e.target.closest('.c'); if(!c)return;
+  const i=+c.dataset.i;
+  if(g&&g.textContent){                       // tapping the translation = "I know this word"
+    const[,l]=glossOf(S.book.words[i]); S.learned.add(l); LS.set('learned',[...S.learned]);
+    $('#n-learned').textContent=S.learned.size; refreshGlosses(); return;
+  }
+  openWord(i);
+});
+$('#w-here').onclick=()=>{closeSheets();play()};
+$('#w-learned').onclick=markLearned;
+$('#w-speak').onclick=()=>sheetWord&&speak(sheetWord.word);
+$('#w-web').onclick=()=>sheetWord&&open('https://de.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
+$('#b-library').onclick=()=>openSheet('#s-library');
+$('#b-settings').onclick=()=>openSheet('#s-settings');
+$('#t-gloss').onclick=e=>{S.gloss=!S.gloss;LS.set('gloss',S.gloss);e.target.classList.toggle('on',S.gloss);
+  document.body.classList.toggle('plain',!S.gloss);refreshGlosses()};
+$('#t-dark').onclick=e=>{S.dark=!S.dark;LS.set('dark',S.dark);e.target.classList.toggle('on',S.dark);applyTheme()};
+$('#t-tts').onclick=e=>{S.tts=!S.tts;LS.set('tts',S.tts);e.target.classList.toggle('on',S.tts);
+  if(S.playing){pause();play()} else if(S.tts){speak('')}};   // warm up iOS speech inside the tap
+$('#size-up').onclick=()=>{S.size=Math.min(30,S.size+1);LS.set('size',S.size);applySize()};
+$('#size-down').onclick=()=>{S.size=Math.max(13,S.size-1);LS.set('size',S.size);applySize()};
+$('#b-forget').onclick=()=>{if(confirm('Esquecer todas as palavras marcadas como sabidas?')){
+  S.learned.clear();LS.set('learned',[]);$('#n-learned').textContent=0;refreshGlosses()}};
+$('#b-starter').onclick=async()=>{closeSheets();const b=await fetchJSON('starter-de.json');b.id='starter';loadBook(b)};
+$('#file').onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  closeSheets(); pause(); $('#splash-msg').textContent='Abrindo '+f.name+'…'; $('#pct').textContent='';
+  $('#splash').classList.remove('hidden');
+  try{
+    const book=f.name.toLowerCase().endsWith('.epub')?await epubToBook(f)
+              :textToBook(await f.text(),f.name.replace(/\.[^.]+$/,''),'f:'+f.name+':'+f.size);
+    await loadBook(book);
+  }catch(err){alert('Não consegui abrir: '+err.message)}
+  $('#splash').classList.add('hidden'); e.target.value='';
+};
+// keyboard, for when she uses it on a laptop
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.key===' '){e.preventDefault();toggle()}
+  else if(e.key==='ArrowRight'){pause();S.i=Math.min(S.book.words.length-1,S.i+10);show()}
+  else if(e.key==='ArrowLeft'){pause();S.i=Math.max(0,S.i-10);show()}
+  else if(e.key==='ArrowUp'){setWpm(S.wpm+10)} else if(e.key==='ArrowDown'){setWpm(S.wpm-10)}
+  else if(e.key==='Escape')closeSheets();
+});
+if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+boot();
+</script>
+</body>
+</html>
