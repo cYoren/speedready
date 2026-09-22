@@ -1,2 +1,5 @@
-.venv/
+build-dir/
+.flatpak-builder/
 __pycache__/
+.venv/
+.wheels/

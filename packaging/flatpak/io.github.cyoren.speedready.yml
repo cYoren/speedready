@@ -1,0 +1,40 @@
+id: io.github.cyoren.speedready
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: speedready
+
+finish-args:
+  # display and input
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # the reader speaks sentences aloud
+  - --socket=pulseaudio
+  # dictionary entries and the one-time download of gloss packs and voices
+  - --share=network
+  # books the reader opens; the file chooser goes through the portal, so no blanket home access
+  - --filesystem=xdg-documents:ro
+  - --filesystem=xdg-download:ro
+
+modules:
+  - python-deps.yml
+
+  - name: speedready
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 speedready.py ${FLATPAK_DEST}/bin/speedready
+      - install -Dm644 packaging/io.github.cyoren.speedready.desktop
+        ${FLATPAK_DEST}/share/applications/io.github.cyoren.speedready.desktop
+      - install -Dm644 packaging/io.github.cyoren.speedready.metainfo.xml
+        ${FLATPAK_DEST}/share/metainfo/io.github.cyoren.speedready.metainfo.xml
+      - install -Dm644 icon.svg
+        ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/io.github.cyoren.speedready.svg
+      - install -Dm644 packaging/icons/128.png
+        ${FLATPAK_DEST}/share/icons/hicolor/128x128/apps/io.github.cyoren.speedready.png
+      - install -Dm644 packaging/icons/256.png
+        ${FLATPAK_DEST}/share/icons/hicolor/256x256/apps/io.github.cyoren.speedready.png
+    sources:
+      - type: dir
+        path: ../..

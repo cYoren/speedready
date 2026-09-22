@@ -12,11 +12,11 @@ from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree as ET
 import gi;gi.require_version('Gtk','4.0');gi.require_version('Adw','1');gi.require_version('PangoCairo','1.0')
-from gi.repository import Gtk,Adw,Gdk,GLib,Pango,PangoCairo
+from gi.repository import Gtk,Adw,Gdk,Gio,GLib,Pango,PangoCairo
 try:import simplemma
 except ImportError:simplemma=None
 
-APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready')
+APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.0'
 DIR=Path.home()/'.config/speedready';DIR.mkdir(parents=True,exist_ok=True)
 CFG_FILE,POS_FILE,VOCAB,CACHE,UNKNOWN,BOOKMARKS=DIR/'config.json',DIR/'positions.json',DIR/'vocab.tsv',DIR/'dict-cache.json',DIR/'unknown.txt',DIR/'bookmarks.json'
 VOICES=Path.home()/'.cache/speedready/voices';PACKS=Path.home()/'.cache/speedready/packs'
@@ -32,13 +32,13 @@ DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'web_dicts':'de=https://www.duden.de/rechtschreibung/{word}, *=https://{lang}.wiktionary.org/wiki/{word}',  # lang=url, * = fallback
  'tts_voices':'de=de_DE-thorsten-medium, en=en_US-lessac-medium, fr=fr_FR-siwis-medium, es=es_ES-davefx-medium, it=it_IT-riccardo-x_low, pt=pt_PT-tugão-medium',  # piper voices, downloaded on first use
  'tts_speed':1.0,'txt_lang':'de','save_vocab':True,
- 'beginner':False,'native_lang':'pt','ui_lang':'en','onboarded':False,'translate_provider':'deepl',
+ 'beginner':False,'native_lang':'en','ui_lang':'en','onboarded':False,'translate_provider':'deepl',
  'gloss_threshold':0,'gloss':'#8ab4f8',  # beginner mode: mother-tongue gloss above every word you haven't learned yet (offline pack, downloaded once)
 }
 RANGES={'wpm':(50,1500,5),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16,160,2),'long_word_len':(4,30,1),'page_words':(50,2000,50),'context_words':(10,200,10),'follow_margin':(0.0,0.49,0.05),'tts_speed':(0.5,2.0,0.05),'gloss_threshold':(0,5000,100)}
 BOOK_PREFS=('wpm','chunk','mode','beginner')
 SECTION={'de':'German','en':'English','fr':'French','es':'Spanish','it':'Italian','pt':'Portuguese','nl':'Dutch','ru':'Russian','sv':'Swedish','pl':'Polish'}
-LANGUAGES=(('pt','Português (Brasil)'),('en','English'),('es','Español'),('de','Deutsch'),('fr','Français'),('it','Italiano'),('nl','Nederlands'),('pl','Polski'),('ru','Русский'),('sv','Svenska'))
+LANGUAGES=(('en','English'),('pt','Português (Brasil)'),('es','Español'),('de','Deutsch'),('fr','Français'),('it','Italiano'),('nl','Nederlands'),('pl','Polski'),('ru','Русский'),('sv','Svenska'))
 # High-frequency grammar words are where a context-free dictionary most often teaches the wrong thing.
 # Pair-specific overrides stay small and explicit; every other word still comes from the language pack.
 GLOSS_OVERRIDES={('de','pt'):{
@@ -545,7 +545,12 @@ class Win(Adw.ApplicationWindow):
         s.wpm.connect('value-changed',lambda w:s.reading_pref_changed('wpm',int(w.get_value())));hb.pack_start(s.wpm);hb.pack_start(Gtk.Label(label='wpm',css_classes=['dim-label']))
         s.chapters=Gtk.ListBox(css_classes=['navigation-sidebar','chapters'],selection_mode=Gtk.SelectionMode.SINGLE);s.chapters.connect('row-activated',lambda lb,row:(s.split.set_show_sidebar(False),s.goto(row.idx,keep_playing=True)))
         s.chapbtn=B('view-list-symbolic','chapters',lambda:s.split.set_show_sidebar(not s.split.get_show_sidebar()))
-        s.settingsbtn=B('emblem-system-symbolic','settings',s.settings);hb.pack_end(s.settingsbtn);s.fullbtn=B('view-fullscreen-symbolic','fullscreen',s.toggle_full);hb.pack_end(s.fullbtn);hb.pack_end(s.chapbtn)
+        menu=Gio.Menu();menu.append(s.t('settings'),'win.settings');menu.append(s.t('shortcuts'),'win.shortcuts');menu.append(s.t('about'),'win.about')
+        s.menubtn=Gtk.MenuButton(icon_name='open-menu-symbolic',tooltip_text=s.t('menu'),menu_model=menu);s.menubtn.set_focus_on_click(False)
+        s.tip_widgets['menu']=s.menubtn;s.menu_model=menu;hb.pack_end(s.menubtn)
+        for _n,_f in(('settings',s.settings),('shortcuts',s.shortcuts),('about',s.about)):
+            _a=Gio.SimpleAction.new(_n,None);_a.connect('activate',lambda a,p,f=_f:f());s.add_action(_a)
+        s.fullbtn=B('view-fullscreen-symbolic','fullscreen',s.toggle_full);hb.pack_end(s.fullbtn);hb.pack_end(s.chapbtn)
         s.bookmarksbtn=B('user-bookmarks-symbolic','bookmarks',s.bookmarks_dialog);hb.pack_end(s.bookmarksbtn);s.bookmarkbtn=B('non-starred-symbolic','bookmark',s.toggle_bookmark);hb.pack_end(s.bookmarkbtn)
         s.rabtn=Gtk.ToggleButton(icon_name='audio-speakers-symbolic',tooltip_text=s.t('read_along'));s.tip_widgets['read_along']=s.rabtn;s.rabtn.set_focus_on_click(False);s.rabtn.connect('toggled',lambda b:s.set_ra(b.get_active()));hb.pack_end(s.rabtn)
         s.speakbtn=B('audio-volume-high-symbolic','speak',s.speak);hb.pack_end(s.speakbtn)
@@ -601,21 +606,66 @@ class Win(Adw.ApplicationWindow):
         for key,w in s.tip_widgets.items():w.set_tooltip_text(s.t(key))
         for b,key in s.dict_buttons:b.set_tooltip_text(s.t(key))
         s.sel_close.set_tooltip_text(s.t('cancel_selection'));s.unkbtn.set_label(s.t('unknown'));s.learnbtn.set_label(s.t('learned'));s.set_mode(s.cfg['mode'])
+        s.menu_model.remove_all()            # menu labels are translated too
+        for key in('settings','shortcuts','about'):s.menu_model.append(s.t(key),'win.'+key)
         s.show()
     def onboarding(s):
-        d=Adw.Dialog(title='Speedready',content_width=480,content_height=360,follows_content_size=False)
-        box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=18,margin_top=34,margin_bottom=28,margin_start=32,margin_end=32)
-        title=Gtk.Label(label='Choose your language  ·  Escolha seu idioma',wrap=True,justify=Gtk.Justification.CENTER,css_classes=['title-1'])
-        desc=Gtk.Label(label='Read in another language without losing the flow.\nLeia em outro idioma sem perder o ritmo.',wrap=True,justify=Gtk.Justification.CENTER,css_classes=['dim-label'])
-        model=Gtk.StringList.new([name for code,name in LANGUAGES]);row=Adw.ComboRow(title='Language  ·  Idioma',model=model)
-        current=s.cfg.get('native_lang') or system_lang();row.set_selected(next((i for i,(code,_) in enumerate(LANGUAGES) if code==current),0))
-        note=Gtk.Label(label='This sets the interface and translation language.\nIsso define a interface e o idioma das traduções.',wrap=True,xalign=0,css_classes=['dim-label'])
-        go=Gtk.Button(label='Continue  ·  Continuar',halign=Gtk.Align.CENTER,css_classes=['suggested-action','pill'])
+        """First run: pick a language. A list, not a dropdown - a ComboRow popup is clipped inside a dialog."""
+        d=Adw.Dialog(title='Speedready',content_width=460,content_height=680,can_close=False)  # first run must pick a language
+        box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=14,margin_top=30,margin_bottom=24,margin_start=26,margin_end=26)
+        ic=Gtk.Image.new_from_icon_name(APP_ID);ic.set_pixel_size(72);box.append(ic)
+        box.append(Gtk.Label(label='Welcome to Speedready',wrap=True,justify=Gtk.Justification.CENTER,css_classes=['title-2']))
+        box.append(Gtk.Label(label='Read in another language without losing the flow.\nPick the language you already speak.',
+                             wrap=True,justify=Gtk.Justification.CENTER,css_classes=['dim-label']))
+        lb=Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE,css_classes=['boxed-list'])
+        current=s.cfg.get('native_lang') or system_lang()
+        for code,name in LANGUAGES:
+            r=Adw.ActionRow(title=name,subtitle=code.upper(),activatable=True);r.code=code
+            if code==current:r.add_suffix(Gtk.Image.new_from_icon_name('object-select-symbolic'))
+            lb.append(r)
+        lb.select_row(lb.get_row_at_index(next((i for i,(c,_) in enumerate(LANGUAGES) if c==current),0)))
+        sw=Gtk.ScrolledWindow(child=lb,vexpand=True,hscrollbar_policy=Gtk.PolicyType.NEVER,min_content_height=300)
+        box.append(sw)
+        box.append(Gtk.Label(label='This sets the interface and the language words are translated into.',
+                             wrap=True,justify=Gtk.Justification.CENTER,css_classes=['dim-label','caption']))
+        go=Gtk.Button(label='Continue',halign=Gtk.Align.CENTER,css_classes=['suggested-action','pill'])
         def done(*_):
-            code=LANGUAGES[row.get_selected()][0];s.cfg.update(native_lang=code,ui_lang='pt' if code=='pt' else 'en',onboarded=True);s.write_cfg();s.setup_gloss();s.refresh_ui_text();d.close()
-        go.connect('clicked',done)
-        for w in(title,desc,row,note,go):box.append(w)
-        d.set_child(box);d.present(s);return False
+            row=lb.get_selected_row()
+            code=row.code if row else current
+            s.cfg.update(native_lang=code,ui_lang=code if code in TEXT else 'en',onboarded=True)
+            s.write_cfg();s.setup_gloss();s.refresh_ui_text();d.close()
+        go.connect('clicked',done);lb.connect('row-activated',done)
+        box.append(go);d.set_child(box);d.present(s);return False
+
+    # ---- about / shortcuts
+    def about(s):
+        d=Adw.AboutDialog(application_name='Speedready',application_icon=APP_ID,version=VERSION,
+            developer_name='cYoren',license_type=Gtk.License.MIT,
+            comments=s.t('about_comments'),
+            website='https://github.com/cYoren/speedready',
+            issue_url='https://github.com/cYoren/speedready/issues')
+        d.add_credit_section('Data',['Wiktionary via kaikki.org','MUSE bilingual dictionaries','hermitdave/FrequencyWords'])
+        d.add_credit_section('Speech',['Piper (rhasspy)'])
+        d.present(s)
+    def shortcuts(s):
+        items=[('Reading',[('space','Play / pause'),('Left Right','Skip ten words'),('Page_Up Page_Down','Skip a page'),
+                           ('Up Down','Speed'),('bracketleft bracketright','Words per step'),('m','Pacer or RSVP'),('r','Replay sentence')]),
+               ('Words',[('d','Define the current word'),('p','Speak from here'),('a','Read along')]),
+               ('Navigation',[('c','Chapters'),('b','Bookmark'),('<shift>b','Bookmarks'),('o','Open a book'),
+                              ('s','Settings'),('F11','Fullscreen'),('<ctrl>question','This list')])]
+        if hasattr(Adw,'ShortcutsDialog'):
+            d=Adw.ShortcutsDialog()
+            for name,rows in items:
+                sec=Adw.ShortcutsSection(title=name)
+                for accel,title in rows:sec.add(Adw.ShortcutsItem(title=title,accelerator=accel))
+                d.add(sec)
+            d.present(s);return
+        d=Adw.Dialog(title='Keyboard Shortcuts',content_width=460,content_height=620)  # older libadwaita
+        page=Adw.PreferencesPage()
+        for name,rows in items:
+            g=Adw.PreferencesGroup(title=name);page.add(g)
+            for accel,title in rows:g.add(Adw.ActionRow(title=title,subtitle=accel.replace('<ctrl>','Ctrl+').replace('<shift>','Shift+')))
+        tv=Adw.ToolbarView(content=Gtk.ScrolledWindow(child=page));tv.add_top_bar(Adw.HeaderBar());d.set_child(tv);d.present(s)
 
     # ---- phrase selection / translation
     def set_selected_phrase(s,text,owner):

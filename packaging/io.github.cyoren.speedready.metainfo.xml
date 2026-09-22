@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.cyoren.speedready</id>
+  <name>Speedready</name>
+  <summary>Read in another language without losing the flow</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.cyoren">
+    <name>cYoren</name>
+  </developer>
+
+  <description>
+    <p>
+      Speedready is a reader for people learning a language. It paces you through an
+      EPUB so you keep reading instead of stalling on every unfamiliar word, and it puts
+      a dictionary one click away.
+    </p>
+    <p>Two reading modes:</p>
+    <ul>
+      <li>Pacer: the whole text stays on screen and a highlight sweeps through it at your pace, dimming what you have read</li>
+      <li>RSVP: one word, or a short chunk, flashed at a time with the pivot letter marked</li>
+    </ul>
+    <p>While you read:</p>
+    <ul>
+      <li>Double-click any word for its dictionary entry, looked up by dictionary form, so an inflected word still resolves</li>
+      <li>Right-click a word you do not know to underline it everywhere and make the pacer linger on it</li>
+      <li>Beginner mode prints a translation in your own language above each word you have not marked as learned yet</li>
+      <li>Have a sentence read aloud, or let the speech set the reading pace</li>
+      <li>Every word you look up is saved with the sentence it came from, ready to import into Anki</li>
+    </ul>
+    <p>
+      Dictionaries and voices are downloaded once and then work offline. Your position,
+      speed and bookmarks are remembered per book.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.cyoren.speedready.desktop</launchable>
+  <url type="homepage">https://github.com/cYoren/speedready</url>
+  <url type="bugtracker">https://github.com/cYoren/speedready/issues</url>
+  <url type="vcs-browser">https://github.com/cYoren/speedready</url>
+
+  <content_rating type="oars-1.1" />
+
+  <categories>
+    <category>Education</category>
+    <category>Languages</category>
+    <category>Viewer</category>
+  </categories>
+
+  <keywords>
+    <keyword>epub</keyword>
+    <keyword>reader</keyword>
+    <keyword>language</keyword>
+    <keyword>learning</keyword>
+    <keyword>vocabulary</keyword>
+    <keyword>speed reading</keyword>
+    <keyword>rsvp</keyword>
+  </keywords>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#c8e6d0</color>
+    <color type="primary" scheme_preference="dark">#2f5d45</color>
+  </branding>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/cYoren/speedready/master/packaging/screenshots/pacer.png</image>
+      <caption>The pacer sweeping through a chapter</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/cYoren/speedready/master/packaging/screenshots/dictionary.png</image>
+      <caption>A dictionary entry for the word under the cursor</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/cYoren/speedready/master/packaging/screenshots/beginner.png</image>
+      <caption>Beginner mode, with a translation above each unlearned word</caption>
+    </screenshot>
+  </screenshots>
+
+  <releases>
+    <release version="1.0.0" date="2026-09-22">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>
