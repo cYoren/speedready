@@ -62,7 +62,7 @@ def build(src,tgt,d,out):
     else:
         for (w,pos),gs in en_gloss.items():gloss[(w,pos)].setdefault(9,PAREN.sub('',gs[0]).strip()[:80])  # English fallback, shown only when nothing else exists
     # ---- 2. own-edition translation tables
-    f=d/f'de-{OWN_EDITION_NAME.get(src,"")}.jsonl'
+    f=d/f'{src}-{OWN_EDITION_NAME.get(src,"")}.jsonl'
     if tgt!='en' and (f.exists() or f.with_suffix('.jsonl.gz').exists()):
         n=k=0
         for e in jsonl(f):
@@ -72,11 +72,11 @@ def build(src,tgt,d,out):
                 if tr:gloss[(w,pos)].setdefault(1,', '.join(tr));k+=1
         print(f'own edition: {n:,} entries, {k:,} with {tgt} translations',file=sys.stderr)
     # ---- 3. pivot through English: target-language extract inverted
-    f=d/f'en-{LANGNAME.get(tgt,"")}.jsonl'
+    f=d/f'en-{LANGNAME.get(tgt,"")}.jsonl';target_vocab=set()
     if tgt!='en' and (f.exists() or f.with_suffix('.jsonl.gz').exists()):
         en2t=collections.defaultdict(collections.Counter);n=0
         for e in jsonl(f):
-            n+=1;w,pos=e.get('word',''),e.get('pos','')
+            n+=1;w,pos=e.get('word',''),e.get('pos','');w and target_vocab.add(w.lower())
             if ' ' in w:continue
             for s in e.get('senses',[]):
                 if s.get('form_of') or s.get('alt_of') or 'form-of' in s.get('tags',[]):continue
@@ -91,12 +91,13 @@ def build(src,tgt,d,out):
     # ---- 4. MUSE
     f=d/f'muse-{src}-{tgt}.txt'
     if f.exists():
-        m=collections.defaultdict(list)
+        m=collections.defaultdict(list);rejected=0
         for line in f.read_text(encoding='utf-8').splitlines():
             p=line.split()
+            if len(p)==2 and target_vocab and p[1].lower() not in target_vocab:rejected+=1;continue
             if len(p)==2 and p[1] not in m[p[0]]:m[p[0]].append(p[1])
         for w,ts in m.items():gloss[(w,'')].setdefault(3,', '.join(ts[:3]))
-        print(f'muse: {len(m):,} forms',file=sys.stderr)
+        print(f'muse: {len(m):,} forms, {rejected:,} non-{tgt} entries rejected',file=sys.stderr)
     # ---- 5. frequency
     freq={};f=d/f'freq-{src}.txt'
     if f.exists():
@@ -110,7 +111,7 @@ def build(src,tgt,d,out):
     db.executemany('INSERT INTO forms VALUES(?,?)',forms.items())
     db.executemany('INSERT INTO gloss VALUES(?,?,?,?)',((w,pos,t,p) for (w,pos),d_ in gloss.items() for p,t in d_.items()))
     db.executemany('INSERT INTO freq VALUES(?,?)',freq.items())
-    db.executemany('INSERT INTO meta VALUES(?,?)',[('src',src),('tgt',tgt),('built',time.strftime('%Y-%m-%d')),('sources','en.wiktionary (kaikki.org), own-edition wiktionary, MUSE (CC BY-NC 4.0), hermitdave/FrequencyWords')])
+    db.executemany('INSERT INTO meta VALUES(?,?)',[('src',src),('tgt',tgt),('built',time.strftime('%Y-%m-%d')),('format','2'),('sources','en.wiktionary (kaikki.org), own-edition wiktionary, MUSE (CC BY-NC 4.0), hermitdave/FrequencyWords')])
     db.commit();db.execute('VACUUM');db.close()
     print(f'wrote {out} ({out.stat().st_size/1e6:.1f} MB) in {time.time()-t0:.0f}s',file=sys.stderr)
 
