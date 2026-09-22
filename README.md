@@ -50,6 +50,10 @@ mark the word learned and it disappears everywhere; tap a word for its dictionar
 It ships with a public-domain German book, speaks through the device's own voice, and
 works offline once loaded (installable to the home screen).
 
+Read-along drives the highlight from its own estimated clock rather than from
+`onboundary`, which iOS reports unreliably, and re-syncs whenever a boundary event does
+arrive. Devices with no speech voices installed say so instead of failing silently.
+
 Build its data from a desktop pack:
 
 ```
