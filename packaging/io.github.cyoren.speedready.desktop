@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Speedready
+GenericName=Language Reader
+Comment=Read in another language without losing the flow
+Exec=speedready %f
+Icon=io.github.cyoren.speedready
+Terminal=false
+Categories=Education;Languages;Viewer;
+MimeType=application/epub+zip;text/plain;
+Keywords=epub;reader;language;learning;vocabulary;rsvp;
+StartupNotify=true
+StartupWMClass=io.github.cyoren.speedready
