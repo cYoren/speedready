@@ -42,11 +42,94 @@ LANGUAGES=(('pt','Português (Brasil)'),('en','English'),('es','Español'),('de'
 # High-frequency grammar words are where a context-free dictionary most often teaches the wrong thing.
 # Pair-specific overrides stay small and explicit; every other word still comes from the language pack.
 GLOSS_OVERRIDES={('de','pt'):{
+ # Curated core vocabulary. Wiktionary's tables are thin on function words and pick the wrong homograph
+ # for many common ones ('wollen' -> "de lã", 'ist' -> "seu"), so the words a beginner meets constantly
+ # are spelled out here. (gloss, lemma): the lemma is what "learned" marks. Keep glosses short, they sit above the word.
+ # --- articles and contractions
  'der':('o','der'),'die':('a; os/as','der'),'das':('o; isso','der'),'den':('o','der'),'dem':('ao; no','der'),'des':('do','der'),
  'ein':('um','ein'),'eine':('uma','ein'),'einen':('um','ein'),'einem':('a um; num','ein'),'einer':('uma; de uma','ein'),'eines':('de um','ein'),
  'im':('no; na','in'),'ins':('para o; para a','in'),'am':('no; na','an'),'ans':('ao; à','an'),'zum':('ao; para o','zu'),'zur':('à; para a','zu'),
  'vom':('do; da','von'),'beim':('no; ao','bei'),'aufs':('sobre o; no','auf'),'durchs':('pelo; pela','durch'),
+ # --- pronouns
+ 'ich':('eu','ich'),'du':('você','du'),'er':('ele','er'),'sie':('ela; eles','sie'),'es':('isso','es'),'wir':('nós','wir'),'ihr':('vocês; dela','ihr'),
+ 'mich':('me','ich'),'mir':('me; mim','ich'),'dich':('te','du'),'dir':('te; ti','du'),'uns':('nos','wir'),'euch':('vocês; lhes','ihr'),
+ 'ihn':('o; ele','er'),'ihm':('lhe; nele','er'),'ihnen':('lhes','sie'),'sich':('se','sich'),'einander':('um ao outro','einander'),
+ 'man':('a gente','man'),'selbst':('mesmo; próprio','selbst'),'jemand':('alguém','jemand'),'niemand':('ninguém','niemand'),
+ 'mein':('meu','mein'),'meine':('minha','mein'),'dein':('teu','dein'),'deine':('tua','dein'),'sein':('ser; seu','sein'),'seine':('sua','sein'),
+ 'unser':('nosso','unser'),'unsere':('nossa','unser'),'ihre':('sua; deles','ihr'),'euer':('de vocês','euer'),
+ 'dieser':('este','dieser'),'diese':('esta; estes','dieser'),'dieses':('este','dieser'),'diesem':('neste','dieser'),'diesen':('este','dieser'),
+ 'dessen':('cujo','der'),'denen':('aos quais','der'),'welche':('qual; quais','welcher'),
+ # --- question words
+ 'wie':('como','wie'),'wo':('onde','wo'),'was':('o que','was'),'wer':('quem','wer'),'wann':('quando','wann'),'warum':('por que','warum'),
+ 'wieso':('por que','wieso'),'wohin':('para onde','wohin'),'woher':('de onde','woher'),'wessen':('de quem','wessen'),'welcher':('qual','welcher'),
+ # --- conjunctions and particles
+ 'und':('e','und'),'oder':('ou','oder'),'aber':('mas','aber'),'denn':('pois','denn'),'dass':('que','dass'),'daß':('que','dass'),
+ 'weil':('porque','weil'),'wenn':('se; quando','wenn'),'als':('quando; do que','als'),'ob':('se','ob'),'obwohl':('embora','obwohl'),
+ 'damit':('com isso; para que','damit'),'sondern':('mas sim','sondern'),'also':('então','also'),'zwar':('de fato','zwar'),
+ 'doch':('mas; sim','doch'),'ja':('sim','ja'),'nein':('não','nein'),'nicht':('não','nicht'),'kein':('nenhum','kein'),'keine':('nenhuma','kein'),
+ 'keinen':('nenhum','kein'),'keiner':('nenhum','kein'),'nichts':('nada','nichts'),'etwas':('algo; um pouco','etwas'),
+ # --- adverbs
+ 'so':('assim; tão','so'),'noch':('ainda','noch'),'schon':('já','schon'),'nur':('só','nur'),'auch':('também','auch'),'immer':('sempre','immer'),
+ 'wieder':('de novo','wieder'),'jetzt':('agora','jetzt'),'dann':('então','dann'),'da':('lá; pois','da'),
+ 'hier':('aqui','hier'),'dort':('lá','dort'),'her':('para cá','her'),'hin':('para lá','hin'),'heraus':('para fora','heraus'),'raus':('para fora','heraus'),
+ 'herein':('para dentro','herein'),'rein':('para dentro','herein'),'hinaus':('para fora','hinaus'),'zurück':('de volta','zurück'),'weg':('embora; fora','weg'),
+ 'gar':('nem; nada','gar'),'sehr':('muito','sehr'),'ganz':('todo; bem','ganz'),'viel':('muito','viel'),'viele':('muitos','viel'),'mehr':('mais','mehr'),
+ 'wenig':('pouco','wenig'),'genug':('o bastante','genug'),'fast':('quase','fast'),'kaum':('mal; quase não','kaum'),'etwa':('cerca de','etwa'),
+ 'eben':('justamente','eben'),'gerade':('agora mesmo','gerade'),'gleich':('já; igual','gleich'),'sofort':('imediatamente','sofort'),
+ 'endlich':('finalmente','endlich'),'schließlich':('afinal','schließlich'),'plötzlich':('de repente','plötzlich'),'vielleicht':('talvez','vielleicht'),
+ 'natürlich':('claro','natürlich'),'eigentlich':('na verdade','eigentlich'),'wirklich':('realmente','wirklich'),'wohl':('provavelmente','wohl'),
+ 'heute':('hoje','heute'),'gestern':('ontem','gestern'),'morgen':('amanhã; manhã','morgen'),'damals':('naquela época','damals'),'bald':('logo','bald'),
+ 'nie':('nunca','nie'),'oft':('muitas vezes','oft'),'zusammen':('juntos','zusammen'),'allein':('sozinho','allein'),'trotzdem':('mesmo assim','trotzdem'),
+ 'los':('solto; vamos','los'),'weiter':('adiante; mais','weiter'),'zuerst':('primeiro','zuerst'),'einmal':('uma vez','einmal'),'mal':('vez','mal'),
+ # --- da-compounds (Wiktionary glosses these as their bare preposition, which misleads)
+ 'dafür':('por isso','dafür'),'davon':('disso','davon'),'darauf':('nisso; depois','darauf'),'daran':('nisso','daran'),'dran':('nisso','daran'),
+ 'darüber':('sobre isso','darüber'),'dabei':('nisso; junto','dabei'),'dazu':('para isso','dazu'),'danach':('depois disso','danach'),
+ 'deshalb':('por isso','deshalb'),'deswegen':('por isso','deswegen'),'darum':('por isso','darum'),'dadurch':('por meio disso','dadurch'),
+ 'darin':('dentro disso','darin'),'daraus':('disso','daraus'),'damit':('com isso','damit'),'dagegen':('contra isso','dagegen'),
+ # --- prepositions
+ 'in':('em','in'),'auf':('sobre; em','auf'),'an':('em; a','an'),'zu':('para','zu'),'mit':('com','mit'),'von':('de','von'),'aus':('de; fora de','aus'),
+ 'bei':('em; perto de','bei'),'nach':('depois; para','nach'),'vor':('antes; diante de','vor'),'über':('sobre','über'),'unter':('sob; entre','unter'),
+ 'für':('para','für'),'um':('em volta de; às','um'),'durch':('por; através de','durch'),'gegen':('contra','gegen'),'ohne':('sem','ohne'),
+ 'seit':('desde','seit'),'bis':('até','bis'),'zwischen':('entre','zwischen'),'neben':('ao lado de','neben'),'hinter':('atrás de','hinter'),
+ 'während':('durante','während'),'wegen':('por causa de','wegen'),'statt':('em vez de','statt'),'außer':('exceto','außer'),'ab':('a partir de','ab'),
+ # --- sein / haben / werden
+ 'ist':('é; está','sein'),'sind':('são; estão','sein'),'bin':('sou; estou','sein'),'bist':('és; está','sein'),'seid':('são; estão','sein'),
+ 'war':('era; foi','sein'),'waren':('eram; foram','sein'),'warst':('eras; foste','sein'),'wäre':('seria','sein'),'sei':('seja','sein'),'gewesen':('sido','sein'),
+ 'haben':('ter','haben'),'hat':('tem','haben'),'habe':('tenho','haben'),'hab':('tenho','haben'),'hast':('tens; tem','haben'),'hatte':('tinha','haben'),
+ 'hatten':('tinham','haben'),'hätte':('teria','haben'),'gehabt':('tido','haben'),
+ 'werden':('ficar; vir a ser','werden'),'wird':('vai; fica','werden'),'werde':('vou; fico','werden'),'wirst':('vais; ficas','werden'),
+ 'wurde':('ficou; foi','werden'),'wurden':('ficaram','werden'),'würde':('seria; faria','werden'),'geworden':('tornado','werden'),
+ # --- modal verbs
+ 'können':('poder','können'),'kann':('pode; posso','können'),'kannst':('podes','können'),'könnte':('poderia','können'),'konnte':('podia','können'),
+ 'müssen':('ter que','müssen'),'muss':('deve; devo','müssen'),'musst':('tens que','müssen'),'musste':('tinha que','müssen'),
+ 'wollen':('querer','wollen'),'will':('quer; quero','wollen'),'willst':('queres','wollen'),'wollte':('queria','wollen'),
+ 'sollen':('dever','sollen'),'soll':('deve','sollen'),'sollte':('deveria','sollen'),'solltest':('deverias','sollen'),
+ 'dürfen':('poder; ter licença','dürfen'),'darf':('pode','dürfen'),'durfte':('podia','dürfen'),
+ 'mögen':('gostar','mögen'),'mag':('gosta','mögen'),'möchte':('gostaria','mögen'),'möchten':('gostariam','mögen'),
+ # --- everyday verbs
+ 'machen':('fazer','machen'),'macht':('faz','machen'),'mach':('faz','machen'),'gemacht':('feito','machen'),
+ 'tun':('fazer','tun'),'tut':('faz','tun'),'getan':('feito','tun'),'lassen':('deixar','lassen'),'lass':('deixa','lassen'),'gelassen':('deixado','lassen'),
+ 'wissen':('saber','wissen'),'weiß':('sei; sabe','wissen'),'weißt':('sabes','wissen'),'wusste':('sabia','wissen'),
+ 'glauben':('acreditar','glauben'),'glaube':('acho; creio','glauben'),'denken':('pensar','denken'),'bleiben':('ficar','bleiben'),
+ 'nehmen':('pegar; tomar','nehmen'),'brauchen':('precisar','brauchen'),'halten':('segurar','halten'),'heißen':('chamar-se','heißen'),
+ 'stehen':('estar de pé','stehen'),'liegen':('estar deitado','liegen'),'sprechen':('falar','sprechen'),'fragen':('perguntar','fragen'),
+ 'antworten':('responder','antworten'),'bringen':('trazer','bringen'),'fahren':('ir; dirigir','fahren'),'laufen':('correr; andar','laufen'),
+ 'arbeiten':('trabalhar','arbeiten'),'spielen':('brincar; jogar','spielen'),'essen':('comer','essen'),'trinken':('beber','trinken'),
+ 'schlafen':('dormir','schlafen'),'sitzen':('estar sentado','sitzen'),'setzen':('sentar; pôr','setzen'),'legen':('pôr; deitar','legen'),
+ 'ziehen':('puxar','ziehen'),'schauen':('olhar','schauen'),'versuchen':('tentar','versuchen'),'verstehen':('entender','verstehen'),
+ 'vergessen':('esquecer','vergessen'),'erzählen':('contar','erzählen'),'zeigen':('mostrar','zeigen'),'kennen':('conhecer','kennen'),
+ 'treffen':('encontrar','treffen'),'warten':('esperar','warten'),'suchen':('procurar','suchen'),'entschuldigen':('desculpar','entschuldigen'),
+ 'entschuldige':('desculpa','entschuldigen'),'danke':('obrigado','danke'),'bitte':('por favor','bitte'),
+ # --- common nouns and adjectives that come out wrong
+ 'frau':('mulher; senhora','Frau'),'haus':('casa','Haus'),'leute':('gente','Leute'),'mädchen':('menina','Mädchen'),'abend':('noite; tarde','Abend'),
+ 'paar':('alguns; par','Paar'),'recht':('certo; direito','Recht'),'leid':('pena','Leid'),'alle':('todos','all'),'alles':('tudo','all'),
+ 'andere':('outro','ander'),'anderen':('outro','ander'),'anders':('diferente','anders'),'besser':('melhor','gut'),'gut':('bom; bem','gut'),
+ 'schlecht':('ruim','schlecht'),'groß':('grande','groß'),'klein':('pequeno','klein'),'lang':('longo','lang'),'lange':('por muito tempo','lang'),
+ 'neu':('novo','neu'),'alt':('velho','alt'),'jung':('jovem','jung'),'richtig':('certo','richtig'),'falsch':('errado','falsch'),
+ 'klar':('claro','klar'),'einfach':('simples; só','einfach'),'schwer':('difícil; pesado','schwer'),'sicher':('certo; seguro','sicher'),
+ 'genau':('exatamente','genau'),'wahr':('verdadeiro','wahr'),'voll':('cheio','voll'),'leer':('vazio','leer'),
 }}
+
 TEXT={
  'en':{
   'open':'Open (O)','play':'Play (space)','mode':'Mode (M)','words_step':'words per step ( [ ] )','speed':'words per minute (↑ ↓ = 5, shift = 25)',
