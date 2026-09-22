@@ -33,7 +33,7 @@ Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwai
 | R | replay sentence |
 | D | define current word |
 | click / double-click / right-click | continue from there / dictionary popup / mark unknown |
-| P | speak sentence |
+| P | speak from here to the end of the sentence, again to stop |
 | A | read-along |
 | C | chapters |
 | F11, S, O | fullscreen, settings, open |

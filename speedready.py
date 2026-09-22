@@ -3,7 +3,7 @@
 
 space play/pause · ←/→ ±10 words · PageUp/PageDown ±page · ↑/↓ speed (shift: coarse) · [ ] chunk size · M mode · R replay sentence
 click a word = continue from there · double-click = dictionary popup (flow resumes when you close it) · right-click = mark unknown
-D define current word · P speak current sentence · A read-along (speech drives the pace) · C chapters · F11 fullscreen · S settings · O open
+D define current word · P speak from here to the end of the sentence (again = stop) · A read-along (speech drives the pace) · C chapters · F11 fullscreen · S settings · O open
 Lookups are appended to ~/.config/speedready/vocab.tsv, importable into Anki as-is. Unknown words live in unknown.txt (one lemma per line).
 """
 import bisect,html,json,os,re,shutil,subprocess,sys,threading,time,urllib.error,urllib.parse,urllib.request,wave,zipfile,posixpath
@@ -337,7 +337,7 @@ class Win(Adw.ApplicationWindow):
         acts={K.KEY_space:s.toggle,K.KEY_Left:lambda:s.jump(-10),K.KEY_Right:lambda:s.jump(10),K.KEY_Up:lambda:s.wpm.set_value(s.cfg['wpm']+big),K.KEY_Down:lambda:s.wpm.set_value(s.cfg['wpm']-big),
               K.KEY_Page_Down:lambda:s.jump(s.cfg['page_words']),K.KEY_Page_Up:lambda:s.jump(-s.cfg['page_words']),
               K.KEY_bracketleft:lambda:s.chunk.set_value(s.cfg['chunk']-1),K.KEY_bracketright:lambda:s.chunk.set_value(s.cfg['chunk']+1),K.KEY_m:s.toggle_mode,K.KEY_r:s.replay,
-              K.KEY_d:lambda:s.lookup(s.i),K.KEY_p:s.speak,K.KEY_a:lambda:s.rabtn.set_active(not s.ra),K.KEY_c:lambda:s.split.set_show_sidebar(not s.split.get_show_sidebar()),K.KEY_o:s.open,K.KEY_s:s.settings,K.KEY_F11:s.toggle_full,K.KEY_Escape:s.unfullscreen}
+              K.KEY_d:lambda:s.lookup(s.i),K.KEY_p:s.speak,K.KEY_a:lambda:s.rabtn.set_active(not s.ra),K.KEY_c:lambda:s.split.set_show_sidebar(not s.split.get_show_sidebar()),K.KEY_o:s.open,K.KEY_s:s.settings,K.KEY_F11:s.toggle_full,K.KEY_Escape:lambda:(s.tts.stop_audio(),s.unfullscreen())}
         if kv in acts:acts[kv]();return True
         return False
 
@@ -415,7 +415,7 @@ class Win(Adw.ApplicationWindow):
         if s.playing:s.stop();s.play()
     def ra_scale(s,name):return max(0.5,min(2.0,s.tts.natural_rate(name,s.status)*60/s.cfg['wpm']))*s.cfg['tts_speed']
     def ra_sentence(s):
-        b=s.book;a=b.sent_start(s.i);e=b.sent_end(a);name=table(s.cfg['tts_voices']).get(b.lang)
+        b=s.book;a=s.i;e=b.sent_end(a);name=table(s.cfg['tts_voices']).get(b.lang)  # starts exactly where you are, to the end of the sentence
         if not name:s.status(f'no voice for "{b.lang}", falling back to the pacer');s.rabtn.set_active(False);return
         tok=s.token;text=' '.join(b.words[a:e])
         def go():
@@ -483,7 +483,10 @@ class Win(Adw.ApplicationWindow):
         name=table(s.cfg['tts_voices']).get(s.book.lang)
         if not name:return s.status(f'no voice configured for "{s.book.lang}" (settings → tts voices)')
         s.tts.say(text,name,s.status)
-    def speak(s):s.book and s.say(s.book.sentence(s.i))
+    def speaking(s):p=s.tts.proc;return bool(p) and p.poll() is None
+    def speak(s):  # P: read from the current word to the end of the sentence; press again to stop
+        if s.speaking():return s.tts.stop_audio()
+        s.book and s.say(' '.join(s.book.words[s.i:s.book.sent_end(s.i)]))
     def add_vocab(s,w,lemma,gloss,sent,bookname):
         if not s.cfg['save_vocab'] or lemma in s.seen:return
         if not VOCAB.exists():VOCAB.write_text('#separator:tab\n#html:false\n#tags:speedready\n#columns:Word\tLemma\tMeaning\tSentence\tBook\n')
