@@ -105,6 +105,11 @@ footer{
 .sw.on{background:var(--accent)}
 .sw.on::after{transform:translateX(20px)}
 
+#toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(86px + env(safe-area-inset-bottom));
+  z-index:30;max-width:min(92vw,420px);background:var(--panel);border:1px solid var(--line);color:var(--fg);
+  padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.45);
+  opacity:0;pointer-events:none;transition:opacity .18s,transform .18s}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 #splash{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;padding:32px;text-align:center}
 #splash h1{font-size:26px;margin:0}
@@ -141,6 +146,8 @@ footer{
 </footer>
 
 <!-- word sheet -->
+<div id="toast"></div>
+
 <div class="sheet" id="s-word"><div>
   <div class="grab"></div>
   <div id="w-word"></div>
@@ -178,6 +185,12 @@ footer{
   <div class="row"><label>Tamanho do texto</label>
     <button class="btn icon" id="size-down">A−</button><button class="btn icon" id="size-up">A+</button></div>
   <div class="row"><label>Ler em voz alta ao avançar<small>A voz do celular lê cada frase e o texto acompanha</small></label><div class="sw" id="t-tts"></div></div>
+  <div id="voice-box" class="hidden">
+    <div class="row"><label>Velocidade da voz</label>
+      <button class="btn icon" id="rate-down">−</button><b id="rate-val" style="min-width:42px;text-align:center">0.9×</b><button class="btn icon" id="rate-up">+</button></div>
+    <h3>Voz</h3>
+    <div class="list" id="voices"></div>
+  </div>
   <h3>Seu progresso</h3>
   <div class="row"><label>Palavras que você já sabe</label><b id="n-learned">0</b></div>
   <div class="actions"><button class="btn" id="b-forget">Esquecer todas</button></div>
@@ -195,8 +208,13 @@ const LS={get:(k,d)=>{try{const v=localStorage.getItem('sr:'+k);return v===null?
 const S={dict:null,book:null,i:0,timer:null,playing:false,cells:[],pageA:0,pageB:0,
          wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',true),
          size:LS.get('size',19),tts:LS.get('tts',false),learned:new Set(LS.get('learned',[])),
-         voice:null,speaking:false};
+         voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false};
 const $=s=>document.querySelector(s), page=$('#page');
+let toastTimer=null;
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('on'),msg.length>60?6500:3200);
+}
 const strip=w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
 
 //////////////////// dictionary ////////////////////
@@ -293,42 +311,99 @@ function play(){
 }
 function pause(){
   S.playing=false; clearTimeout(S.timer); S.timer=null;
-  speechSynthesis.cancel(); S.speaking=false;
+  stopSpeech();
   $('#play').textContent='▶ Continuar'; save();
 }
 const toggle=()=>S.playing?pause():play();
 
 //////////////////// speech ////////////////////
+// The device's own voice. Two things make this fragile and are handled here:
+// iOS only allows speech that starts inside a user gesture, and its word-boundary
+// events are unreliable, so the highlight runs on its own estimated clock and only
+// re-syncs when a boundary event actually arrives.
+const VOICE_HINT='Nenhuma voz instalada neste aparelho. No iPhone: Ajustes › Acessibilidade › Conteúdo Falado › Vozes › Alemão.';
+function voicesFor(lang){
+  return speechSynthesis.getVoices().filter(v=>v.lang.toLowerCase().startsWith(lang.toLowerCase()));
+}
 function pickVoice(){
-  const v=speechSynthesis.getVoices().filter(v=>v.lang.toLowerCase().startsWith('de'));
-  S.voice=v.find(v=>/google|siri|anna|petra|markus/i.test(v.name))||v[0]||null;
+  const list=voicesFor(S.book?.lang||'de');
+  S.voice=list.find(v=>v.name===S.voiceName)
+        ||list.find(v=>/enhanced|premium|neural|siri/i.test(v.name))   // the good iOS voices
+        ||list.find(v=>/google|anna|petra|markus|yannick/i.test(v.name))
+        ||list[0]||null;
+  buildVoiceList();
+  return S.voice;
 }
-speechSynthesis.addEventListener?.('voiceschanged',pickVoice); pickVoice();
-function speak(text){
+speechSynthesis.addEventListener?.('voiceschanged',pickVoice);
+function buildVoiceList(){
+  const box=$('#voices'); if(!box)return;
+  const list=voicesFor(S.book?.lang||'de');
+  box.replaceChildren();
+  if(!list.length){box.innerHTML='<p style="color:var(--dim);font-size:13px;line-height:1.5;margin:6px 0">'+VOICE_HINT+'</p>';return}
+  list.forEach(v=>{
+    const b=document.createElement('button');
+    b.textContent=v.name+(/enhanced|premium|neural/i.test(v.name)?'  ★':'');
+    b.className=(S.voice&&v.name===S.voice.name)?'on':'';
+    b.onclick=()=>{S.voiceName=v.name;LS.set('voiceName',v.name);S.voice=v;buildVoiceList();
+                   speakText('Guten Tag. So klingt diese Stimme.')};
+    box.appendChild(b);
+  });
+}
+let keepAlive=null;
+function speakText(text,onDone){
   speechSynthesis.cancel();
+  if(!pickVoice()&&!voicesFor(S.book?.lang||'de').length){toast(VOICE_HINT);onDone?.(false);return null}
   const u=new SpeechSynthesisUtterance(text);
-  u.lang='de-DE'; if(S.voice)u.voice=S.voice; u.rate=Math.min(1.4,Math.max(.5,S.wpm/170));
-  speechSynthesis.speak(u); return u;
+  u.lang=(S.voice&&S.voice.lang)||'de-DE'; if(S.voice)u.voice=S.voice;
+  u.rate=S.rate; u.pitch=1;
+  clearInterval(keepAlive);                       // iOS drops long speech unless it is nudged
+  keepAlive=setInterval(()=>{if(speechSynthesis.speaking&&!speechSynthesis.paused)speechSynthesis.resume();else clearInterval(keepAlive)},4000);
+  u.onend=()=>{clearInterval(keepAlive);onDone?.(true)};
+  u.onerror=e=>{clearInterval(keepAlive);if(e.error!=='interrupted'&&e.error!=='canceled')toast('A voz falhou: '+e.error);onDone?.(false)};
+  speechSynthesis.speak(u);
+  return u;
 }
-function speakFrom(i){                     // read-along: the voice sets the pace
+function stopSpeech(){clearInterval(keepAlive);speechSynthesis.cancel();S.speaking=false}
+// warm iOS up while we still have the tap that authorised it
+function warmUpSpeech(){
+  if(S.warm)return; S.warm=true;
+  try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch{}
+}
+// ---- read-along: the voice sets the pace, the highlight follows it
+function speakFrom(i){
   const a=i, b=sentEnd(a), words=S.book.words.slice(a,b), text=words.join(' ');
   S.i=a; show();
-  const u=speak(text); S.speaking=true;
-  let k=0;
-  u.onboundary=e=>{                        // iOS fires word boundaries; walk the highlight with them
+  if(!voicesFor(S.book.lang||'de').length){          // no voice on this device: fall back to the silent pacer
+    toast(VOICE_HINT); S.tts=false; LS.set('tts',false); $('#t-tts').classList.remove('on');
+    S.timer=setTimeout(step,delay(S.i)); return;
+  }
+  S.speaking=true;
+  // iOS gives no duration up front, so estimate one: German runs ~14 characters per second at rate 1.
+  const secs=Math.max(0.6,text.length/(14*S.rate));
+  const total=words.reduce((n,w)=>n+w.length+1,0);
+  let acc=0; const at=words.map(w=>{const t=acc;acc+=(w.length+1)/total*secs*1000;return t});
+  const t0=performance.now(); let k=0;
+  const tick=()=>{                                   // own clock, corrected by boundary events when they come
+    if(!S.playing||!S.speaking)return;
+    const el=performance.now()-t0;
+    while(k+1<words.length&&at[k+1]<=el)k++;
+    if(S.i!==a+k){S.i=a+k;show()}
+    S.timer=setTimeout(tick,60);
+  };
+  const u=speakText(text,ok=>{
+    clearTimeout(S.timer); S.speaking=false;
+    if(!S.playing)return;
+    if(!ok||b>=S.book.words.length){S.i=Math.min(b,S.book.words.length-1);pause();return}
+    S.i=b; speakFrom(b);
+  });
+  if(!u){S.speaking=false;return}
+  u.onboundary=e=>{                                  // when Safari does report a word, snap to it
     if(e.name&&e.name!=='word')return;
     let pos=0;
     for(let n=0;n<words.length;n++){ if(pos>=e.charIndex){k=n;break} pos+=words[n].length+1 }
-    S.i=Math.min(a+k,b-1); show();
   };
-  u.onend=()=>{
-    S.speaking=false; if(!S.playing)return;
-    if(b>=S.book.words.length){pause();return}
-    speakFrom(b);
-  };
-  u.onerror=()=>{S.speaking=false;if(S.playing){S.tts=false;LS.set('tts',false);$('#t-tts').classList.remove('on');show();S.timer=setTimeout(step,delay(S.i))}};
+  tick();
 }
-
 //////////////////// word sheet ////////////////////
 let sheetWord=null;
 function openWord(i){
@@ -448,12 +523,14 @@ async function boot(){
   applyTheme(); applySize(); $('#wpm').textContent=S.wpm;
   $('#t-gloss').classList.toggle('on',S.gloss); $('#t-dark').classList.toggle('on',S.dark);
   $('#t-tts').classList.toggle('on',S.tts); $('#n-learned').textContent=S.learned.size;
+  setRate(S.rate); $('#voice-box').classList.toggle('hidden',!S.tts);
   document.body.classList.toggle('plain',!S.gloss);
   try{
     S.dict=await fetchJSON('dict-de-pt.json',p=>$('#pct').textContent=Math.round(p*100)+'%');
     $('#splash-msg').textContent='Abrindo o livro…';
     const book=await fetchJSON('starter-de.json'); book.id='starter';
     await loadBook(book);
+    pickVoice();
     $('#splash').classList.add('hidden');
   }catch(e){
     $('#splash-msg').textContent='Não consegui carregar: '+e.message+'. Verifique a internet e recarregue a página.';
@@ -465,7 +542,7 @@ function applyTheme(){document.documentElement.dataset.theme=S.dark?'dark':'ligh
 function applySize(){page.style.setProperty('--size',S.size+'px')}
 
 //////////////////// events ////////////////////
-$('#play').onclick=toggle;
+$('#play').onclick=()=>{warmUpSpeech();toggle()};
 $('#b-back').onclick=()=>{const was=S.playing;pause();S.i=sentStart(Math.max(0,S.i-1));show();if(was)play()};
 $('#faster').onclick=()=>setWpm(S.wpm+10); $('#slower').onclick=()=>setWpm(S.wpm-10);
 function setWpm(v){S.wpm=Math.max(40,Math.min(800,v));$('#wpm').textContent=S.wpm;LS.set('wpm',S.wpm);updateHeader()}
@@ -480,15 +557,23 @@ page.addEventListener('click',e=>{
 });
 $('#w-here').onclick=()=>{closeSheets();play()};
 $('#w-learned').onclick=markLearned;
-$('#w-speak').onclick=()=>sheetWord&&speak(sheetWord.word);
+$('#w-speak').onclick=()=>{warmUpSpeech();sheetWord&&speakText(sheetWord.word)};
 $('#w-web').onclick=()=>sheetWord&&open('https://de.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
 $('#b-library').onclick=()=>openSheet('#s-library');
 $('#b-settings').onclick=()=>openSheet('#s-settings');
 $('#t-gloss').onclick=e=>{S.gloss=!S.gloss;LS.set('gloss',S.gloss);e.target.classList.toggle('on',S.gloss);
   document.body.classList.toggle('plain',!S.gloss);refreshGlosses()};
 $('#t-dark').onclick=e=>{S.dark=!S.dark;LS.set('dark',S.dark);e.target.classList.toggle('on',S.dark);applyTheme()};
-$('#t-tts').onclick=e=>{S.tts=!S.tts;LS.set('tts',S.tts);e.target.classList.toggle('on',S.tts);
-  if(S.playing){pause();play()} else if(S.tts){speak('')}};   // warm up iOS speech inside the tap
+$('#t-tts').onclick=e=>{
+  warmUpSpeech();                                  // must happen inside the tap for iOS to allow speech later
+  if(!S.tts&&!voicesFor(S.book?.lang||'de').length){toast(VOICE_HINT);return}
+  S.tts=!S.tts;LS.set('tts',S.tts);e.target.classList.toggle('on',S.tts);
+  $('#voice-box').classList.toggle('hidden',!S.tts);
+  if(S.playing){pause();play()}
+};
+function setRate(v){S.rate=Math.max(.5,Math.min(1.6,Math.round(v*10)/10));LS.set('rate',S.rate);$('#rate-val').textContent=S.rate.toFixed(1)+'×'}
+$('#rate-up').onclick=()=>{setRate(S.rate+.1);warmUpSpeech();speakText('So klingt es jetzt.')};
+$('#rate-down').onclick=()=>{setRate(S.rate-.1);warmUpSpeech();speakText('So klingt es jetzt.')};
 $('#size-up').onclick=()=>{S.size=Math.min(30,S.size+1);LS.set('size',S.size);applySize()};
 $('#size-down').onclick=()=>{S.size=Math.max(13,S.size-1);LS.set('size',S.size);applySize()};
 $('#b-forget').onclick=()=>{if(confirm('Esquecer todas as palavras marcadas como sabidas?')){
