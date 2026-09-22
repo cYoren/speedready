@@ -41,3 +41,17 @@ Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwai
 | B / Shift+B | toggle bookmark / open bookmarks |
 | C | chapters |
 | F11, S, O | fullscreen, settings, open |
+
+## Web version (any phone or browser)
+
+`web/` is a self-contained reader for learners: the German text with a Portuguese
+translation above every word you have not marked as known yet. Tap a translation to
+mark the word learned and it disappears everywhere; tap a word for its dictionary entry.
+It ships with a public-domain German book, speaks through the device's own voice, and
+works offline once loaded (installable to the home screen).
+
+Build its data from a desktop pack:
+
+```
+python tools/export_web.py de pt      # -> web/dict-de-pt.json (8.5 MB, ~1.7 MB gzipped)
+```
