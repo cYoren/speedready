@@ -36,5 +36,7 @@ modules:
       - install -Dm644 packaging/icons/256.png
         ${FLATPAK_DEST}/share/icons/hicolor/256x256/apps/io.github.cyoren.speedready.png
     sources:
-      - type: dir
-        path: ../..
+      - type: git
+        url: https://github.com/cYoren/speedready.git
+        tag: v1.0.0
+        commit: 256bde6d69ce965780d38d015256162e16e57817
