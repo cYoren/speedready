@@ -28,7 +28,7 @@
         Flathub packaging. **Affected parts and approximate extent:**
 
     Most of the source code, the Flatpak packaging and the metadata in this submission were
-    written by an AI assistant (Claude) working from my direction, over an extended session.
+    written by an AI assistant working from my direction, over an extended session.
     I reviewed and directed the work, tested the application, and I maintain it. The offline
     dictionary is built from Wiktionary, MUSE and a frequency list by a script in the
     repository; the bundled starter text is public domain from Project Gutenberg.
