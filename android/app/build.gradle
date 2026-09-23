@@ -1,0 +1,37 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'io.github.cyoren.speedready'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'io.github.cyoren.speedready'
+        minSdk 26                 // WebView with DecompressionStream and modern JS
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false   // no obfuscation: F-Droid builds and verifies this source
+            signingConfig null
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // The reader itself lives in ../../web and is copied in as assets, so the app and the
+    // website are literally the same code.
+    sourceSets.main.assets.srcDirs += ["${rootDir}/../web"]
+
+    dependenciesInfo {          // F-Droid rejects the Play dependency blob
+        includeInApk false
+        includeInBundle false
+    }
+}
+
+dependencies { }

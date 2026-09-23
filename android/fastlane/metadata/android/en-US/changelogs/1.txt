@@ -1,0 +1,3 @@
+First release.
+
+A language reader with a translation above every word you do not know yet, a pacer that keeps you moving, and a dictionary that works offline.

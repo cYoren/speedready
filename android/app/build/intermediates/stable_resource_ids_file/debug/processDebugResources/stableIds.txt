@@ -1,0 +1,7 @@
+io.github.cyoren.speedready:xml/data_extraction_rules = 0x7f060001
+io.github.cyoren.speedready:xml/backup_rules = 0x7f060000
+io.github.cyoren.speedready:string/app_name = 0x7f040000
+io.github.cyoren.speedready:drawable/ic_launcher_foreground = 0x7f020000
+io.github.cyoren.speedready:color/ic_launcher_background = 0x7f010000
+io.github.cyoren.speedready:style/AppTheme = 0x7f050000
+io.github.cyoren.speedready:mipmap/ic_launcher = 0x7f030000

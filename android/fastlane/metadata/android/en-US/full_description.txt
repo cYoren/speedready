@@ -1,0 +1,29 @@
+Speedready is a reader for people learning a language. It carries you through a book at a
+pace you set, so you keep reading instead of stopping at every unfamiliar word, and it puts
+the translation right where your eyes already are.
+
+Above every word you have not marked as known yet sits its translation in your own language.
+Tap that translation and the word is marked as learned: it disappears from the whole book,
+and the text gets cleaner as your vocabulary grows.
+
+<b>While you read</b>
+
+* A highlight sweeps through the text at your pace, or flashes one word at a time
+* Tap a word for its translation, to hear it, or to start reading from there
+* Hold a word you are still learning: it is underlined everywhere and the pace slows for it
+* Have sentences read aloud by the voice already on your device, with the text following along
+* Bookmark a spot, jump between chapters, and pick up where you left off in every book
+
+<b>It stays on your device</b>
+
+The dictionary and the book ship inside the app. There is no account, no network access, and
+the app requests no permissions at all. Everything you mark, learn and bookmark stays on your
+phone, and everything you look up can be exported as an Anki deck.
+
+<b>Included</b>
+
+German to English and German to Portuguese, with a public-domain German storybook to start
+reading immediately. You can open any EPUB or text file of your own.
+
+Speedready is free software under the MIT licence. The same reader runs as a desktop
+application on Linux.

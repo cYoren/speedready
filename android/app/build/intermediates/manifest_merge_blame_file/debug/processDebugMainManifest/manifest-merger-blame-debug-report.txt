@@ -1,0 +1,76 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="io.github.cyoren.speedready"
+4    android:versionCode="1"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="35" />
+10    <!-- No permissions at all: the dictionary, the book and the voice are all on the device. -->
+11    <application
+11-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:6:5-35:19
+12        android:allowBackup="true"
+12-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:10:9-35
+13        android:dataExtractionRules="@xml/data_extraction_rules"
+13-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:12:9-65
+14        android:debuggable="true"
+15        android:extractNativeLibs="false"
+16        android:fullBackupContent="@xml/backup_rules"
+16-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:11:9-54
+17        android:hardwareAccelerated="true"
+17-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:14:9-43
+18        android:icon="@mipmap/ic_launcher"
+18-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:8:9-43
+19        android:label="@string/app_name"
+19-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:7:9-41
+20        android:roundIcon="@mipmap/ic_launcher"
+20-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:9:9-48
+21        android:supportsRtl="true"
+21-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:13:9-35
+22        android:theme="@style/AppTheme" >
+22-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:15:9-40
+23        <activity
+23-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:17:9-34:20
+24            android:name="io.github.cyoren.speedready.MainActivity"
+24-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:18:13-41
+25            android:configChanges="orientation|screenSize|keyboardHidden|uiMode|smallestScreenSize|screenLayout|density"
+25-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:20:13-121
+26            android:exported="true"
+26-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:19:13-36
+27            android:launchMode="singleTask"
+27-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:22:13-44
+28            android:windowSoftInputMode="adjustResize" >
+28-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:21:13-55
+29            <intent-filter>
+29-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:23:13-26:29
+30                <action android:name="android.intent.action.MAIN" />
+30-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:24:17-69
+30-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:24:25-66
+31
+32                <category android:name="android.intent.category.LAUNCHER" />
+32-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:25:17-77
+32-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:25:27-74
+33            </intent-filter>
+34            <!-- open an epub shared from a file manager -->
+35            <intent-filter>
+35-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:28:13-33:29
+36                <action android:name="android.intent.action.VIEW" />
+36-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:29:17-69
+36-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:29:25-66
+37
+38                <category android:name="android.intent.category.DEFAULT" />
+38-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:30:17-76
+38-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:30:27-73
+39
+40                <data android:mimeType="application/epub+zip" />
+40-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:31:17-65
+40-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:31:23-62
+41                <data android:mimeType="text/plain" />
+41-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:31:17-65
+41-->/home/gustvmar/Projects/speedready/android/app/src/main/AndroidManifest.xml:31:23-62
+42            </intent-filter>
+43        </activity>
+44    </application>
+45
+46</manifest>
