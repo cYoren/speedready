@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>Speedready</title>
+<meta name="description" content="Read German at your own pace, with a translation above every word you do not know yet.">
+<meta name="theme-color" content="#101012">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Speedready">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#101012; --fg:#e8e6e3; --dim:#8a8a90; --panel:#1b1b1f; --line:#2a2a30;
+  --accent:#ff5252; --gloss:#8ab4f8; --hl:#2f5d45; --unk:#e0a030;
+  --pad:16px; --radius:14px;
+}
+:root[data-theme="light"]{
+  --bg:#faf9f7; --fg:#1a1a1c; --dim:#6b6b72; --panel:#ffffff; --line:#e3e1dd;
+  --accent:#d32f2f; --gloss:#1a56b8; --hl:#c8e6d0; --unk:#a86b00;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overscroll-behavior:none}
+body{
+  background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif;
+  display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{background:var(--line)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.icon{width:44px;min-width:44px;padding:0;font-size:19px}
+
+/* ---------- top bar ---------- */
+header{display:flex;align-items:center;gap:8px;padding:8px var(--pad);border-bottom:1px solid var(--line);min-height:56px}
+#chapter{flex:1;min-width:0;text-align:center;line-height:1.25}
+#chapter b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chapter span{display:block;font-size:11px;color:var(--dim)}
+#bar{height:3px;background:var(--line)}
+#fill{height:100%;width:0;background:var(--accent);transition:width .2s}
+
+/* ---------- reader ---------- */
+main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:18px var(--pad) 40vh}
+#page{max-width:680px;margin:0 auto;font-size:var(--size,19px);line-height:1.15}
+.p{margin:0 0 1.15em;display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 2px}
+.c{display:flex;flex-direction:column;align-items:center;padding:1px 3px;border-radius:7px;line-height:1.2}
+.c .g{font-size:.56em;color:var(--gloss);line-height:1.4;min-height:1.4em;white-space:nowrap}
+.c.cur{background:var(--hl)}
+.c.read .w{color:var(--dim)}
+.c.unk .w{text-decoration:underline;text-decoration-color:var(--unk);text-underline-offset:3px}
+body.plain .c .g{display:none}
+body.plain .p{gap:0 5px}
+
+/* ---------- bottom controls ---------- */
+footer{
+  position:sticky;bottom:0;background:color-mix(in srgb,var(--bg) 92%,transparent);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;
+  padding:8px var(--pad) calc(8px + env(safe-area-inset-bottom));
+}
+#speed{display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+#speed button{width:40px;height:42px;font-size:20px}
+#wpm{min-width:58px;text-align:center;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
+#play{flex:1;height:46px}
+
+/* ---------- sheets ---------- */
+.sheet{
+  position:fixed;inset:0;z-index:20;display:none;
+  background:rgba(0,0,0,.45);align-items:flex-end;justify-content:center;
+}
+.sheet.on{display:flex}
+.sheet>div{
+  background:var(--panel);width:100%;max-width:560px;max-height:82vh;overflow-y:auto;
+  border-radius:20px 20px 0 0;padding:14px var(--pad) calc(18px + env(safe-area-inset-bottom));
+  animation:up .22s ease-out;
+}
+@keyframes up{from{transform:translateY(100%)}}
+.grab{width:38px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 12px}
+.sheet h2{margin:0 0 4px;font-size:22px}
+.sheet h3{margin:16px 0 8px;font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);min-height:52px}
+.row:last-child{border-bottom:0}
+.row label{flex:1}
+.row small{display:block;color:var(--dim);font-size:12px;margin-top:2px}
+.list button{display:block;width:100%;text-align:left;padding:13px 10px;border-radius:10px;border-bottom:1px solid var(--line)}
+.list button:active{background:var(--line)}
+.list button.on{color:var(--accent);font-weight:600}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.actions .btn{flex:1 1 44%}
+
+/* word sheet */
+#w-word{font-size:30px;font-weight:600;line-height:1.1}
+#w-lemma{color:var(--dim);font-size:14px;margin-top:2px}
+#w-gloss{color:var(--gloss);font-size:24px;margin:14px 0 2px}
+#w-more{color:var(--dim);font-size:14px;line-height:1.5;white-space:pre-wrap;margin-top:10px}
+
+/* switch */
+.sw{width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;transition:background .15s;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw.on{background:var(--accent)}
+.sw.on::after{transform:translateX(20px)}
+
+#rsvp{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 var(--pad)}
+body.rsvp #rsvp{display:flex}
+body.rsvp main{display:none}
+#rsvp-word{font-family:ui-monospace,"JetBrains Mono",Menlo,monospace;font-size:clamp(34px,11vw,72px);
+  line-height:1.1;white-space:nowrap}
+#rsvp-word i{color:var(--accent);font-style:normal}
+#rsvp-gloss{color:var(--gloss);font-size:clamp(16px,4.5vw,24px);min-height:1.4em}
+#rsvp-ctx{color:var(--dim);font-size:14px;line-height:1.5;text-align:center;max-width:620px;margin-top:18px}
+#rsvp-ctx b{color:var(--fg);font-weight:600}
+#toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(86px + env(safe-area-inset-bottom));
+  z-index:30;max-width:min(92vw,420px);background:var(--panel);border:1px solid var(--line);color:var(--fg);
+  padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.45);
+  opacity:0;pointer-events:none;transition:opacity .18s,transform .18s}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#splash{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;padding:32px;text-align:center}
+#splash h1{font-size:26px;margin:0}
+#splash p{color:var(--dim);margin:0;max-width:320px;line-height:1.5}
+#pct{font-variant-numeric:tabular-nums;color:var(--accent);font-size:15px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <h1>Speedready</h1>
+  <p id="splash-msg" data-t="loading">Preparing the dictionary…</p>
+  <div id="pct">0%</div>
+</div>
+
+<header>
+  <button class="btn icon" id="b-library" data-t-aria="books" aria-label="Books">☰</button>
+  <div id="chapter"><b>Speedready</b><span></span></div>
+  <button class="btn icon" id="b-mark" data-t-aria="bookmarks" aria-label="Bookmarks">☆</button>
+  <button class="btn icon" id="b-settings" data-t-aria="settings" aria-label="Settings">⚙</button>
+</header>
+<div id="bar"><div id="fill"></div></div>
+
+<main id="main"><div id="page"></div></main>
+<div id="rsvp"><div id="rsvp-word"></div><div id="rsvp-gloss"></div><div id="rsvp-ctx"></div></div>
+
+<footer>
+  <button class="btn icon" id="b-back" data-t-aria="back" aria-label="Previous sentence">↺</button>
+  <button class="btn primary" id="play" data-t="start">▶ Start</button>
+  <div id="speed">
+    <button id="slower" aria-label="Mais devagar">−</button>
+    <div id="wpm">120</div>
+    <button id="faster" aria-label="Mais rápido">+</button>
+  </div>
+</footer>
+
+<!-- word sheet -->
+<div id="toast"></div>
+
+<div class="sheet" id="s-word"><div>
+  <div class="grab"></div>
+  <div id="w-word"></div>
+  <div id="w-lemma"></div>
+  <div id="w-gloss"></div>
+  <div id="w-more"></div>
+  <div class="actions">
+    <button class="btn" id="w-speak" data-t="listen">🔊 Listen</button>
+    <button class="btn" id="w-here" data-t="read_here">▶ Read from here</button>
+    <button class="btn" id="w-learned" data-t="know_it">✓ I know this</button>
+    <button class="btn" id="w-unknown" data-t="dont_know_it">✗ I do not know it</button>
+    <button class="btn" id="w-web" data-t="dictionary">Dictionary ↗</button>
+  </div>
+</div></div>
+
+<!-- library sheet -->
+<div class="sheet" id="s-library"><div>
+  <div class="grab"></div>
+  <h2 data-t="books">Books</h2>
+  <h3 data-t="chapters">Chapters</h3>
+  <div class="list" id="chapters"></div>
+  <h3 data-t="bookmarks">Bookmarks</h3>
+  <div class="list" id="marks"></div>
+  <h3 data-t="open_other">Open another book</h3>
+  <div class="row">
+    <label data-t="file_label">An .epub or .txt file<small data-t="file_hint">Pick a file from your device</small></label>
+  </div>
+  <input type="file" id="file" accept=".epub,.txt,application/epub+zip,text/plain" style="width:100%">
+  <div class="actions"><button class="btn" id="b-starter" data-t="back_to_starter">Back to the starter book</button></div>
+</div></div>
+
+<!-- settings sheet -->
+<div class="sheet" id="s-settings"><div>
+  <div class="grab"></div>
+  <h2 data-t="settings">Settings</h2>
+  <div class="row"><label data-t="gloss_label">Translation above the words<small data-t="gloss_hint">Shows your language above every word you have not marked as known</small></label><div class="sw on" id="t-gloss"></div></div>
+  <div class="row"><label data-t="mode">Reading mode</label>
+    <button class="btn" id="t-mode" style="min-width:150px"></button></div>
+  <div class="row"><label data-t="dark">Dark mode</label><div class="sw on" id="t-dark"></div></div>
+  <div class="row"><label data-t="text_size">Text size</label>
+    <button class="btn icon" id="size-down">A−</button><button class="btn icon" id="size-up">A+</button></div>
+  <div class="row"><label data-t="tts_label">Read aloud while it advances<small data-t="tts_hint">The device voice reads each sentence and the text follows it</small></label><div class="sw" id="t-tts"></div></div>
+  <div id="voice-box" class="hidden">
+    <div class="row"><label data-t="voice_speed">Voice speed</label>
+      <button class="btn icon" id="rate-down">−</button><b id="rate-val" style="min-width:42px;text-align:center">0.9×</b><button class="btn icon" id="rate-up">+</button></div>
+    <h3 data-t="voice">Voice</h3>
+    <div class="list" id="voices"></div>
+  </div>
+  <h3 data-t="progress">Your progress</h3>
+  <div class="row"><label data-t="words_known">Words you already know</label><b id="n-learned">0</b></div>
+  <div class="row"><label data-t="unknown_words">Words you are learning</label><b id="n-unknown">0</b></div>
+  <div class="actions">
+    <button class="btn" id="b-export" data-t="export">Export for Anki</button>
+    <button class="btn" id="b-forget" data-t="forget_all">Forget all</button>
+  </div>
+  <h3 data-t="language">Language</h3>
+  <div class="list" id="langs"></div>
+  <h3 data-t="about">About</h3>
+  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.0</b></div>
+  <div class="row"><label data-t="license">MIT licence</label>
+    <a class="btn" id="a-src" href="https://github.com/cYoren/speedready" target="_blank" rel="noopener" data-t="source">Source code</a></div>
+  <p style="color:var(--dim);font-size:13px;line-height:1.5;margin:0">
+<span data-t="about_text">Offline dictionary built from Wiktionary and MUSE. Starter book: Japanische Märchen, public domain, from Project Gutenberg.
+    Everything works without a connection after the first load.</span>
+  </p>
+</div></div>
+
+<script>
+//////////////////// language ////////////////////
+// The interface language. Written English, translated at runtime; the reader picks on
+// first run, defaulting to whatever the device is set to.
+const UI={
+ en:{loading:'Preparing the dictionary…',opening:'Opening the book…',books:'Books',settings:'Settings',back:'Previous sentence',
+     start:'▶ Start',resume:'▶ Continue',pause:'❚❚ Pause',listen:'🔊 Listen',read_here:'▶ Read from here',
+     know_it:'✓ I know this',dont_know:'↩ I do not know it',dictionary:'Dictionary ↗',chapters:'Chapters',
+     open_other:'Open another book',file_label:'An .epub or .txt file',file_hint:'Pick a file from your device',
+     back_to_starter:'Back to the starter book',gloss_label:'Translation above the words',
+     gloss_hint:'Shows your language above every word you have not marked as known',
+     dark:'Dark mode',text_size:'Text size',tts_label:'Read aloud while it advances',
+     tts_hint:'The device voice reads each sentence and the text follows it',
+     voice_speed:'Voice speed',voice:'Voice',progress:'Your progress',words_known:'Words you already know',
+     forget_all:'Forget all',about:'About',language:'Language',
+     about_text:'Offline dictionary built from Wiktionary and MUSE. Starter book: Japanische Märchen, public domain, from Project Gutenberg. Everything works without a connection after the first load.',
+     no_chapters:'This book has no chapters.',no_entry:'This word is not in the offline dictionary. Tap Dictionary to look it up online.',
+     forget_confirm:'Forget every word you marked as known?',cannot_open:'Could not open: ',
+     no_voice:'No voice is installed on this device. On iPhone: Settings › Accessibility › Spoken Content › Voices › German.',
+     voice_failed:'The voice failed: ',min_left:'min left',welcome:'Welcome to Speedready',
+     welcome_sub:'Read in another language without losing the flow. Pick the language you already speak.',
+     continue:'Continue',dont_know_it:'✗ I do not know it',known_again:'↩ Known again',
+     unknown_words:'Words you are learning',bookmarks:'Bookmarks',add_bookmark:'☆ Bookmark this spot',
+     remove_bookmark:'★ Remove bookmark',no_bookmarks:'No bookmarks in this book yet.',
+     export:'Export for Anki',exported:'File saved. Import it in Anki with File › Import.',
+     nothing_to_export:'Look a few words up first.',mode:'Reading mode',mode_pacer:'Flowing text',
+     mode_rsvp:'One word at a time',version:'Version',license:'MIT licence',source:'Source code',
+     credits:'Dictionary from Wiktionary and MUSE. Starter book from Project Gutenberg. Speech by your device.',
+     marked_unknown:'Marked as still learning',hold_hint:'Hold a word to mark it as one you are learning.'},
+ pt:{loading:'Preparando o dicionário…',opening:'Abrindo o livro…',books:'Livros',settings:'Ajustes',back:'Frase anterior',
+     start:'▶ Começar',resume:'▶ Continuar',pause:'❚❚ Pausar',listen:'🔊 Ouvir',read_here:'▶ Ler daqui',
+     know_it:'✓ Já sei',dont_know:'↩ Ainda não sei',dictionary:'Dicionário ↗',chapters:'Capítulos',
+     open_other:'Abrir outro livro',file_label:'Arquivo .epub ou .txt',file_hint:'Escolha um arquivo do seu aparelho',
+     back_to_starter:'Voltar ao livro de contos',gloss_label:'Tradução acima das palavras',
+     gloss_hint:'Mostra seu idioma acima de cada palavra que você ainda não marcou como sabida',
+     dark:'Modo escuro',text_size:'Tamanho do texto',tts_label:'Ler em voz alta ao avançar',
+     tts_hint:'A voz do aparelho lê cada frase e o texto acompanha',
+     voice_speed:'Velocidade da voz',voice:'Voz',progress:'Seu progresso',words_known:'Palavras que você já sabe',
+     forget_all:'Esquecer todas',about:'Sobre',language:'Idioma',
+     about_text:'Dicionário offline feito a partir do Wiktionary e do MUSE. Livro inicial: Japanische Märchen, domínio público, do Project Gutenberg. Tudo funciona sem conexão depois da primeira abertura.',
+     no_chapters:'Este livro não tem capítulos.',no_entry:'Esta palavra não está no dicionário offline. Toque em Dicionário para ver na internet.',
+     forget_confirm:'Esquecer todas as palavras marcadas como sabidas?',cannot_open:'Não foi possível abrir: ',
+     no_voice:'Nenhuma voz instalada neste aparelho. No iPhone: Ajustes › Acessibilidade › Conteúdo Falado › Vozes › Alemão.',
+     voice_failed:'A voz falhou: ',min_left:'min restantes',welcome:'Bem-vindo ao Speedready',
+     welcome_sub:'Leia em outro idioma sem perder o ritmo. Escolha o idioma que você já fala.',
+     continue:'Continuar',dont_know_it:'✗ Não sei esta',known_again:'↩ Voltar a saber',
+     unknown_words:'Palavras que você está aprendendo',bookmarks:'Favoritos',add_bookmark:'☆ Salvar esta posição',
+     remove_bookmark:'★ Remover favorito',no_bookmarks:'Este livro ainda não tem favoritos.',
+     export:'Exportar para o Anki',exported:'Arquivo salvo. Importe no Anki em Arquivo › Importar.',
+     nothing_to_export:'Consulte algumas palavras primeiro.',mode:'Modo de leitura',mode_pacer:'Texto corrido',
+     mode_rsvp:'Uma palavra por vez',version:'Versão',license:'Licença MIT',source:'Código-fonte',
+     credits:'Dicionário do Wiktionary e do MUSE. Livro inicial do Project Gutenberg. Voz do seu aparelho.',
+     marked_unknown:'Marcada como em aprendizado',hold_hint:'Segure uma palavra para marcá-la como em aprendizado.'},
+};
+const LANGS=[['en','English'],['pt','Português (Brasil)']];   // grows as the gloss packs do
+function T(k){return (UI[S.ui]||UI.en)[k]??UI.en[k]??k}
+function buildLangList(){
+  const box=$('#langs');if(!box)return;box.replaceChildren();
+  LANGS.forEach(([code,name])=>{
+    const b=document.createElement('button');b.textContent=name;b.className=code===S.ui?'on':'';
+    b.onclick=()=>{S.ui=code;LS.set('ui',code);applyLang();refreshGlosses()};
+    box.appendChild(b);
+  });
+}
+function applyLang(){
+  document.documentElement.lang=S.ui;
+  document.querySelectorAll('[data-t]').forEach(el=>{
+    const kids=[...el.children];                       // keep nested <small> hints
+    el.childNodes.forEach(n=>{if(n.nodeType===3)n.remove()});
+    el.insertBefore(document.createTextNode(T(el.dataset.t)),kids[0]||null);
+  });
+  document.querySelectorAll('[data-t-aria]').forEach(el=>el.setAttribute('aria-label',T(el.dataset.tAria)));
+  $('#play').textContent=S.playing?T('pause'):(S.i>0?T('resume'):T('start'));
+  buildVoiceList();buildLangList();
+}
+
+//////////////////// state ////////////////////
+const LS={get:(k,d)=>{try{const v=localStorage.getItem('sr:'+k);return v===null?d:JSON.parse(v)}catch{return d}},
+          set:(k,v)=>{try{localStorage.setItem('sr:'+k,JSON.stringify(v))}catch{}}};
+const S={dict:null,book:null,i:0,timer:null,playing:false,cells:[],pageA:0,pageB:0,
+         ui:LS.get('ui',null),mode:'pacer',
+         unknown:new Set(LS.get('unknown',[])),vocab:LS.get('vocab',[]),bookmarks:[],
+         wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',true),
+         size:LS.get('size',19),tts:LS.get('tts',false),learned:new Set(LS.get('learned',[])),
+         voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false};
+const $=s=>document.querySelector(s), page=$('#page');
+let toastTimer=null;
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('on'),msg.length>60?6500:3200);
+}
+const strip=w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
+
+//////////////////// dictionary ////////////////////
+function glossOf(word){            // -> [gloss|null, lemma]
+  const w=strip(word); if(!w||!S.dict) return [null,w];
+  const o=S.dict.o[w.toLowerCase()]; if(o) return [o[0],o[1]];
+  const lemma=S.dict.f[w]||S.dict.f[w.toLowerCase()]||
+              (S.dict.g[w]?w:null)||S.dict.f[w[0].toUpperCase()+w.slice(1)]||
+              (S.dict.g[w.toLowerCase()]?w.toLowerCase():w);
+  return [S.dict.g[lemma]||S.dict.g[w]||S.dict.g[w.toLowerCase()]||null,lemma];
+}
+const isLearned=lemma=>S.learned.has(lemma);
+function lemmaOf(word){return glossOf(word)[1]}
+const isUnknown=w=>S.unknown.has(lemmaOf(w));
+function setUnknown(word,flag){
+  const l=lemmaOf(word);if(!l)return;
+  flag?S.unknown.add(l):S.unknown.delete(l);
+  LS.set('unknown',[...S.unknown]);
+  $('#n-unknown').textContent=S.unknown.size;
+  markUnknown();
+}
+function markUnknown(){
+  for(let k=0;k<S.cells.length;k++)
+    S.cells[k].classList.toggle('unk',isUnknown(S.book.words[S.pageA+k]));
+}
+function showGloss(word){
+  const[g,l]=glossOf(word);
+  if(!g||isLearned(l)||l.toLowerCase()===g.toLowerCase())return '';
+  return fit(g,strip(word));
+}
+function fit(gloss,word){          // keep only what fits above the word, so the line stays readable
+  const room=Math.round(word.length*1.7)+3;
+  if(gloss.length<=room)return gloss;
+  const parts=gloss.split(/[;,]/).map(x=>x.trim()).filter(Boolean);
+  let out='';
+  for(const p of parts){const next=out?out+', '+p:p; if(next.length>room)break; out=next}
+  return out||parts[0].slice(0,room);
+}
+
+//////////////////// book ////////////////////
+function paraOf(i){let lo=0,hi=S.book.para.length-1,r=0;while(lo<=hi){const m=(lo+hi)>>1;if(S.book.para[m]<=i){r=m;lo=m+1}else hi=m-1}return S.book.para[r]}
+function isParaStart(i){return S.book.para.includes(i)}
+function sentEnd(i){const w=S.book.words;while(i<w.length-1&&!/[.!?…»"']$/.test(w[i])&&!isParaStart(i+1))i++;return i+1}
+function sentStart(i){const w=S.book.words;while(i>0&&!isParaStart(i)&&!/[.!?…»"']$/.test(w[i-1]))i--;return i}
+function chapterOf(i){let t='';for(const[name,at]of S.book.chapters){if(at<=i)t=name;else break}return t||S.book.title}
+
+//////////////////// rendering ////////////////////
+const PAGE=340;
+function renderPage(i){
+  const b=S.book, a=paraOf(Math.max(0,i-40));
+  let end=a; while(end<b.words.length && end-a<PAGE) end++;
+  end=b.words.length; // whole book renders fine for these sizes; keeps scrolling natural
+  if(b.words.length>12000){ end=Math.min(b.words.length, a+PAGE*6); }
+  S.pageA=a; S.pageB=end; S.cells=[];
+  const frag=document.createDocumentFragment();
+  let p=document.createElement('div'); p.className='p'; frag.appendChild(p);
+  for(let k=a;k<end;k++){
+    if(k>a&&isParaStart(k)){p=document.createElement('div');p.className='p';frag.appendChild(p)}
+    const c=document.createElement('span'); c.className='c'; c.dataset.i=k;
+    const g=document.createElement('span'); g.className='g'; g.textContent=S.gloss?showGloss(b.words[k]):'';
+    const w=document.createElement('span'); w.className='w'; w.textContent=b.words[k];
+    if(isUnknown(b.words[k]))c.classList.add("unk");
+    c.append(g,w); p.appendChild(c); S.cells.push(c);
+  }
+  page.replaceChildren(frag);
+}
+function refreshGlosses(){
+  if(!S.cells.length)return;
+  for(let k=0;k<S.cells.length;k++)
+    S.cells[k].firstChild.textContent=S.gloss?showGloss(S.book.words[S.pageA+k]):'';
+}
+let curCell=null;
+function highlight(i,scroll){
+  const c=S.cells[i-S.pageA]; if(!c)return;
+  if(curCell)curCell.classList.remove('cur');
+  c.classList.add('cur'); curCell=c;
+  if(scroll){
+    const r=c.getBoundingClientRect(), m=$('#main').getBoundingClientRect();
+    if(r.top<m.top+m.height*0.28||r.bottom>m.top+m.height*0.72)
+      $('#main').scrollBy({top:r.top-(m.top+m.height*0.35),behavior:'smooth'});
+  }
+}
+function updateHeader(){
+  $('#chapter b').textContent=chapterOf(S.i);
+  const left=Math.max(0,Math.round((S.book.words.length-S.i)/S.wpm));
+  const fmt=n=>n.toLocaleString(S.ui==='pt'?'pt-BR':'en');
+  $('#chapter span').textContent=`${fmt(S.i+1)} / ${fmt(S.book.words.length)} · ${left} ${T('min_left')}`;
+  $('#fill').style.width=(100*S.i/S.book.words.length)+'%';
+}
+function show(scroll=true){if(S.mode==='rsvp')drawRsvp();else highlight(S.i,scroll);updateHeader();updateStar();saveSoon()}
+
+//////////////////// rsvp ////////////////////
+function pivot(w){const p=Math.min(Math.floor((w.length-1)/3),4);
+  return [w.slice(0,p),w[p]||'',w.slice(p+1)];}
+function drawRsvp(){
+  const w=S.book.words[S.i]||'',[a,b,c]=pivot(w);
+  $('#rsvp-word').innerHTML=esc(a)+'<i>'+esc(b)+'</i>'+esc(c);
+  $('#rsvp-gloss').textContent=S.gloss?showGloss(w):'';
+  const from=Math.max(0,S.i-7),to=Math.min(S.book.words.length,S.i+8);
+  $('#rsvp-ctx').innerHTML=S.book.words.slice(from,S.i).map(esc).join(' ')+
+    ' <b>'+esc(w)+'</b> '+S.book.words.slice(S.i+1,to).map(esc).join(' ');
+}
+const esc=t=>t.replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+function setMode(m){
+  S.mode=m;document.body.classList.toggle('rsvp',m==='rsvp');
+  $('#t-mode').textContent=T(m==='rsvp'?'mode_rsvp':'mode_pacer');
+  if(m==='pacer'&&S.book){renderPage(S.i)}
+  show();
+  if(m==='pacer')requestAnimationFrame(()=>S.cells[S.i-S.pageA]?.scrollIntoView({block:'center'}));
+}
+
+//////////////////// playback ////////////////////
+function delay(i){
+  const w=S.book.words[i]; let d=60000/S.wpm;
+  if(/[.!?…]["'»)]*$/.test(w))d*=2.4; else if(/[,;:]["'»)]*$/.test(w))d*=1.5;
+  if(w.length>=10)d*=1.25;
+  const[,l]=glossOf(w); if(!isLearned(l)&&showGloss(w))d*=1.35;   // linger on words still being learned
+  if(S.unknown.has(l))d*=1.8;                                      // and longer on the ones marked by hand
+  return d;
+}
+function step(){
+  S.i++;
+  if(S.i>=S.book.words.length){S.i=S.book.words.length-1;pause();return}
+  show(); S.timer=setTimeout(step,delay(S.i));
+}
+function play(){
+  if(S.playing)return;
+  S.playing=true; $('#play').textContent=T('pause');
+  if(S.tts){speakFrom(S.i)} else {show();S.timer=setTimeout(step,delay(S.i))}
+}
+function pause(){
+  S.playing=false; clearTimeout(S.timer); S.timer=null;
+  stopSpeech();
+  $('#play').textContent=T('resume'); save();
+}
+const toggle=()=>S.playing?pause():play();
+
+//////////////////// speech ////////////////////
+// The device's own voice. Two things make this fragile and are handled here:
+// iOS only allows speech that starts inside a user gesture, and its word-boundary
+// events are unreliable, so the highlight runs on its own estimated clock and only
+// re-syncs when a boundary event actually arrives.
+const VOICE_HINT=()=>T('no_voice');
+function voicesFor(lang){
+  return speechSynthesis.getVoices().filter(v=>v.lang.toLowerCase().startsWith(lang.toLowerCase()));
+}
+function pickVoice(){
+  const list=voicesFor(S.book?.lang||'de');
+  S.voice=list.find(v=>v.name===S.voiceName)
+        ||list.find(v=>/enhanced|premium|neural|siri/i.test(v.name))   // the good iOS voices
+        ||list.find(v=>/google|anna|petra|markus|yannick/i.test(v.name))
+        ||list[0]||null;
+  buildVoiceList();
+  return S.voice;
+}
+speechSynthesis.addEventListener?.('voiceschanged',pickVoice);
+function buildVoiceList(){
+  const box=$('#voices'); if(!box)return;
+  const list=voicesFor(S.book?.lang||'de');
+  box.replaceChildren();
+  if(!list.length){box.innerHTML='<p style="color:var(--dim);font-size:13px;line-height:1.5;margin:6px 0">'+VOICE_HINT()+'</p>';return}
+  list.forEach(v=>{
+    const b=document.createElement('button');
+    b.textContent=v.name+(/enhanced|premium|neural/i.test(v.name)?'  ★':'');
+    b.className=(S.voice&&v.name===S.voice.name)?'on':'';
+    b.onclick=()=>{S.voiceName=v.name;LS.set('voiceName',v.name);S.voice=v;buildVoiceList();
+                   speakText('Guten Tag. So klingt diese Stimme.')};
+    box.appendChild(b);
+  });
+}
+let keepAlive=null;
+function speakText(text,onDone){
+  speechSynthesis.cancel();
+  if(!pickVoice()&&!voicesFor(S.book?.lang||'de').length){toast(VOICE_HINT());onDone?.(false);return null}
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang=(S.voice&&S.voice.lang)||'de-DE'; if(S.voice)u.voice=S.voice;
+  u.rate=S.rate; u.pitch=1;
+  clearInterval(keepAlive);                       // iOS drops long speech unless it is nudged
+  keepAlive=setInterval(()=>{if(speechSynthesis.speaking&&!speechSynthesis.paused)speechSynthesis.resume();else clearInterval(keepAlive)},4000);
+  u.onend=()=>{clearInterval(keepAlive);onDone?.(true)};
+  u.onerror=e=>{clearInterval(keepAlive);if(e.error!=='interrupted'&&e.error!=='canceled')toast(T('voice_failed')+e.error);onDone?.(false)};
+  speechSynthesis.speak(u);
+  return u;
+}
+function stopSpeech(){clearInterval(keepAlive);speechSynthesis.cancel();S.speaking=false}
+// warm iOS up while we still have the tap that authorised it
+function warmUpSpeech(){
+  if(S.warm)return; S.warm=true;
+  try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch{}
+}
+// ---- read-along: the voice sets the pace, the highlight follows it
+function speakFrom(i){
+  const a=i, b=sentEnd(a), words=S.book.words.slice(a,b), text=words.join(' ');
+  S.i=a; show();
+  if(!voicesFor(S.book.lang||'de').length){          // no voice on this device: fall back to the silent pacer
+    toast(VOICE_HINT()); S.tts=false; LS.set('tts',false); $('#t-tts').classList.remove('on');
+    S.timer=setTimeout(step,delay(S.i)); return;
+  }
+  S.speaking=true;
+  // iOS gives no duration up front, so estimate one: German runs ~14 characters per second at rate 1.
+  const secs=Math.max(0.6,text.length/(14*S.rate));
+  const total=words.reduce((n,w)=>n+w.length+1,0);
+  let acc=0; const at=words.map(w=>{const t=acc;acc+=(w.length+1)/total*secs*1000;return t});
+  const t0=performance.now(); let k=0;
+  const tick=()=>{                                   // own clock, corrected by boundary events when they come
+    if(!S.playing||!S.speaking)return;
+    const el=performance.now()-t0;
+    while(k+1<words.length&&at[k+1]<=el)k++;
+    if(S.i!==a+k){S.i=a+k;show()}
+    S.timer=setTimeout(tick,60);
+  };
+  const u=speakText(text,ok=>{
+    clearTimeout(S.timer); S.speaking=false;
+    if(!S.playing)return;
+    if(!ok||b>=S.book.words.length){S.i=Math.min(b,S.book.words.length-1);pause();return}
+    S.i=b; speakFrom(b);
+  });
+  if(!u){S.speaking=false;return}
+  u.onboundary=e=>{                                  // when Safari does report a word, snap to it
+    if(e.name&&e.name!=='word')return;
+    let pos=0;
+    for(let n=0;n<words.length;n++){ if(pos>=e.charIndex){k=n;break} pos+=words[n].length+1 }
+  };
+  tick();
+}
+//////////////////// word sheet ////////////////////
+let sheetWord=null;
+function openWord(i){
+  pause(); S.i=i; show(false);
+  const word=S.book.words[i], [g,l]=glossOf(word); sheetWord={word:strip(word),lemma:l};
+  $('#w-word').textContent=strip(word);
+  $('#w-lemma').textContent=(l&&l.toLowerCase()!==strip(word).toLowerCase())?'forma de: '+l:'';
+  $('#w-gloss').textContent=g||'—';
+  $('#w-more').textContent=g?'':T('no_entry');
+  $('#w-learned').textContent=isLearned(l)?T('dont_know'):T('know_it');
+  $('#w-unknown').textContent=S.unknown.has(l)?T('known_again'):T('dont_know_it');
+  if(g)remember(strip(word),l,g,i);
+  openSheet('#s-word');
+}
+function markLearned(){
+  if(!sheetWord)return;
+  const l=sheetWord.lemma;
+  if(isLearned(l))S.learned.delete(l); else S.learned.add(l);
+  LS.set('learned',[...S.learned]); $('#n-learned').textContent=S.learned.size;
+  refreshGlosses(); closeSheets();
+}
+
+//////////////////// vocabulary ////////////////////
+function remember(word,lemma,gloss,i){
+  if(!gloss||S.vocab.some(v=>v[1]===lemma))return;
+  S.vocab.push([word,lemma,gloss,S.book.words.slice(sentStart(i),sentEnd(i)).join(' '),S.book.title]);
+  if(S.vocab.length>5000)S.vocab.shift();
+  LS.set('vocab',S.vocab);
+}
+function exportAnki(){
+  if(!S.vocab.length)return toast(T('nothing_to_export'));
+  const head='#separator:tab\n#html:false\n#tags:speedready\n#columns:Word\tLemma\tMeaning\tSentence\tBook\n';
+  const body=S.vocab.map(v=>v.map(x=>String(x).replace(/[\t\n]/g,' ')).join('\t')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([head+body],{type:'text/tab-separated-values'}));
+  a.download='speedready-vocabulary.tsv';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast(T('exported'));
+}
+
+//////////////////// bookmarks ////////////////////
+const marksKey=()=>'marks:'+(S.book?.id||'starter');
+function loadMarks(){S.bookmarks=LS.get(marksKey(),[])}
+function atBookmark(){return S.bookmarks.some(m=>Math.abs(m-S.i)<5)}
+function toggleBookmark(){
+  const hit=S.bookmarks.find(m=>Math.abs(m-S.i)<5);
+  if(hit!==undefined)S.bookmarks=S.bookmarks.filter(m=>m!==hit);
+  else{S.bookmarks.push(S.i);S.bookmarks.sort((a,b)=>a-b)}
+  LS.set(marksKey(),S.bookmarks);buildMarks();updateStar();
+  toast(hit!==undefined?T('remove_bookmark'):T('add_bookmark'));
+}
+function updateStar(){$('#b-mark').textContent=atBookmark()?'★':'☆'}
+function buildMarks(){
+  const box=$('#marks');if(!box)return;box.replaceChildren();
+  if(!S.bookmarks.length){box.textContent=T('no_bookmarks');box.style.color='var(--dim)';box.style.fontSize='13px';return}
+  box.style.color='';box.style.fontSize='';
+  S.bookmarks.forEach(m=>{
+    const b=document.createElement('button');
+    b.textContent=S.book.words.slice(m,m+8).join(' ')+'…';
+    b.onclick=()=>{closeSheets();pause();S.i=m;renderPage(S.i);show();
+      requestAnimationFrame(()=>S.cells[S.i-S.pageA]?.scrollIntoView({block:'center'}))};
+    box.appendChild(b);
+  });
+}
+
+//////////////////// sheets ////////////////////
+function openSheet(sel){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));$(sel).classList.add('on')}
+function closeSheets(){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'))}
+document.querySelectorAll('.sheet').forEach(s=>s.addEventListener('click',e=>{if(e.target===s)closeSheets()}));
+
+//////////////////// persistence ////////////////////
+let saveTimer=null;
+const bookKey=()=>'pos:'+(S.book?.id||'starter');
+const prefsKey=()=>'prefs:'+(S.book?.id||'starter');
+function saveBookPrefs(){if(S.book)LS.set(prefsKey(),{wpm:S.wpm,mode:S.mode,gloss:S.gloss,tts:S.tts})}
+function save(){if(S.book){LS.set(bookKey(),S.i);saveBookPrefs()}}
+function saveSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(save,700)}
+addEventListener('pagehide',save); addEventListener('blur',save);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();save()}});
+
+//////////////////// loading books ////////////////////
+async function loadBook(book,startAt){
+  S.book=book; S.i=Math.min(startAt??LS.get(bookKey(),0),book.words.length-1);
+  const pr=LS.get(prefsKey(),null);                 // each book keeps its own pace and mode
+  if(pr){S.wpm=pr.wpm??S.wpm;S.gloss=pr.gloss??S.gloss;S.tts=pr.tts??S.tts;
+         $('#wpm').textContent=S.wpm;$('#t-gloss').classList.toggle('on',S.gloss);
+         document.body.classList.toggle('plain',!S.gloss);$('#t-tts').classList.toggle('on',S.tts);
+         $('#voice-box').classList.toggle('hidden',!S.tts);}
+  loadMarks();
+  renderPage(S.i); setMode((LS.get(prefsKey(),{}) || {}).mode||'pacer'); buildChapters(); buildMarks(); LS.set('lastBook',book.id==='starter'?'starter':null);
+  requestAnimationFrame(()=>{const c=S.cells[S.i-S.pageA];if(c)c.scrollIntoView({block:'center'})});
+}
+function buildChapters(){
+  const box=$('#chapters'); box.replaceChildren();
+  if(!S.book.chapters.length){box.textContent=T('no_chapters');return}
+  S.book.chapters.forEach(([name,at])=>{
+    const b=document.createElement('button'); b.textContent=name;
+    b.onclick=()=>{closeSheets();pause();S.i=at;renderPage(S.i);show();
+      requestAnimationFrame(()=>S.cells[S.i-S.pageA]?.scrollIntoView({block:'center'}))};
+    box.appendChild(b);
+  });
+}
+function textToBook(text,title,id){
+  const words=[],para=[];
+  for(const p of text.split(/\n\s*\n|\r\n\s*\r\n/)){
+    const ws=p.split(/\s+/).filter(Boolean);
+    if(ws.length){para.push(words.length);words.push(...ws)}
+  }
+  return {id,title,lang:'de',words,para,chapters:[]};
+}
+// --- epub via the browser's own zip inflater (no library) ---
+async function epubToBook(file){
+  const buf=new Uint8Array(await file.arrayBuffer()), dv=new DataView(buf.buffer);
+  let eocd=buf.length-22;
+  while(eocd>0&&dv.getUint32(eocd,true)!==0x06054b50)eocd--;
+  if(eocd<=0)throw new Error('Arquivo .epub inválido');
+  let n=dv.getUint16(eocd+10,true), off=dv.getUint32(eocd+16,true);
+  const files={};
+  for(let k=0;k<n;k++){
+    const nameLen=dv.getUint16(off+28,true),extra=dv.getUint16(off+30,true),cmt=dv.getUint16(off+32,true);
+    const method=dv.getUint16(off+10,true),local=dv.getUint32(off+42,true),csize=dv.getUint32(off+20,true);
+    const name=new TextDecoder().decode(buf.subarray(off+46,off+46+nameLen));
+    files[name]={method,local,csize}; off+=46+nameLen+extra+cmt;
+  }
+  async function read(name){
+    const f=files[name]; if(!f)return null;
+    const nl=dv.getUint16(f.local+26,true), el=dv.getUint16(f.local+28,true);
+    const start=f.local+30+nl+el, raw=buf.subarray(start,start+f.csize);
+    if(f.method===0)return new TextDecoder('utf-8').decode(raw);
+    const ds=new DecompressionStream('deflate-raw');
+    const out=new Response(new Blob([raw]).stream().pipeThrough(ds));
+    return new TextDecoder('utf-8').decode(await out.arrayBuffer());
+  }
+  const container=await read('META-INF/container.xml');
+  const opfPath=container.match(/full-path="([^"]+)"/)[1];
+  const opf=await read(opfPath), dir=opfPath.replace(/[^/]*$/,'');
+  const items={}; for(const m of opf.matchAll(/<item\b[^>]*>/g)){
+    const id=(m[0].match(/id="([^"]+)"/)||[])[1], href=(m[0].match(/href="([^"]+)"/)||[])[1];
+    if(id&&href)items[id]=href;
+  }
+  const parser=new DOMParser(); let words=[],para=[],chapters=[];
+  for(const m of opf.matchAll(/<itemref\b[^>]*idref="([^"]+)"/g)){
+    const href=items[m[1]]; if(!href)continue;
+    const html=await read(dir+decodeURIComponent(href)); if(!html)continue;
+    const doc=parser.parseFromString(html,'text/html');
+    doc.querySelectorAll('style,script').forEach(e=>e.remove());
+    const head=doc.querySelector('h1,h2');
+    if(head&&head.textContent.trim())chapters.push([head.textContent.trim().replace(/\s+/g,' ').slice(0,60),words.length]);
+    for(const el of doc.body.querySelectorAll('p,div,li,h1,h2,h3,blockquote')){
+      if(el.querySelector('p,div,li'))continue;
+      const ws=(el.textContent||'').split(/\s+/).filter(Boolean);
+      if(ws.length){para.push(words.length);words.push(...ws)}
+    }
+  }
+  if(!words.length)throw new Error('Não encontrei texto neste .epub');
+  const title=(opf.match(/<dc:title[^>]*>([^<]+)/)||[])[1]||file.name.replace(/\.epub$/i,'');
+  return {id:'f:'+file.name+':'+file.size,title,lang:(opf.match(/<dc:language[^>]*>(\w\w)/)||[])[1]||'de',words,para,chapters};
+}
+
+//////////////////// boot ////////////////////
+async function fetchJSON(url,onProgress){
+  const res=await fetch(url); if(!res.ok)throw new Error(url+' '+res.status);
+  const total=+res.headers.get('content-length')||0;
+  if(!res.body||!total)return res.json();
+  const reader=res.body.getReader(); const chunks=[]; let got=0;
+  for(;;){const{done,value}=await reader.read(); if(done)break; chunks.push(value); got+=value.length; onProgress?.(got/total)}
+  return JSON.parse(new TextDecoder().decode(await new Blob(chunks).arrayBuffer()));
+}
+async function boot(){
+  if(!S.ui){const dev=(navigator.language||'en').slice(0,2).toLowerCase();S.ui=UI[dev]?dev:'en'}  // follow the device, changeable in settings
+  applyLang();
+  applyTheme(); applySize(); $('#wpm').textContent=S.wpm;
+  $('#t-gloss').classList.toggle('on',S.gloss); $('#t-dark').classList.toggle('on',S.dark);
+  $('#t-tts').classList.toggle('on',S.tts); $('#n-learned').textContent=S.learned.size; $('#n-unknown').textContent=S.unknown.size;
+  setRate(S.rate); $('#voice-box').classList.toggle('hidden',!S.tts);
+  document.body.classList.toggle('plain',!S.gloss);
+  try{
+    S.dict=await fetchJSON('dict-de-pt.json',p=>$('#pct').textContent=Math.round(p*100)+'%');
+    $('#splash-msg').textContent=T('opening');
+    const book=await fetchJSON('starter-de.json'); book.id='starter';
+    await loadBook(book);
+    pickVoice();
+    $('#splash').classList.add('hidden');
+  }catch(e){
+    $('#splash-msg').textContent=T('cannot_open')+e.message;
+    $('#pct').textContent='';
+  }
+}
+function applyTheme(){document.documentElement.dataset.theme=S.dark?'dark':'light';
+  $('meta[name=theme-color]').setAttribute('content',S.dark?'#101012':'#faf9f7')}
+function applySize(){page.style.setProperty('--size',S.size+'px')}
+
+//////////////////// events ////////////////////
+$('#play').onclick=()=>{warmUpSpeech();toggle()};
+$('#b-back').onclick=()=>{const was=S.playing;pause();S.i=sentStart(Math.max(0,S.i-1));show();if(was)play()};
+$('#faster').onclick=()=>setWpm(S.wpm+10); $('#slower').onclick=()=>setWpm(S.wpm-10);
+function setWpm(v){S.wpm=Math.max(40,Math.min(800,v));$('#wpm').textContent=S.wpm;LS.set('wpm',S.wpm);updateHeader();saveBookPrefs()}
+let holdTimer=null,held=false;
+page.addEventListener('pointerdown',e=>{
+  const c=e.target.closest('.c');if(!c)return;
+  held=false;clearTimeout(holdTimer);
+  holdTimer=setTimeout(()=>{
+    held=true;const w=S.book.words[+c.dataset.i];
+    setUnknown(w,!isUnknown(w));
+    toast(isUnknown(w)?T('marked_unknown'):T('known_again'));
+    navigator.vibrate?.(12);
+  },500);
+});
+['pointerup','pointercancel','pointermove'].forEach(ev=>page.addEventListener(ev,()=>clearTimeout(holdTimer)));
+page.addEventListener('click',e=>{
+  if(held){held=false;return}
+  const g=e.target.closest('.g'), c=e.target.closest('.c'); if(!c)return;
+  const i=+c.dataset.i;
+  if(g&&g.textContent){                       // tapping the translation = "I know this word"
+    const[,l]=glossOf(S.book.words[i]); S.learned.add(l); LS.set('learned',[...S.learned]);
+    $('#n-learned').textContent=S.learned.size; refreshGlosses(); return;
+  }
+  openWord(i);
+});
+$('#w-here').onclick=()=>{closeSheets();play()};
+$('#w-learned').onclick=markLearned;
+$('#w-speak').onclick=()=>{warmUpSpeech();sheetWord&&speakText(sheetWord.word)};
+$('#w-web').onclick=()=>sheetWord&&open('https://de.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
+$('#w-unknown').onclick=()=>{
+  if(!sheetWord)return;
+  setUnknown(sheetWord.word,!S.unknown.has(sheetWord.lemma));
+  toast(S.unknown.has(sheetWord.lemma)?T('marked_unknown'):T('known_again'));
+  closeSheets();
+};
+$('#b-mark').onclick=toggleBookmark;
+$('#b-export').onclick=exportAnki;
+$('#t-mode').onclick=()=>{setMode(S.mode==='pacer'?'rsvp':'pacer');saveBookPrefs()};
+$('#b-library').onclick=()=>{buildMarks();openSheet('#s-library')};
+$('#b-settings').onclick=()=>openSheet('#s-settings');
+$('#t-gloss').onclick=e=>{S.gloss=!S.gloss;LS.set('gloss',S.gloss);e.target.classList.toggle('on',S.gloss);
+  document.body.classList.toggle('plain',!S.gloss);refreshGlosses();S.mode==='rsvp'&&drawRsvp();saveBookPrefs()};
+$('#t-dark').onclick=e=>{S.dark=!S.dark;LS.set('dark',S.dark);e.target.classList.toggle('on',S.dark);applyTheme()};
+$('#t-tts').onclick=e=>{
+  warmUpSpeech();                                  // must happen inside the tap for iOS to allow speech later
+  if(!S.tts&&!voicesFor(S.book?.lang||'de').length){toast(VOICE_HINT());return}
+  S.tts=!S.tts;LS.set('tts',S.tts);e.target.classList.toggle('on',S.tts);
+  $('#voice-box').classList.toggle('hidden',!S.tts);
+  if(S.playing){pause();play()}
+};
+function setRate(v){S.rate=Math.max(.5,Math.min(1.6,Math.round(v*10)/10));LS.set('rate',S.rate);$('#rate-val').textContent=S.rate.toFixed(1)+'×'}
+$('#rate-up').onclick=()=>{setRate(S.rate+.1);warmUpSpeech();speakText('So klingt es jetzt.')};
+$('#rate-down').onclick=()=>{setRate(S.rate-.1);warmUpSpeech();speakText('So klingt es jetzt.')};
+$('#size-up').onclick=()=>{S.size=Math.min(30,S.size+1);LS.set('size',S.size);applySize()};
+$('#size-down').onclick=()=>{S.size=Math.max(13,S.size-1);LS.set('size',S.size);applySize()};
+$('#b-forget').onclick=()=>{if(confirm(T('forget_confirm'))){
+  S.learned.clear();LS.set('learned',[]);$('#n-learned').textContent=0;refreshGlosses();S.mode==='rsvp'&&drawRsvp()}};
+$('#b-starter').onclick=async()=>{closeSheets();const b=await fetchJSON('starter-de.json');b.id='starter';loadBook(b)};
+$('#file').onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  closeSheets(); pause(); $('#splash-msg').textContent=T('opening'); $('#pct').textContent='';
+  $('#splash').classList.remove('hidden');
+  try{
+    const book=f.name.toLowerCase().endsWith('.epub')?await epubToBook(f)
+              :textToBook(await f.text(),f.name.replace(/\.[^.]+$/,''),'f:'+f.name+':'+f.size);
+    await loadBook(book);
+  }catch(err){alert(T('cannot_open')+err.message)}
+  $('#splash').classList.add('hidden'); e.target.value='';
+};
+// keyboard, for when she uses it on a laptop
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.key===' '){e.preventDefault();toggle()}
+  else if(e.key==='ArrowRight'){pause();S.i=Math.min(S.book.words.length-1,S.i+10);show()}
+  else if(e.key==='ArrowLeft'){pause();S.i=Math.max(0,S.i-10);show()}
+  else if(e.key==='ArrowUp'){setWpm(S.wpm+10)} else if(e.key==='ArrowDown'){setWpm(S.wpm-10)}
+  else if(e.key==='m'){setMode(S.mode==='pacer'?'rsvp':'pacer');saveBookPrefs()}
+  else if(e.key==='b')toggleBookmark();
+  else if(e.key==='Escape')closeSheets();
+});
+if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+boot();
+</script>
+</body>
+</html>
