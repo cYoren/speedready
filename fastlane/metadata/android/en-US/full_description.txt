@@ -23,7 +23,8 @@ phone, and everything you look up can be exported as an Anki deck.
 <b>Included</b>
 
 German to English and German to Portuguese, with a public-domain German storybook to start
-reading immediately. You can open any EPUB or text file of your own.
+reading immediately. You can open any EPUB or text file of your own, and every book you open
+joins a library that remembers how far through each one you are.
 
 Speedready is free software under the MIT licence. The same reader runs as a desktop
 application on Linux.
