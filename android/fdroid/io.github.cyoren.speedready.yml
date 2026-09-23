@@ -1,0 +1,54 @@
+# Metadata for fdroiddata. Copy to metadata/io.github.cyoren.speedready.yml in
+# https://gitlab.com/fdroid/fdroiddata and open a merge request.
+Categories:
+  - Reading
+  - Science & Education
+License: MIT
+AuthorName: cYoren
+SourceCode: https://github.com/cYoren/speedready
+IssueTracker: https://github.com/cYoren/speedready/issues
+Changelog: https://github.com/cYoren/speedready/releases
+
+AutoName: Speedready
+Summary: Read in another language, with a translation above every word you do not know
+
+Description: |-
+    Speedready is a reader for people learning a language. It carries you through a book at
+    a pace you set, so you keep reading instead of stopping at every unfamiliar word, and it
+    puts the translation right where your eyes already are.
+
+    Above every word you have not marked as known yet sits its translation in your own
+    language. Tap that translation and the word is marked as learned: it disappears from the
+    whole book, and the text gets cleaner as your vocabulary grows.
+
+    While you read:
+
+    * A highlight sweeps through the text at your pace, or flashes one word at a time
+    * Tap a word for its translation, to hear it, or to start reading from there
+    * Hold a word you are still learning: it is underlined everywhere and the pace slows for it
+    * Sentences can be read aloud by the voice already on your device, with the text following
+    * Bookmark a spot, jump between chapters, and pick up where you left off in every book
+
+    The dictionary and a public-domain German storybook ship inside the app. There is no
+    account and no network access, and the app requests no permissions at all. Everything you
+    look up can be exported as an Anki deck. You can open any EPUB or text file of your own.
+
+    The reader is the same code that runs as a desktop application on Linux.
+
+RepoType: git
+Repo: https://github.com/cYoren/speedready.git
+
+Builds:
+  - versionName: 1.0.0
+    versionCode: 1
+    commit: v1.0.0
+    subdir: android/app
+    gradle:
+      - yes
+    # The reader lives in web/ and is pulled in as assets by android/app/build.gradle,
+    # so there is nothing to fetch or generate at build time.
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 1.0.0
+CurrentVersionCode: 1
