@@ -1,8 +1,18 @@
 // Cache everything on first visit so the app works with no connection afterwards.
 const CACHE='speedready-v1';
-const ASSETS=['./','index.html','dict-de-pt.json','starter-de.json','manifest.webmanifest','icon.svg','icon-180.png','icon-512.png'];
+const ASSETS=['./','index.html','bundle.json','manifest.webmanifest','icon.svg','icon-180.png','icon-512.png'];
+// The dictionary and starter book are named in bundle.json, so this build caches whichever
+// language pair it ships without the filenames being written here twice.
+async function precache(){
+  const c=await caches.open(CACHE);
+  await c.addAll(ASSETS);
+  try{
+    const b=await fetch('bundle.json').then(r=>r.json());
+    await c.addAll([b.dict,b.starter].filter(Boolean));
+  }catch(e){/* offline on first load: the fetch handler caches them on first use instead */}
+}
 self.addEventListener('install',e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
+  e.waitUntil(precache().then(()=>self.skipWaiting()));
 });
 self.addEventListener('activate',e=>{
   e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
