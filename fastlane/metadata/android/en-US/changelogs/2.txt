@@ -1,0 +1,2 @@
+Packaging release. The store listing and its screenshots now travel with the source, so
+both stores build the same thing.
