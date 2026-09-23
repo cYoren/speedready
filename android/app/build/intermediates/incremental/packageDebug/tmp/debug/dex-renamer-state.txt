@@ -1,4 +1,4 @@
-#Tue Sep 22 21:03:13 BRT 2026
+#Tue Sep 22 21:13:50 BRT 2026
 base.0=/home/gustvmar/Projects/speedready/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex
 base.1=/home/gustvmar/Projects/speedready/android/app/build/intermediates/dex/debug/mergeProjectDexDebug/12/classes.dex
 path.0=0/classes.dex
