@@ -3,7 +3,8 @@
 
 space play/pause · ←/→ ±10 words · PageUp/PageDown ±page · ↑/↓ speed (shift: coarse) · [ ] chunk size · M mode · R replay sentence
 click a word = continue from there · double-click = dictionary popup (flow resumes when you close it) · right-click = mark unknown
-D define current word · P speak from here to the end of the sentence (again = stop) · A read-along (speech drives the pace) · C chapters · F11 fullscreen · S settings · O open
+D define current word · P speak from here to the end of the sentence (again = stop) · A read-along (speech drives the pace) · C chapters · F11 fullscreen · S settings · O open · L library
+drag epub/txt files onto the window to add them to the library
 Lookups are appended to ~/.config/speedready/vocab.tsv, importable into Anki as-is. Unknown words live in unknown.txt (one lemma per line).
 Beginner mode (settings): a gloss in your mother tongue sits above each word; tap the gloss to mark the word learned.
 """
@@ -30,7 +31,7 @@ DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'follow_margin':0.3,'dim_read':True,'hide_bars_when_playing':True,'pivot_guides':True,'page_words':300,'context_words':40,
  'dict_langs':'en,duden',           # sources in order: a wiktionary language code or 'duden' (German only). Wikimedia rate-limits bursts, so keep it short
  'web_dicts':'de=https://www.duden.de/rechtschreibung/{word}, *=https://{lang}.wiktionary.org/wiki/{word}',  # lang=url, * = fallback
- 'tts_voices':'de=de_DE-thorsten-medium, en=en_US-lessac-medium, fr=fr_FR-siwis-medium, es=es_ES-davefx-medium, it=it_IT-riccardo-x_low, pt=pt_PT-tugão-medium',  # piper voices, downloaded on first use
+ 'tts_voices':'de=de_DE-thorsten-medium, en=en_US-lessac-medium, fr=fr_FR-siwis-medium, es=es_ES-davefx-medium, it=it_IT-riccardo-x_low, pt=pt_PT-tugão-medium, nl=nl_NL-ronnie-medium, pl=pl_PL-gosia-medium, ru=ru_RU-irina-medium, sv=sv_SE-nst-medium',  # piper voices, downloaded on first use
  'tts_speed':1.0,'txt_lang':'de','save_vocab':True,
  'beginner':False,'native_lang':'en','ui_lang':'en','onboarded':False,'translate_provider':'deepl',
  'gloss_threshold':0,'gloss':'#8ab4f8',  # beginner mode: mother-tongue gloss above every word you haven't learned yet (offline pack, downloaded once)
@@ -137,11 +138,18 @@ TEXT={
   'pacer':'Pacer','rsvp':'RSVP','unknown':'unknown','learned':'learned','web_dictionary':'open in web dictionary','pronounce':'pronounce',
   'translate_selected':'Translate selected text','cancel_selection':'Cancel selection','translate_hint':'Select text, or long-press a word and tap the last word.',
   'welcome_title':'Welcome to Speedready','welcome':'Read in another language without losing the flow.','your_language':'Which language do you speak?','continue':'Continue',
-  'reading':'Reading','pauses':'Pauses','look':'Look','dictionary_speech':'Dictionary & speech','beginner_mode':'Beginner mode','language_explanation':'This sets the interface and the language used for translations.',
+  'reading':'Reading','pauses':'Pauses','look':'Look','dictionary_speech':'Dictionary and speech','beginner_mode':'Beginner mode','language_explanation':'This sets the interface and the language used for translations.',
   'settings_title':'Settings','minutes_left':'{minutes} min left','could_not_open':'Could not open: {error}','no_text':'No text found in that file',
   'no_entry':'No entry. Try the web dictionary button.','not_found':'not found','lookup_failed':'lookup failed','words_learned':'{count} words learned','unknown_words':'{count} unknown words',
   'translation_failed':'Could not open the translation: {error}','select_phrase':'Select a phrase first.','native_language':'native language','interface_language':'interface language','translation_provider':'translation provider',
   'bookmark':'Add/remove bookmark (B)','bookmarks':'Bookmarks (Shift+B)','bookmarks_title':'Bookmarks','add_bookmark':'Bookmark this position','remove_bookmark':'Remove bookmark','bookmark_added':'Bookmark added','bookmark_removed':'Bookmark removed','no_bookmarks':'No bookmarks in this book yet.',
+  'beginner':'Show glosses','gloss_ok':'{pair} dictionary ready.','gloss_off':'A gloss in your language above every word you have not learned yet.',
+  'gloss_no_book':'Open a book and its dictionary downloads on first use.','gloss_same_lang':'This book is already in {lang}, so there is nothing to gloss.',
+  'gloss_loading':'Downloading the {pair} dictionary…{progress}','gloss_unavailable':'No {pair} dictionary: {error}. Beginner mode is on, but the words have no gloss.',
+  'open_settings':'Settings','pack_none_published':'none published for this pair yet',
+  'library':'Library (L)','library_title':'Library','add_books':'Add books…','remove_from_library':'Remove from library',
+  'no_books':'No books yet. Add some, or drag them onto the window.','percent_read':'{percent}% read','not_started':'not started','gone':'file has moved or been deleted',
+  'books_added':'{count} books added to the library','not_a_book':'Only .epub and .txt files can be added.',
  },
  'pt':{
   'open':'Abrir (O)','play':'Reproduzir (espaço)','mode':'Modo (M)','words_step':'palavras por passo ( [ ] )','speed':'palavras por minuto (↑ ↓ = 5, shift = 25)',
@@ -154,6 +162,13 @@ TEXT={
   'no_entry':'Nenhuma definição. Tente o dicionário web.','not_found':'não encontrada','lookup_failed':'falha na consulta','words_learned':'{count} palavras aprendidas','unknown_words':'{count} palavras desconhecidas',
   'translation_failed':'Não foi possível abrir a tradução: {error}','select_phrase':'Selecione um trecho primeiro.','native_language':'idioma nativo','interface_language':'idioma da interface','translation_provider':'serviço de tradução',
   'bookmark':'Adicionar/remover favorito (B)','bookmarks':'Favoritos (Shift+B)','bookmarks_title':'Favoritos','add_bookmark':'Salvar esta posição','remove_bookmark':'Remover favorito','bookmark_added':'Posição salva','bookmark_removed':'Favorito removido','no_bookmarks':'Este livro ainda não tem favoritos.',
+  'beginner':'Mostrar traduções','gloss_ok':'Dicionário {pair} pronto.','gloss_off':'Uma tradução no seu idioma acima de cada palavra que você ainda não aprendeu.',
+  'gloss_no_book':'Abra um livro e o dicionário é baixado no primeiro uso.','gloss_same_lang':'Este livro já está em {lang}, então não há o que traduzir.',
+  'gloss_loading':'Baixando o dicionário {pair}…{progress}','gloss_unavailable':'Sem dicionário {pair}: {error}. O modo iniciante está ligado, mas as palavras ficam sem tradução.',
+  'open_settings':'Configurações','pack_none_published':'ainda não publicado para este par',
+  'library':'Biblioteca (L)','library_title':'Biblioteca','add_books':'Adicionar livros…','remove_from_library':'Remover da biblioteca',
+  'no_books':'Nenhum livro ainda. Adicione alguns ou arraste-os para a janela.','percent_read':'{percent}% lido','not_started':'não iniciado','gone':'o arquivo foi movido ou excluído',
+  'books_added':'{count} livros adicionados à biblioteca','not_a_book':'Só é possível adicionar arquivos .epub e .txt.',
  }
 }
 POS='Noun|Proper noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Numeral|Article|Particle|Determiner|Contraction|Phrase'
@@ -163,7 +178,7 @@ strip=lambda w:re.sub(r'^\W+|\W+$','',w)
 def system_lang():
     code=(locale.getlocale()[0] or os.environ.get('LANG','en')).split('_')[0].split('.')[0].lower()
     return code if code in dict(LANGUAGES) else 'en'
-def tr(lang,key,**values):
+def tr(lang,key,/,**values):   # positional-only: a message may legitimately have a {lang} or {key} placeholder
     text=TEXT.get(lang,TEXT['en']).get(key,TEXT['en'].get(key,key.replace('_',' ')))
     return text.format(**values) if values else text
 def atomic_text(path,text):
@@ -176,6 +191,11 @@ def atomic_text(path,text):
     finally:
         if fd is not None:os.close(fd)
 def normalize_book_state(raw):return {'position':raw} if isinstance(raw,int) else dict(raw or {})
+def library_entries(pos):
+    """Every book ever opened, newest first. positions.json is already the library; '_last' is a
+    pointer, not a book, and very old entries were keyed by bare filename before paths were used."""
+    out=[(k,normalize_book_state(v)) for k,v in pos.items() if k!='_last' and k.startswith('/')]
+    return sorted(out,key=lambda kv:kv[1].get('read_at',0),reverse=True)
 def make_translation_url(provider,text,src,tgt):
     if provider=='google':return 'https://translate.google.com/?'+urllib.parse.urlencode({'sl':src,'tl':tgt,'text':text,'op':'translate'})
     return f'https://www.deepl.com/translator#{src}/{tgt}/{urllib.parse.quote(text,safe="")}'
@@ -185,6 +205,10 @@ def lemma_of(w,lang):
     try:return simplemma.lemmatize(w,lang=lang).lower() if simplemma else w.lower()
     except Exception:return w.lower()
 def table(spec):return dict(x.strip().split('=',1) for x in spec.split(',') if '=' in x)
+def merged(cfg,key):
+    """A 'k=v, k=v' setting layered over its default, so a user who customized one language in an
+    older version still picks up the languages added since. Their entries always win."""
+    return {**table(DEFAULTS[key]),**table(cfg[key])}
 
 # ---------------------------------------------------------------- book
 class Html(HTMLParser):
@@ -208,6 +232,18 @@ class NavHtml(HTMLParser):
         if t=='a' and s.href:s.links.append((' '.join(''.join(s.text).split()),s.href));s.href=None
         if t=='nav':s.nav=max(0,s.nav-1);s.nav or setattr(s,'done',True)
     def handle_data(s,d):s.href and s.text.append(d)
+
+def book_title(path):
+    """The name a reader would recognise, for the library list. Reads only container.xml and the OPF,
+    never the book's text. Falls back to the filename, which is all a .txt or a broken epub can offer."""
+    try:
+        if path.lower().endswith('.epub'):
+            z=zipfile.ZipFile(path)
+            opf_path=ET.fromstring(z.read('META-INF/container.xml')).find('.//{*}rootfile').get('full-path')
+            t=' '.join((ET.fromstring(z.read(opf_path)).findtext('.//{*}title') or '').split())
+            if t:return t[:120]
+    except Exception:pass
+    return Path(path).stem.replace('_',' ')[:120]
 
 def read_epub(path):
     """-> [(text, [(title, word_offset_in_text)])] per spine file, lang"""
@@ -237,7 +273,7 @@ def read_epub(path):
 
 class Book:
     def __init__(s,path,txt_lang):
-        s.path=path;s.name=Path(path).name;s.words=[];s.para_start=[];s.chapters=[]
+        s.path=path;s.name=Path(path).name;s.title=book_title(path);s.words=[];s.para_start=[];s.chapters=[]
         if path.lower().endswith('.epub'):
             parts,s.lang=read_epub(path)
             for text,toc in parts:
@@ -364,18 +400,29 @@ class TTS:
         threading.Thread(target=go,daemon=True).start()
 
 class Gloss:
-    """Offline gloss pack (tools/build_pack.py) + the learner's 'learned' list. None until the pack is on disk."""
-    def __init__(s,src,tgt,status,on_ready):
+    """Offline gloss pack (tools/build_pack.py) + the learner's 'learned' list. db stays None until the pack is on disk;
+    error says why it never will be, so beginner mode can say so instead of rendering a page of blank glosses."""
+    def __init__(s,src,tgt,status,on_change):
         s.src,s.tgt=src,tgt;s.path=PACKS/f'gloss-{src}-{tgt}.sqlite';s.learned_file=DIR/f'learned-{src}-{tgt}.txt'
         s.learned=set(s.learned_file.read_text().split()) if s.learned_file.exists() else set();s.cache={};s.db=None
+        s.error=None;s.progress=''
         if s.path.exists():s.db=sqlite3.connect(s.path,check_same_thread=False)
-        else:threading.Thread(target=s.fetch,args=(status,on_ready),daemon=True).start()
-    def fetch(s,status,on_ready):
+        else:threading.Thread(target=s.fetch,args=(status,on_change),daemon=True).start()
+    @property
+    def pair(s):return f'{s.src.upper()}→{s.tgt.upper()}'
+    def fetch(s,status,on_change):
         PACKS.mkdir(parents=True,exist_ok=True);tmp=s.path.with_suffix('.part')
+        def note(pct=''):s.progress=pct;status(f'downloading {s.pair} dictionary…{pct}');GLib.idle_add(on_change)
         try:
-            status(f'downloading {s.src}→{s.tgt} dictionary…');urllib.request.urlretrieve(PACK_URL.format(src=s.src,tgt=s.tgt),tmp,lambda n,b,t:status(f'downloading {s.src}→{s.tgt} dictionary… {n*b*100//max(t,1)}%'))
-            tmp.rename(s.path);s.db=sqlite3.connect(s.path,check_same_thread=False);status('');GLib.idle_add(on_ready)
-        except Exception as e:status(f'no {s.src}→{s.tgt} dictionary pack: {e}')
+            note()  # every 64th block: a 33MB pack is ~4000 callbacks, and each one costs a main-loop hop
+            urllib.request.urlretrieve(PACK_URL.format(src=s.src,tgt=s.tgt),tmp,lambda n,b,t:t>0 and n%64==0 and note(f' {n*b*100//t}%'))
+            tmp.rename(s.path);s.db=sqlite3.connect(s.path,check_same_thread=False);s.progress='';status('')
+        except Exception as e:
+            s.error=pack_error(e);s.progress=''
+            try:tmp.unlink(missing_ok=True)   # urlretrieve leaves the partial behind
+            except OSError:pass
+            status(f'no {s.pair} dictionary: {s.error}')
+        GLib.idle_add(on_change)              # success or failure, the banner needs to hear about it
     def lemma(s,w):
         if not s.db:return w
         for c in dict.fromkeys((w,w.lower(),w.capitalize())):
@@ -415,6 +462,26 @@ class Gloss:
         return g
     def learn(s,lemma,flag=True):
         (s.learned.add if flag else s.learned.discard)(lemma);s.learned_file.write_text('\n'.join(sorted(s.learned))+'\n')
+
+def pack_error(e):
+    """Why a gloss pack did not arrive. A TEXT key when we have words for it, else the system's own message
+    (same convention as every other error here: translate the frame, leave the exception text alone)."""
+    if isinstance(e,urllib.error.HTTPError) and e.code==404:return 'pack_none_published'
+    if isinstance(e,urllib.error.URLError):return f'network error ({e.reason})'
+    return str(e)
+
+GLOSS_OK='gloss_ok'
+BANNER_STATES={'gloss_same_lang','gloss_unavailable','gloss_loading'}  # the rest are silent: nothing is wrong on screen
+def gloss_state(beginner,book_lang,native_lang,gloss):
+    """Beginner mode's gloss layer as a (message key, values) pair, so the UI can never claim glosses it isn't showing."""
+    pair={'pair':f'{(book_lang or "?").upper()}→{native_lang.upper()}'}
+    if not beginner:return('gloss_off',{})
+    if not book_lang:return('gloss_no_book',{})
+    if book_lang==native_lang:return('gloss_same_lang',{'lang':native_lang.upper()})
+    if gloss is None or (gloss.src,gloss.tgt)!=(book_lang,native_lang):return('gloss_loading',dict(pair,progress=''))
+    if gloss.db:return(GLOSS_OK,pair)
+    if gloss.error:return('gloss_unavailable',dict(pair,error=gloss.error))
+    return('gloss_loading',dict(pair,progress=gloss.progress))
 
 # ---------------------------------------------------------------- widgets
 class WordView(Gtk.TextView):
@@ -530,7 +597,7 @@ class Win(Adw.ApplicationWindow):
         s.bookmarks=json.loads(BOOKMARKS.read_text()) if BOOKMARKS.exists() else {}
         s.seen={l.split('\t')[1].lower() for l in VOCAB.read_text().splitlines() if '\t' in l and not l.startswith('#')} if VOCAB.exists() else set()
         s.unknown=set(UNKNOWN.read_text().split()) if UNKNOWN.exists() else set()
-        s.book=None;s.i=0;s.timer=None;s.save_timer=None;s.playing=False;s.ra=False;s.token=0;s.dict=Dict();s.tts=TTS();s.gloss=None;s.req=0;s.resume=False;s.css=Gtk.CssProvider()
+        s.book=None;s.i=0;s.timer=None;s.save_timer=None;s.playing=False;s.ra=False;s.token=0;s.dict=Dict();s.tts=TTS();s.gloss=None;s.beginner_row=None;s.req=0;s.resume=False;s.css=Gtk.CssProvider()
         s.selection_text='';s.selection_owner=None;s.page_selection_anchor=None
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),s.css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         Adw.StyleManager.get_default().set_color_scheme(Adw.ColorScheme.PREFER_DARK)
@@ -538,7 +605,8 @@ class Win(Adw.ApplicationWindow):
         hb=Adw.HeaderBar();s.prog=Adw.WindowTitle();hb.set_title_widget(s.prog);s.tip_widgets={}
         def B(icon,tip,cb):
             b=Gtk.Button(icon_name=icon,tooltip_text=s.t(tip));b.connect('clicked',lambda *_:cb());b.set_focus_on_click(False);s.tip_widgets[tip]=b;return b
-        s.openbtn=B('document-open-symbolic','open',s.open);hb.pack_start(s.openbtn);s.playbtn=B('media-playback-start-symbolic','play',s.toggle);hb.pack_start(s.playbtn)
+        s.openbtn=B('document-open-symbolic','open',s.open);hb.pack_start(s.openbtn)
+        s.librarybtn=B('document-open-recent-symbolic','library',s.library);hb.pack_start(s.librarybtn);s.playbtn=B('media-playback-start-symbolic','play',s.toggle);hb.pack_start(s.playbtn)
         s.modebtn=Gtk.Button(tooltip_text=s.t('mode'));s.tip_widgets['mode']=s.modebtn;s.modebtn.set_focus_on_click(False);s.modebtn.connect('clicked',lambda *_:s.toggle_mode());hb.pack_start(s.modebtn)
         s.chunk=Gtk.SpinButton.new_with_range(1,8,1);s.chunk.set_tooltip_text(s.t('words_step'));s.tip_widgets['words_step']=s.chunk;s.chunk.connect('value-changed',lambda w:s.reading_pref_changed('chunk',int(w.get_value())));hb.pack_start(s.chunk)
         s.wpm=Gtk.SpinButton.new_with_range(50,1500,5);s.wpm.set_increments(5,25);s.wpm.set_tooltip_text(s.t('speed'));s.tip_widgets['speed']=s.wpm;s.wpm.set_width_chars(5)
@@ -574,7 +642,9 @@ class Win(Adw.ApplicationWindow):
         s.sel_close=Gtk.Button(icon_name='window-close-symbolic',tooltip_text=s.t('cancel_selection'));s.sel_close.connect('clicked',lambda *_:s.clear_selection());actions.append(s.sel_close)
         s.sel_revealer=Gtk.Revealer(child=actions,transition_type=Gtk.RevealerTransitionType.SLIDE_UP,reveal_child=False)
         bottom=Gtk.Box(orientation=Gtk.Orientation.VERTICAL);bottom.append(s.sel_revealer);bottom.append(s.pbar)
-        s.tv=Adw.ToolbarView(content=s.split,top_bar_style=Adw.ToolbarStyle.FLAT);s.tv.add_top_bar(hb);s.tv.add_bottom_bar(bottom);s.set_content(s.tv)
+        s.banner=Adw.Banner(revealed=False)  # beginner mode's gloss layer failing silently is what this is for
+        s.banner.connect('button-clicked',lambda *_:s.settings())
+        s.tv=Adw.ToolbarView(content=s.split,top_bar_style=Adw.ToolbarStyle.FLAT);s.tv.add_top_bar(hb);s.tv.add_top_bar(s.banner);s.tv.add_bottom_bar(bottom);s.set_content(s.tv)
         # dictionary popup
         s.pop=Adw.Dialog(content_width=560,content_height=440,follows_content_size=False);s.pop.connect('closed',lambda *_:s.resume and s.play())
         s.pop_title=Adw.WindowTitle();hb2=Adw.HeaderBar(title_widget=s.pop_title)
@@ -586,10 +656,14 @@ class Win(Adw.ApplicationWindow):
         s.defn=Gtk.TextView(editable=False,cursor_visible=False,wrap_mode=Gtk.WrapMode.WORD_CHAR,left_margin=20,right_margin=20,top_margin=12,bottom_margin=12,css_classes=['defn'])
         db=s.defn.get_buffer();s.tag_src=db.create_tag('src')
         pv=Adw.ToolbarView(content=Gtk.ScrolledWindow(child=s.defn,hscrollbar_policy=Gtk.PolicyType.NEVER));pv.add_top_bar(hb2);s.pop.set_child(pv)
+        drop=Gtk.DropTarget.new(Gdk.FileList,Gdk.DragAction.COPY)   # drag books straight onto the window
+        drop.connect('drop',lambda _t,v,_x,_y:bool(s.add_books([f.get_path() for f in v.get_files()])) or True)
+        s.add_controller(drop)
         k=Gtk.EventControllerKey();k.connect('key-pressed',s.key);s.add_controller(k)
         s.connect('close-request',lambda *_:s.save())
         s.apply()
         path=path or s.pos.get('_last');path and Path(path).exists() and s.load(path)
+        if not s.book and s.cfg['onboarded']:GLib.idle_add(s.library)
         if not s.cfg['onboarded'] and not os.environ.get('SPEEDREADY_SKIP_ONBOARDING'):GLib.idle_add(s.onboarding)
         if os.environ.get('SPEEDREADY_SHOT'):GLib.timeout_add(1500,s.shot)  # dev: render the window to a png
     def shot(s):
@@ -600,7 +674,7 @@ class Win(Adw.ApplicationWindow):
         return node is None
 
     # ---- language / onboarding
-    def t(s,key,**values):return tr(s.cfg.get('ui_lang','en'),key,**values)
+    def t(s,key,/,**values):return tr(s.cfg.get('ui_lang','en'),key,**values)
     def write_cfg(s):atomic_text(CFG_FILE,json.dumps(s.cfg,indent=1,ensure_ascii=False))
     def refresh_ui_text(s):
         for key,w in s.tip_widgets.items():w.set_tooltip_text(s.t(key))
@@ -608,7 +682,7 @@ class Win(Adw.ApplicationWindow):
         s.sel_close.set_tooltip_text(s.t('cancel_selection'));s.unkbtn.set_label(s.t('unknown'));s.learnbtn.set_label(s.t('learned'));s.set_mode(s.cfg['mode'])
         s.menu_model.remove_all()            # menu labels are translated too
         for key in('settings','shortcuts','about'):s.menu_model.append(s.t(key),'win.'+key)
-        s.show()
+        s.update_banner();s.show()
     def onboarding(s):
         """First run: pick a language. A list, not a dropdown - a ComboRow popup is clipped inside a dialog."""
         d=Adw.Dialog(title='Speedready',content_width=460,content_height=680,can_close=False)  # first run must pick a language
@@ -651,7 +725,7 @@ class Win(Adw.ApplicationWindow):
         items=[('Reading',[('space','Play / pause'),('Left Right','Skip ten words'),('Page_Up Page_Down','Skip a page'),
                            ('Up Down','Speed'),('bracketleft bracketright','Words per step'),('m','Pacer or RSVP'),('r','Replay sentence')]),
                ('Words',[('d','Define the current word'),('p','Speak from here'),('a','Read along')]),
-               ('Navigation',[('c','Chapters'),('b','Bookmark'),('<shift>b','Bookmarks'),('o','Open a book'),
+               ('Navigation',[('c','Chapters'),('b','Bookmark'),('<shift>b','Bookmarks'),('o','Open a book'),('l','Library'),
                               ('s','Settings'),('F11','Fullscreen'),('<ctrl>question','This list')])]
         if hasattr(Adw,'ShortcutsDialog'):
             d=Adw.ShortcutsDialog()
@@ -725,14 +799,56 @@ class Win(Adw.ApplicationWindow):
         acts={K.KEY_space:s.toggle,K.KEY_Left:lambda:s.jump(-10),K.KEY_Right:lambda:s.jump(10),K.KEY_Up:lambda:s.wpm.set_value(s.cfg['wpm']+big),K.KEY_Down:lambda:s.wpm.set_value(s.cfg['wpm']-big),
               K.KEY_Page_Down:lambda:s.jump(s.cfg['page_words']),K.KEY_Page_Up:lambda:s.jump(-s.cfg['page_words']),
               K.KEY_bracketleft:lambda:s.chunk.set_value(s.cfg['chunk']-1),K.KEY_bracketright:lambda:s.chunk.set_value(s.cfg['chunk']+1),K.KEY_m:s.toggle_mode,K.KEY_r:s.replay,
-              K.KEY_d:lambda:s.lookup(s.i),K.KEY_p:s.speak,K.KEY_a:lambda:s.rabtn.set_active(not s.ra),K.KEY_c:lambda:s.split.set_show_sidebar(not s.split.get_show_sidebar()),K.KEY_o:s.open,K.KEY_s:s.settings,K.KEY_F11:s.toggle_full,K.KEY_Escape:lambda:(s.tts.stop_audio(),s.unfullscreen())}
+              K.KEY_d:lambda:s.lookup(s.i),K.KEY_p:s.speak,K.KEY_a:lambda:s.rabtn.set_active(not s.ra),K.KEY_c:lambda:s.split.set_show_sidebar(not s.split.get_show_sidebar()),K.KEY_o:s.open,K.KEY_l:s.library,K.KEY_s:s.settings,K.KEY_F11:s.toggle_full,K.KEY_Escape:lambda:(s.tts.stop_audio(),s.unfullscreen())}
         if kv in acts:acts[kv]();return True
         return False
 
     # ---- book
+    def book_filter(s):
+        f=Gtk.FileFilter();f.set_name('Books');f.add_pattern('*.epub');f.add_pattern('*.txt');return f
     def open(s):
-        f=Gtk.FileFilter();f.set_name('Books');f.add_pattern('*.epub');f.add_pattern('*.txt')
-        d=Gtk.FileDialog(default_filter=f);d.open(s,None,lambda d,r:s.load(d.open_finish(r).get_path()))
+        """Pick several at once: the rest join the library instead of being forgotten."""
+        d=Gtk.FileDialog(default_filter=s.book_filter())
+        def done(d,r):
+            try:files=d.open_multiple_finish(r)
+            except GLib.Error:return                      # dismissed
+            s.add_books([files.get_item(i).get_path() for i in range(files.get_n_items())])
+        d.open_multiple(s,None,done)
+    def add_books(s,paths):
+        """Register every path, open the first. Nothing is parsed here - a row only needs its filename,
+        and the word count arrives the first time the book is actually read."""
+        paths=[p for p in paths if p and Path(p).suffix.lower() in('.epub','.txt')]
+        if not paths:return s.status(s.t('not_a_book'))
+        for p in paths:
+            key=str(Path(p).expanduser().resolve())
+            if key not in s.pos:s.pos[key]={'position':0,'title':book_title(p),'read_at':time.time()}
+        s.load(paths[0])
+        if len(paths)>1:s.status(s.t('books_added',count=len(paths)))
+    def library(s):
+        d=Adw.Dialog(title=s.t('library_title'),content_width=620,content_height=560,follows_content_size=False)
+        hb=Adw.HeaderBar();add=Gtk.Button(label=s.t('add_books'),css_classes=['suggested-action']);hb.pack_start(add)
+        box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12,margin_top=12,margin_bottom=18,margin_start=18,margin_end=18)
+        lb=Gtk.ListBox(css_classes=['boxed-list'],selection_mode=Gtk.SelectionMode.NONE);empty=Gtk.Label(css_classes=['dim-label'],margin_top=40,wrap=True)
+        box.append(lb);box.append(empty);view=Adw.ToolbarView(content=box);view.add_top_bar(hb);d.set_child(view)
+        def refresh(*_):
+            lb.remove_all();books=library_entries(s.pos);empty.set_label(s.t('no_books'));empty.set_visible(not books)
+            for path,st in books:
+                here=Path(path).exists();n=st.get('n') or 0;i=st.get('position',0)
+                sub=s.t('gone') if not here else s.t('percent_read',percent=int(i*100/n)) if n else s.t('not_started')
+                row=Adw.ActionRow(title=html.escape(st.get('title') or Path(path).name),subtitle=sub,activatable=here,tooltip_text=path)
+                if not here:row.add_css_class('dim-label')
+                row.connect('activated',lambda _r,p=path:(d.close(),s.load(p)))
+                rm=Gtk.Button(icon_name='edit-delete-symbolic',tooltip_text=s.t('remove_from_library'),valign=Gtk.Align.CENTER)
+                def forget(*_,p=path):s.pos.pop(p,None);s.save();refresh()
+                rm.connect('clicked',forget);row.add_suffix(rm);lb.append(row)
+        def pick(*_):
+            fd=Gtk.FileDialog(default_filter=s.book_filter())
+            def done(fd,r):
+                try:files=fd.open_multiple_finish(r)
+                except GLib.Error:return
+                d.close();s.add_books([files.get_item(i).get_path() for i in range(files.get_n_items())])
+            fd.open_multiple(d,None,done)
+        add.connect('clicked',pick);refresh();d.present(s)
     def load(s,p):
         s.stop()
         try:s.book=Book(p,s.cfg['txt_lang'])
@@ -741,14 +857,29 @@ class Win(Adw.ApplicationWindow):
         key=s.book_key();state=normalize_book_state(s.pos.get(key,s.pos.get(s.book.name,0)))
         for k in BOOK_PREFS:
             if k in state:s.cfg[k]=state[k]
-        s.i=min(state.get('position',0),s.book.n-1);s.ra=bool(state.get('read_along',False));s.pos['_last']=p;s.set_title(f'Speedready · {s.book.name}');s.pacer.a=s.pacer.b=0
+        s.i=min(state.get('position',0),s.book.n-1);s.ra=bool(state.get('read_along',False));s.pos['_last']=p;s.set_title(f'Speedready · {s.book.title}');s.pacer.a=s.pacer.b=0
         s.chapters.remove_all()
         for t,i in s.book.chapters:row=Gtk.ListBoxRow(child=Gtk.Label(label=t,xalign=0,wrap=True,margin_start=10,margin_end=10,margin_top=6,margin_bottom=6));row.idx=i;s.chapters.append(row)
         s.chapbtn.set_sensitive(bool(s.book.chapters));s.wpm.set_value(s.cfg['wpm']);s.chunk.set_value(s.cfg['chunk']);s.setup_gloss();s.rabtn.set_active(s.ra);s.set_mode(s.cfg['mode']);s.show();s.save();GLib.idle_add(s.restore_position_view)
     def setup_gloss(s):
         want=s.cfg['beginner'] and s.book and s.book.lang!=s.cfg['native_lang']
-        if want and not(s.gloss and (s.gloss.src,s.gloss.tgt)==(s.book.lang,s.cfg['native_lang'])):s.gloss=Gloss(s.book.lang,s.cfg['native_lang'],s.status,lambda:(s.page.refresh_gloss(),s.show()) and False)
+        if want and not(s.gloss and (s.gloss.src,s.gloss.tgt)==(s.book.lang,s.cfg['native_lang'])):s.gloss=Gloss(s.book.lang,s.cfg['native_lang'],s.status,s.gloss_changed)
         if not want:s.gloss=None
+        s.update_banner()
+    def gloss_changed(s):
+        s.page.refresh_gloss();s.update_banner();s.show();return False   # idle_add callback: False = do not repeat
+    def gloss_message(s):
+        """-> (state key, translated message). The one place the UI is told what beginner mode is really doing."""
+        key,values=gloss_state(s.cfg['beginner'],s.book.lang if s.book else None,s.cfg['native_lang'],s.gloss)
+        if values.get('error') in TEXT['en']:values=dict(values,error=s.t(values['error']))  # a key, not a system message
+        return key,s.t(key,**values)
+    def update_banner(s):
+        key,msg=s.gloss_message()
+        s.banner.set_title(msg);s.banner.set_button_label('' if key=='gloss_loading' else s.t('open_settings'))
+        s.banner.set_revealed(key in BANNER_STATES)
+        if s.beginner_row:
+            s.beginner_row.set_subtitle(msg)
+            (s.beginner_row.add_css_class if key=='gloss_unavailable' else s.beginner_row.remove_css_class)('error')
     def status(s,msg):GLib.idle_add(s.prog.set_subtitle,msg)
     def book_key(s):return str(Path(s.book.path).expanduser().resolve()) if s.book else ''
     def save_later(s):
@@ -756,7 +887,8 @@ class Win(Adw.ApplicationWindow):
     def flush_position(s):
         s.save_timer=None
         if s.book:
-            state={'position':s.i,**{k:s.cfg[k] for k in BOOK_PREFS},'read_along':s.ra};s.pos[s.book_key()]=state;s.pos['_last']=s.book.path
+            state={'position':s.i,**{k:s.cfg[k] for k in BOOK_PREFS},'read_along':s.ra,'n':s.book.n,'title':s.book.title,'read_at':time.time()}
+            s.pos[s.book_key()]=state;s.pos['_last']=s.book.path
         atomic_text(POS_FILE,json.dumps(s.pos,ensure_ascii=False));return False
     def save(s):
         if s.save_timer is not None:GLib.source_remove(s.save_timer);s.save_timer=None
@@ -863,7 +995,7 @@ class Win(Adw.ApplicationWindow):
         if s.playing:s.stop();s.play()
     def ra_scale(s,name):return max(0.5,min(2.0,s.tts.natural_rate(name,s.status)*60/s.cfg['wpm']))*s.cfg['tts_speed']
     def ra_sentence(s):
-        b=s.book;a=s.i;e=b.sent_end(a);name=table(s.cfg['tts_voices']).get(b.lang)  # starts exactly where you are, to the end of the sentence
+        b=s.book;a=s.i;e=b.sent_end(a);name=merged(s.cfg,'tts_voices').get(b.lang)  # starts exactly where you are, to the end of the sentence
         if not name:s.status(f'no voice for "{b.lang}", falling back to the pacer');s.rabtn.set_active(False);return
         tok=s.token;text=' '.join(b.words[a:e])
         def go():
@@ -929,13 +1061,13 @@ class Win(Adw.ApplicationWindow):
         for src,t in entries:src and b.insert_with_tags(b.get_end_iter(),src+'\n',s.tag_src);b.insert(b.get_end_iter(),t+'\n\n')
         return False
     def web_url(s):
-        t=table(s.cfg['web_dicts']);lang=s.book.lang;url=t.get(lang) or t.get('*') or 'https://{lang}.wiktionary.org/wiki/{word}';w=s.lemma or s.word
+        t=merged(s.cfg,'web_dicts');lang=s.book.lang;url=t.get(lang) or t.get('*') or 'https://{lang}.wiktionary.org/wiki/{word}';w=s.lemma or s.word
         if 'duden' in url:w=w.translate(str.maketrans({'ä':'ae','ö':'oe','ü':'ue','Ä':'Ae','Ö':'Oe','Ü':'Ue','ß':'sz'}))
         return url.format(word=urllib.parse.quote(w),lang=lang)
     def webdict(s):Gtk.UriLauncher(uri=s.web_url()).launch(s,None,None)
     def say(s,text):
         if not s.book or not text:return
-        name=table(s.cfg['tts_voices']).get(s.book.lang)
+        name=merged(s.cfg,'tts_voices').get(s.book.lang)
         if not name:return s.status(f'no voice configured for "{s.book.lang}" (settings → tts voices)')
         s.tts.say(text,name,s.status)
     def speaking(s):p=s.tts.proc;return bool(p) and p.poll() is None
@@ -951,6 +1083,7 @@ class Win(Adw.ApplicationWindow):
     # ---- settings
     def settings(s):
         d=Adw.PreferencesDialog(title=s.t('settings_title'));page=Adw.PreferencesPage();d.add(page)
+        d.connect('closed',lambda *_:setattr(s,'beginner_row',None))  # stop refreshing a row that is gone
         groups={s.t('reading'):('mode','wpm','chunk','follow_margin','dim_read','hide_bars_when_playing','pivot_guides','page_words','context_words'),
                 s.t('pauses'):('sentence_pause','comma_pause','paragraph_pause','long_word_len','long_word_pause','unknown_pause'),
                 s.t('look'):('font_text','text_size','font_word','word_size','bg','fg','dim','pivot','highlight','panel','accent','unknown'),
@@ -974,6 +1107,7 @@ class Win(Adw.ApplicationWindow):
                     r.connect('notify::selected',lambda r,_:upd('translate_provider',opts[r.get_selected()]))
                 elif isinstance(v,bool):
                     r=Adw.SwitchRow(title=title,active=v);r.connect('notify::active',lambda r,_,k=k:upd(k,r.get_active()))
+                    if k=='beginner':s.beginner_row=r;s.update_banner()  # the switch can't say "on, but no dictionary"; its subtitle can
                 elif isinstance(v,(int,float)):
                     lo,hi,st=RANGES.get(k,(0.5,10,0.1));r=Adw.SpinRow.new_with_range(lo,hi,st);r.set_title(title);r.set_digits(0 if isinstance(v,int) else 2 if st<0.1 else 1);r.set_value(v)
                     r.connect('notify::value',lambda r,_,k=k,t=type(v):upd(k,t(r.get_value())))
