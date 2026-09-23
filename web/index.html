@@ -248,7 +248,7 @@ const UI={
      forget_all:'Forget all',about:'About',language:'Language',
      about_text:'Offline dictionary built from Wiktionary and MUSE. Starter book: Japanische Märchen, public domain, from Project Gutenberg. Everything works without a connection after the first load.',
      no_chapters:'This book has no chapters.',no_entry:'This word is not in the offline dictionary. Tap Dictionary to look it up online.',
-     forget_confirm:'Forget every word you marked as known?',cannot_open:'Could not open: ',
+     forget_confirm:'Forget every word you marked as known?',cannot_open:'Could not open: ',no_text_epub:'No text found in this .epub',
      no_voice_ios:'No voice for this language is installed. On iPhone: Settings › Accessibility › Spoken Content › Voices.',
      no_voice_android:'No voice for this language is installed. Open Settings › System › Languages › Text-to-speech output to add one.',
      no_voice:'No voice for this language is installed on this device.',
@@ -274,7 +274,7 @@ const UI={
      forget_all:'Esquecer todas',about:'Sobre',language:'Idioma',
      about_text:'Dicionário offline feito a partir do Wiktionary e do MUSE. Livro inicial: Japanische Märchen, domínio público, do Project Gutenberg. Tudo funciona sem conexão depois da primeira abertura.',
      no_chapters:'Este livro não tem capítulos.',no_entry:'Esta palavra não está no dicionário offline. Toque em Dicionário para ver na internet.',
-     forget_confirm:'Esquecer todas as palavras marcadas como sabidas?',cannot_open:'Não foi possível abrir: ',
+     forget_confirm:'Esquecer todas as palavras marcadas como sabidas?',cannot_open:'Não foi possível abrir: ',no_text_epub:'Nenhum texto encontrado neste .epub',
      no_voice_ios:'Nenhuma voz deste idioma instalada. No iPhone: Ajustes › Acessibilidade › Conteúdo Falado › Vozes.',
      no_voice_android:'Nenhuma voz deste idioma instalada. Abra Configurações › Sistema › Idiomas › Saída de texto para voz.',
      no_voice:'Nenhuma voz deste idioma está instalada neste aparelho.',
@@ -290,6 +290,9 @@ const UI={
      marked_unknown:'Marcada como em aprendizado',hold_hint:'Segure uma palavra para marcá-la como em aprendizado.'},
 };
 const LANGS=[['en','English'],['pt','Português (Brasil)']];   // grows as the gloss packs do
+// Which language this build reads and glosses into comes from bundle.json and the dictionary's own
+// src/tgt fields, so swapping the shipped pair is a rebuild of the assets, not an edit to this file.
+const srcLang=()=>S.book?.lang||S.dict?.src||'en';
 function T(k){return (UI[S.ui]||UI.en)[k]??UI.en[k]??k}
 function buildLangList(){
   const box=$('#langs');if(!box)return;box.replaceChildren();
@@ -314,7 +317,7 @@ function applyLang(){
 //////////////////// state ////////////////////
 const LS={get:(k,d)=>{try{const v=localStorage.getItem('sr:'+k);return v===null?d:JSON.parse(v)}catch{return d}},
           set:(k,v)=>{try{localStorage.setItem('sr:'+k,JSON.stringify(v))}catch{}}};
-const S={dict:null,book:null,i:0,timer:null,playing:false,cells:[],pageA:0,pageB:0,
+const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],pageA:0,pageB:0,
          ui:LS.get('ui',null),mode:'pacer',
          unknown:new Set(LS.get('unknown',[])),vocab:LS.get('vocab',[]),bookmarks:[],
          wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',true),
@@ -332,8 +335,11 @@ const strip=w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
 function glossOf(word){            // -> [gloss|null, lemma]
   const w=strip(word); if(!w||!S.dict) return [null,w];
   const o=S.dict.o[w.toLowerCase()]; if(o) return [o[0],o[1]];
-  const lemma=S.dict.f[w]||S.dict.f[w.toLowerCase()]||
-              (S.dict.g[w]?w:null)||S.dict.f[w[0].toUpperCase()+w.slice(1)]||
+  // An exact-case hit beats any lowercased form lookup: German capitalisation is what separates
+  // the noun from the verb, and 'Haus'/'haus' would otherwise resolve through 'hausen' and gloss
+  // a house as "to live in squalor". Same reason the desktop scorer prefers an exact match.
+  const lemma=S.dict.f[w]||(S.dict.g[w]?w:null)||S.dict.f[w.toLowerCase()]||
+              S.dict.f[w[0].toUpperCase()+w.slice(1)]||
               (S.dict.g[w.toLowerCase()]?w.toLowerCase():w);
   return [S.dict.g[lemma]||S.dict.g[w]||S.dict.g[w.toLowerCase()]||null,lemma];
 }
@@ -499,7 +505,7 @@ function voicesFor(lang){
   return (speechSynthesis.getVoices()||[]).filter(v=>v&&v.lang&&v.lang.toLowerCase().startsWith(lang.toLowerCase()));
 }
 function pickVoice(){
-  const list=voicesFor(S.book?.lang||'de');
+  const list=voicesFor(srcLang());
   S.voice=list.find(v=>v.name===S.voiceName)
         ||list.find(v=>/enhanced|premium|neural|siri/i.test(v.name))   // the good iOS voices
         ||list.find(v=>/google|anna|petra|markus|yannick/i.test(v.name))
@@ -510,7 +516,7 @@ function pickVoice(){
 HAS_SPEECH&&speechSynthesis.addEventListener?.('voiceschanged',pickVoice);
 function buildVoiceList(){
   const box=$('#voices'); if(!box)return;
-  const list=voicesFor(S.book?.lang||'de');
+  const list=voicesFor(srcLang());
   box.replaceChildren();
   if(!list.length){box.innerHTML='<p style="color:var(--dim);font-size:13px;line-height:1.5;margin:6px 0">'+VOICE_HINT()+'</p>';return}
   list.forEach(v=>{
@@ -526,9 +532,9 @@ let keepAlive=null;
 function speakText(text,onDone){
   if(!HAS_SPEECH){toast(T('no_voice'));onDone?.(false);return null}
   speechSynthesis.cancel();
-  if(!pickVoice()&&!voicesFor(S.book?.lang||'de').length){toast(VOICE_HINT());onDone?.(false);return null}
+  if(!pickVoice()&&!voicesFor(srcLang()).length){toast(VOICE_HINT());onDone?.(false);return null}
   const u=new SpeechSynthesisUtterance(text);
-  u.lang=(S.voice&&S.voice.lang)||'de-DE'; if(S.voice)u.voice=S.voice;
+  u.lang=(S.voice&&S.voice.lang)||srcLang(); if(S.voice)u.voice=S.voice;
   u.rate=S.rate; u.pitch=1;
   clearInterval(keepAlive);                       // iOS drops long speech unless it is nudged
   keepAlive=setInterval(()=>{if(speechSynthesis.speaking&&!speechSynthesis.paused)speechSynthesis.resume();else clearInterval(keepAlive)},4000);
@@ -547,7 +553,7 @@ function warmUpSpeech(){
 function speakFrom(i){
   const a=i, b=sentEnd(a), words=S.book.words.slice(a,b), text=words.join(' ');
   S.i=a; show();
-  if(!voicesFor(S.book.lang||'de').length){          // no voice on this device: fall back to the silent pacer
+  if(!voicesFor(srcLang()).length){          // no voice on this device: fall back to the silent pacer
     toast(VOICE_HINT()); S.tts=false; LS.set('tts',false); $('#t-tts').classList.remove('on');
     S.timer=setTimeout(step,delay(S.i)); return;
   }
@@ -686,7 +692,7 @@ function textToBook(text,title,id){
     const ws=p.split(/\s+/).filter(Boolean);
     if(ws.length){para.push(words.length);words.push(...ws)}
   }
-  return {id,title,lang:'de',words,para,chapters:[]};
+  return {id,title,lang:S.dict?.src||'en',words,para,chapters:[]};
 }
 // --- epub via the browser's own zip inflater (no library) ---
 async function epubToBook(file){
@@ -732,9 +738,9 @@ async function epubToBook(file){
       if(ws.length){para.push(words.length);words.push(...ws)}
     }
   }
-  if(!words.length)throw new Error('Não encontrei texto neste .epub');
+  if(!words.length)throw new Error(T('no_text_epub'));
   const title=(opf.match(/<dc:title[^>]*>([^<]+)/)||[])[1]||file.name.replace(/\.epub$/i,'');
-  return {id:'f:'+file.name+':'+file.size,title,lang:(opf.match(/<dc:language[^>]*>(\w\w)/)||[])[1]||'de',words,para,chapters};
+  return {id:'f:'+file.name+':'+file.size,title,lang:(opf.match(/<dc:language[^>]*>(\w\w)/)||[])[1]||S.dict?.src||'en',words,para,chapters};
 }
 
 //////////////////// boot ////////////////////
@@ -755,9 +761,10 @@ async function boot(){
   setRate(S.rate); $('#voice-box').classList.toggle('hidden',!S.tts);
   document.body.classList.toggle('plain',!S.gloss);
   try{
-    S.dict=await fetchJSON('dict-de-pt.json',p=>$('#pct').textContent=Math.round(p*100)+'%');
+    S.bundle=await fetchJSON('bundle.json');
+    S.dict=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%');
     $('#splash-msg').textContent=T('opening');
-    const book=await fetchJSON('starter-de.json'); book.id='starter';
+    const book=await fetchJSON(S.bundle.starter); book.id='starter';
     await loadBook(book);
     pickVoice();
     $('#splash').classList.add('hidden');
@@ -817,7 +824,7 @@ $('#t-gloss').onclick=e=>{S.gloss=!S.gloss;LS.set('gloss',S.gloss);e.target.clas
 $('#t-dark').onclick=e=>{S.dark=!S.dark;LS.set('dark',S.dark);e.target.classList.toggle('on',S.dark);applyTheme()};
 $('#t-tts').onclick=e=>{
   warmUpSpeech();                                  // must happen inside the tap for iOS to allow speech later
-  if(!S.tts&&!voicesFor(S.book?.lang||'de').length){toast(VOICE_HINT());return}
+  if(!S.tts&&!voicesFor(srcLang()).length){toast(VOICE_HINT());return}
   S.tts=!S.tts;LS.set('tts',S.tts);e.target.classList.toggle('on',S.tts);
   $('#voice-box').classList.toggle('hidden',!S.tts);
   if(S.playing){pause();play()}
@@ -829,7 +836,7 @@ $('#size-up').onclick=()=>{S.size=Math.min(30,S.size+1);LS.set('size',S.size);ap
 $('#size-down').onclick=()=>{S.size=Math.max(13,S.size-1);LS.set('size',S.size);applySize()};
 $('#b-forget').onclick=()=>{if(confirm(T('forget_confirm'))){
   S.learned.clear();LS.set('learned',[]);$('#n-learned').textContent=0;refreshGlosses();S.mode==='rsvp'&&drawRsvp()}};
-$('#b-starter').onclick=async()=>{closeSheets();const b=await fetchJSON('starter-de.json');b.id='starter';loadBook(b)};
+$('#b-starter').onclick=async()=>{closeSheets();const b=await fetchJSON(S.bundle.starter);b.id='starter';loadBook(b)};
 $('#file').onchange=async e=>{
   const f=e.target.files[0]; if(!f)return;
   closeSheets(); pause(); $('#splash-msg').textContent=T('opening'); $('#pct').textContent='';
