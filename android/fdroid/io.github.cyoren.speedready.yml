@@ -2,6 +2,8 @@
 # https://gitlab.com/fdroid/fdroiddata and open a merge request.
 Categories:
   - Reading
+  - Ebook Reader
+  - Translation & Dictionary
   - Science & Education
 License: MIT
 AuthorName: cYoren
@@ -45,8 +47,6 @@ Builds:
     subdir: android/app
     gradle:
       - yes
-    # The reader lives in web/ and is pulled in as assets by android/app/build.gradle,
-    # so there is nothing to fetch or generate at build time.
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
