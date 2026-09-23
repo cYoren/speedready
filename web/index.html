@@ -60,13 +60,18 @@ body.plain .p{gap:0 5px}
 footer{
   position:sticky;bottom:0;background:color-mix(in srgb,var(--bg) 92%,transparent);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;
-  padding:8px var(--pad) calc(8px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+}
+@media (max-width:380px){
+  #speed button{width:34px}
+  #wpm{min-width:44px;font-size:12px}
+  .btn{padding:10px}
 }
 #speed{display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
 #speed button{width:40px;height:42px;font-size:20px}
 #wpm{min-width:58px;text-align:center;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
-#play{flex:1;height:46px}
+#play{flex:1;min-width:0;height:46px;padding:10px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:26px;text-align:center}
 
 /* ---------- sheets ---------- */
 .sheet{
@@ -244,7 +249,9 @@ const UI={
      about_text:'Offline dictionary built from Wiktionary and MUSE. Starter book: Japanische Märchen, public domain, from Project Gutenberg. Everything works without a connection after the first load.',
      no_chapters:'This book has no chapters.',no_entry:'This word is not in the offline dictionary. Tap Dictionary to look it up online.',
      forget_confirm:'Forget every word you marked as known?',cannot_open:'Could not open: ',
-     no_voice:'No voice is installed on this device. On iPhone: Settings › Accessibility › Spoken Content › Voices › German.',
+     no_voice_ios:'No voice for this language is installed. On iPhone: Settings › Accessibility › Spoken Content › Voices.',
+     no_voice_android:'No voice for this language is installed. Open Settings › System › Languages › Text-to-speech output to add one.',
+     no_voice:'No voice for this language is installed on this device.',
      voice_failed:'The voice failed: ',min_left:'min left',welcome:'Welcome to Speedready',
      welcome_sub:'Read in another language without losing the flow. Pick the language you already speak.',
      continue:'Continue',dont_know_it:'✗ I do not know it',known_again:'↩ Known again',
@@ -268,7 +275,9 @@ const UI={
      about_text:'Dicionário offline feito a partir do Wiktionary e do MUSE. Livro inicial: Japanische Märchen, domínio público, do Project Gutenberg. Tudo funciona sem conexão depois da primeira abertura.',
      no_chapters:'Este livro não tem capítulos.',no_entry:'Esta palavra não está no dicionário offline. Toque em Dicionário para ver na internet.',
      forget_confirm:'Esquecer todas as palavras marcadas como sabidas?',cannot_open:'Não foi possível abrir: ',
-     no_voice:'Nenhuma voz instalada neste aparelho. No iPhone: Ajustes › Acessibilidade › Conteúdo Falado › Vozes › Alemão.',
+     no_voice_ios:'Nenhuma voz deste idioma instalada. No iPhone: Ajustes › Acessibilidade › Conteúdo Falado › Vozes.',
+     no_voice_android:'Nenhuma voz deste idioma instalada. Abra Configurações › Sistema › Idiomas › Saída de texto para voz.',
+     no_voice:'Nenhuma voz deste idioma está instalada neste aparelho.',
      voice_failed:'A voz falhou: ',min_left:'min restantes',welcome:'Bem-vindo ao Speedready',
      welcome_sub:'Leia em outro idioma sem perder o ritmo. Escolha o idioma que você já fala.',
      continue:'Continuar',dont_know_it:'✗ Não sei esta',known_again:'↩ Voltar a saber',
@@ -455,13 +464,39 @@ function pause(){
 const toggle=()=>S.playing?pause():play();
 
 //////////////////// speech ////////////////////
+// Android's WebView ships no Web Speech API, so the Android build hands the platform
+// engine over as window.AndroidTTS and this stands in for the missing one. Everything
+// below is written against the standard API and does not care which one it got.
+if(!('speechSynthesis' in window) && window.AndroidTTS){
+  const shim={
+    speaking:false,paused:false,_u:null,
+    getVoices(){try{return JSON.parse(AndroidTTS.voices())}catch{return []}},
+    speak(u){shim._u=u;shim.speaking=true;
+      const ok=AndroidTTS.speak(String(u.text||''),u.rate||1,(u.voice&&u.voice.name)||'');
+      if(!ok){shim.speaking=false;shim._u=null;u.onerror&&u.onerror({error:'synthesis-failed'})}},
+    cancel(){AndroidTTS.stop();const u=shim._u;shim._u=null;shim.speaking=false;
+      u&&u.onerror&&u.onerror({error:'interrupted'})},
+    pause(){},resume(){},addEventListener(){},removeEventListener(){}
+  };
+  window.__ttsDone=ok=>{const u=shim._u;shim._u=null;shim.speaking=false;
+    if(!u)return; ok?(u.onend&&u.onend()):(u.onerror&&u.onerror({error:'synthesis-failed'}))};
+  Object.defineProperty(window,'speechSynthesis',{value:shim,configurable:true});
+  window.SpeechSynthesisUtterance=function(t){this.text=t};
+}
+const HAS_SPEECH='speechSynthesis' in window;
+
 // The device's own voice. Two things make this fragile and are handled here:
 // iOS only allows speech that starts inside a user gesture, and its word-boundary
 // events are unreliable, so the highlight runs on its own estimated clock and only
 // re-syncs when a boundary event actually arrives.
-const VOICE_HINT=()=>T('no_voice');
+const VOICE_HINT=()=>{                      // point at the right settings screen for the device
+  if(window.AndroidTTS)return T('no_voice_android');
+  if(/iPhone|iPad|iPod/.test(navigator.userAgent))return T('no_voice_ios');
+  return T('no_voice');
+};
 function voicesFor(lang){
-  return speechSynthesis.getVoices().filter(v=>v.lang.toLowerCase().startsWith(lang.toLowerCase()));
+  if(!HAS_SPEECH)return [];
+  return (speechSynthesis.getVoices()||[]).filter(v=>v&&v.lang&&v.lang.toLowerCase().startsWith(lang.toLowerCase()));
 }
 function pickVoice(){
   const list=voicesFor(S.book?.lang||'de');
@@ -472,7 +507,7 @@ function pickVoice(){
   buildVoiceList();
   return S.voice;
 }
-speechSynthesis.addEventListener?.('voiceschanged',pickVoice);
+HAS_SPEECH&&speechSynthesis.addEventListener?.('voiceschanged',pickVoice);
 function buildVoiceList(){
   const box=$('#voices'); if(!box)return;
   const list=voicesFor(S.book?.lang||'de');
@@ -489,6 +524,7 @@ function buildVoiceList(){
 }
 let keepAlive=null;
 function speakText(text,onDone){
+  if(!HAS_SPEECH){toast(T('no_voice'));onDone?.(false);return null}
   speechSynthesis.cancel();
   if(!pickVoice()&&!voicesFor(S.book?.lang||'de').length){toast(VOICE_HINT());onDone?.(false);return null}
   const u=new SpeechSynthesisUtterance(text);
@@ -501,10 +537,10 @@ function speakText(text,onDone){
   speechSynthesis.speak(u);
   return u;
 }
-function stopSpeech(){clearInterval(keepAlive);speechSynthesis.cancel();S.speaking=false}
+function stopSpeech(){clearInterval(keepAlive);HAS_SPEECH&&speechSynthesis.cancel();S.speaking=false}
 // warm iOS up while we still have the tap that authorised it
 function warmUpSpeech(){
-  if(S.warm)return; S.warm=true;
+  if(S.warm||!HAS_SPEECH)return; S.warm=true;
   try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch{}
 }
 // ---- read-along: the voice sets the pace, the highlight follows it
