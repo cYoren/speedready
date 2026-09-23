@@ -18,7 +18,7 @@ import argparse,collections,gzip,json,re,sqlite3,sys,time
 from pathlib import Path
 
 LANGNAME={'de':'German','pt':'Portuguese','en':'English','es':'Spanish','fr':'French','it':'Italian','nl':'Dutch','ru':'Russian','sv':'Swedish','pl':'Polish'}
-OWN_EDITION_NAME={'de':'Deutsch','fr':'Français','es':'Español','it':'Italiano','pt':'Português','nl':'Nederlands','ru':'Русский','pl':'Polski','sv':'Svenska'}
+OWN_EDITION_NAME={'de':'Deutsch','fr':'Français','es':'Español','it':'Italiano','pt':'Português','nl':'Nederlands','ru':'Русский','pl':'język polski'}  # kaikki has no svwiktionary
 PAREN=re.compile(r'\([^)]*\)|\[[^\]]*\]');SKIP_GLOSS=re.compile(r'^(?:\w+[ -])*(?:of|form of|inflection of|spelling of|abbreviation of|initialism of|misspelling of)\b',re.I)
 
 def jsonl(path):
