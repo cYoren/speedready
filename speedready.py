@@ -16,7 +16,7 @@ from gi.repository import Gtk,Adw,Gdk,Gio,GLib,Pango,PangoCairo
 try:import simplemma
 except ImportError:simplemma=None
 
-APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.1'
+APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.2'
 DIR=Path.home()/'.config/speedready';DIR.mkdir(parents=True,exist_ok=True)
 CFG_FILE,POS_FILE,VOCAB,CACHE,UNKNOWN,BOOKMARKS=DIR/'config.json',DIR/'positions.json',DIR/'vocab.tsv',DIR/'dict-cache.json',DIR/'unknown.txt',DIR/'bookmarks.json'
 VOICES=Path.home()/'.cache/speedready/voices';PACKS=Path.home()/'.cache/speedready/packs'
@@ -633,7 +633,7 @@ class Win(Adw.ApplicationWindow):
             row=lb.get_selected_row()
             code=row.code if row else current
             s.cfg.update(native_lang=code,ui_lang=code if code in TEXT else 'en',onboarded=True)
-            s.write_cfg();s.setup_gloss();s.refresh_ui_text();d.close()
+            s.write_cfg();s.setup_gloss();s.refresh_ui_text();d.force_close()  # close() is a no-op while can-close is false
         go.connect('clicked',done);lb.connect('row-activated',done)
         box.append(go);d.set_child(box);d.present(s);return False
 
