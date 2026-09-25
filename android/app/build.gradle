@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 
+// Reproducible builds: F-Droid rebuilds this source and checks it matches the APK published on
+// GitHub, then ships that one. Their builder has no keystore.properties, so it produces an
+// unsigned APK from exactly the same inputs - the signature is the only difference, which is
+// what their verification strips. Never commit keystore.properties or the .keystore itself.
+def keystoreFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystoreFile.exists()) keystoreProps.load(new FileInputStream(keystoreFile))
+
 android {
     namespace 'io.github.cyoren.speedready'
     compileSdk 35
@@ -12,10 +20,21 @@ android {
         versionName '1.0.1'
     }
 
+    signingConfigs {
+        release {
+            if (keystoreFile.exists()) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false   // no obfuscation: F-Droid builds and verifies this source
-            signingConfig null
+            signingConfig keystoreFile.exists() ? signingConfigs.release : null
         }
     }
 

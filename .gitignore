@@ -3,3 +3,13 @@ build-dir/
 __pycache__/
 .venv/
 .wheels/
+
+# never commit the release signing key or its passwords (F-Droid reproducible builds)
+keystore.properties
+*.keystore
+*.jks
+
+# gradle build output and caches (126 of these were committed by accident)
+android/.gradle/
+android/build/
+android/app/build/
