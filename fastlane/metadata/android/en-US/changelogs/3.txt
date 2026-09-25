@@ -1,0 +1,5 @@
+Your own books. Any EPUB on your device joins the shelf next to the starter story, and everything still works offline.
+
+German nouns stop glossing as verbs: the exact spelling now wins over a lowercased guess, so "Haus" resolves as a house and not as "to live in squalor". The same rule already governed the desktop scorer.
+
+Beginner mode says when it has no dictionary for a language instead of pretending, and an EPUB with no readable text reports that instead of failing silently.
