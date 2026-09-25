@@ -13,3 +13,8 @@ keystore.properties
 android/.gradle/
 android/build/
 android/app/build/
+
+# per-machine SDK path; a committed copy points the build at a directory that only exists
+# on the machine that wrote it, which breaks F-Droid's buildserver
+local.properties
+android/local.properties
