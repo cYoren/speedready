@@ -26,7 +26,7 @@ AllowedAPKSigningKeys: eeb938688a5078f4a1536abbd1020774a538bb01f0a7a874ef3e0c824
 Builds:
   - versionName: 1.0.3
     versionCode: 3
-    commit: 243c884fd3142162c12d24b133e35e344ec71bfe
+    commit: a1e97725014bcbb5d862e0de401033ac0057aebe
     subdir: android/app
     gradle:
       - yes

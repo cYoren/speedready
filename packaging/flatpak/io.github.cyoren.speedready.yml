@@ -38,5 +38,5 @@ modules:
     sources:
       - type: git
         url: https://github.com/cYoren/speedready.git
-        tag: v1.0.2
-        commit: 1a7c16f25580c6cead6d8d6f9eb34671ee224632
+        tag: v1.0.3
+        commit: a1e97725014bcbb5d862e0de401033ac0057aebe
