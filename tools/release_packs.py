@@ -90,8 +90,8 @@ def main():
     print(f'uploading {len(packs)} packs ({sum(p.stat().st_size for p in packs)/1e9:.1f} GB) to {a.upload} release "packs"',file=sys.stderr)
     subprocess.run(['gh','release','create','packs','--repo',a.upload,'--title','Offline gloss packs',
                     '--notes','Offline dictionaries for beginner mode, one per language pair. Built by tools/release_packs.py from '
-                              'English Wiktionary and each language\'s own Wiktionary edition (kaikki.org), MUSE, and hermitdave/FrequencyWords. '
-                              'Downloaded by the app on first use.'],capture_output=True)  # already exists -> fine
+                              'English Wiktionary and each language\'s own Wiktionary edition (kaikki.org), and hermitdave/FrequencyWords. '
+                              'No non-commercial datasets are included. Downloaded by the app on first use.'],capture_output=True)  # already exists -> fine
     r=subprocess.run(['gh','release','upload','packs','--repo',a.upload,'--clobber',*map(str,packs)])
     return r.returncode
 

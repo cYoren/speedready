@@ -8,11 +8,10 @@ Sources (all public, downloaded once into --dir):
                      -> inflected forms -> lemma, English glosses (pivot, or the target itself when tgt == en)
   de-<Src>.jsonl     kaikki.org extract of the source language's own Wiktionary edition (translation tables -> tgt), optional
   en-<Tgt>.jsonl     kaikki extract for the target language, inverted into an English -> target map for the pivot, optional
-  muse-<src>-<tgt>.txt   Meta MUSE bilingual word list, optional fallback
   freq-<src>.txt     hermitdave/FrequencyWords "<word> <count>" list
 
 Pack schema: forms(form, lemma) · gloss(word, pos, tgt, prio) · freq(word, rank) · meta(key, value)
-prio: 1 own-edition translation · 2 pivot through English Wiktionary · 3 MUSE · 9 English gloss only
+prio: 1 own-edition translation · 2 pivot through English Wiktionary · 9 English gloss only
 """
 import argparse,collections,gzip,json,re,sqlite3,sys,time
 from pathlib import Path
@@ -75,11 +74,11 @@ def build(src,tgt,d,out):
                 if tr:gloss[(w,pos)].setdefault(1,', '.join(tr));k+=1
         print(f'own edition: {n:,} entries, {k:,} with {tgt} translations',file=sys.stderr)
     # ---- 3. pivot through English: target-language extract inverted
-    f=d/f'en-{LANGNAME.get(tgt,"")}.jsonl';target_vocab=set()
+    f=d/f'en-{LANGNAME.get(tgt,"")}.jsonl'
     if tgt!='en' and (f.exists() or f.with_suffix('.jsonl.gz').exists()):
         en2t=collections.defaultdict(collections.Counter);n=0
         for e in jsonl(f):
-            n+=1;w,pos=e.get('word',''),e.get('pos','');w and target_vocab.add(w.lower())
+            n+=1;w,pos=e.get('word',''),e.get('pos','')
             if ' ' in w:continue
             for s in e.get('senses',[]):
                 if s.get('form_of') or s.get('alt_of') or 'form-of' in s.get('tags',[]):continue
@@ -91,17 +90,7 @@ def build(src,tgt,d,out):
                 hit=next((en2t[(c,pos)] or en2t[(c,None)] for c in candidates(g) if en2t.get((c,pos)) or en2t.get((c,None))),None)
                 if hit:gloss[(w,pos)].setdefault(2,', '.join(x for x,_ in hit.most_common(2)));k+=1;break
         print(f'pivot: {n:,} {tgt} entries, {k:,} {src} lemmas glossed via English',file=sys.stderr)
-    # ---- 4. MUSE
-    f=d/f'muse-{src}-{tgt}.txt'
-    if f.exists():
-        m=collections.defaultdict(list);rejected=0
-        for line in f.read_text(encoding='utf-8').splitlines():
-            p=line.split()
-            if len(p)==2 and target_vocab and p[1].lower() not in target_vocab:rejected+=1;continue
-            if len(p)==2 and p[1] not in m[p[0]]:m[p[0]].append(p[1])
-        for w,ts in m.items():gloss[(w,'')].setdefault(3,', '.join(ts[:3]))
-        print(f'muse: {len(m):,} forms, {rejected:,} non-{tgt} entries rejected',file=sys.stderr)
-    # ---- 5. frequency
+    # ---- 4. frequency
     freq={};f=d/f'freq-{src}.txt'
     if f.exists():
         for r,line in enumerate(f.read_text(encoding='utf-8').splitlines(),1):
@@ -114,7 +103,7 @@ def build(src,tgt,d,out):
     db.executemany('INSERT INTO forms VALUES(?,?)',forms.items())
     db.executemany('INSERT INTO gloss VALUES(?,?,?,?)',((w,pos,t,p) for (w,pos),d_ in gloss.items() for p,t in d_.items()))
     db.executemany('INSERT INTO freq VALUES(?,?)',freq.items())
-    db.executemany('INSERT INTO meta VALUES(?,?)',[('src',src),('tgt',tgt),('built',time.strftime('%Y-%m-%d')),('format','2'),('sources','en.wiktionary (kaikki.org), own-edition wiktionary, MUSE (CC BY-NC 4.0), hermitdave/FrequencyWords')])
+    db.executemany('INSERT INTO meta VALUES(?,?)',[('src',src),('tgt',tgt),('built',time.strftime('%Y-%m-%d')),('format','2'),('sources','en.wiktionary (kaikki.org), own-edition wiktionary, hermitdave/FrequencyWords')])
     db.commit();db.execute('VACUUM');db.close()
     print(f'wrote {out} ({out.stat().st_size/1e6:.1f} MB) in {time.time()-t0:.0f}s',file=sys.stderr)
 

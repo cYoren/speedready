@@ -19,7 +19,7 @@ from build_pack import LANGNAME,OWN_EDITION_NAME
 
 KAIKKI='https://kaikki.org/{edition}/{dir}/kaikki.org-dictionary-{file}.jsonl'
 FREQ='https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/{c}/{c}_50k.txt'
-MUSE='https://dl.fbaipublicfiles.com/arrival/dictionaries/{src}-{tgt}.txt'
+
 UA={'User-Agent':'Speedready pack builder (https://github.com/cYoren/speedready)'}
 GZIP_MAGIC=b'\x1f\x8b'
 
@@ -35,9 +35,6 @@ def targets(langs):
         out.append((f'en-{LANGNAME[c]}.jsonl.gz',kaikki_url('dictionary',LANGNAME[c]),True))
         if c in OWN_EDITION_NAME:out.append((f'{c}-{OWN_EDITION_NAME[c]}.jsonl.gz',kaikki_url(f'{c}wiktionary',OWN_EDITION_NAME[c]),False))
         out.append((f'freq-{c}.txt',FREQ.format(c=c),False))
-    for src in langs:
-        for tgt in langs:
-            if src!=tgt:out.append((f'muse-{src}-{tgt}.txt',MUSE.format(src=src,tgt=tgt),False))
     return out
 
 def get(d,name,url,required):
@@ -62,7 +59,6 @@ def get(d,name,url,required):
         return f'got   {name} ({dest.stat().st_size/1e6:.0f} MB)'
     except urllib.error.HTTPError as e:
         part.unlink(missing_ok=True)
-        # MUSE covers only some pairs and its bucket answers 403, not 404, for the rest
         if not required and e.code in(403,404):return f'none  {name} (optional, not published)'
         return f'FAIL  {name}: HTTP {e.code}'
     except Exception as e:

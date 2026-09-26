@@ -1,0 +1,3 @@
+Release 1.0.4 removes the non-commercial MUSE dictionary data. Beginner mode now uses Wiktionary translations and English-pivot glosses only. The bundled German-to-Portuguese dictionary was rebuilt without MUSE.
+
+Dictionary data is licensed under its upstream terms. The reader code remains MIT-licensed. See DATA-LICENSES.md for attribution and licence details.

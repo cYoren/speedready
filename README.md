@@ -48,7 +48,8 @@ Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwai
 
 Beginner mode glosses each word from an offline pack, `gloss-<src>-<tgt>.sqlite`, which the app
 downloads once per language pair on first use. The packs are built from English Wiktionary and each
-language's own Wiktionary edition (kaikki.org), Meta's MUSE word lists, and hermitdave/FrequencyWords.
+language's own Wiktionary edition (kaikki.org) and hermitdave/FrequencyWords.
+See [DATA-LICENSES.md](DATA-LICENSES.md) for upstream licence and attribution details.
 
 ```
 python tools/fetch_sources.py            # ~2 GB of extracts -> ~/.cache/speedready/build
@@ -60,10 +61,9 @@ A pack is only published if it glosses at least half of the 2000 commonest words
 language (`--min-coverage`). Pairs below the floor are dropped rather than shipped, because a pack
 that exists but glosses nothing would have the app report the dictionary ready over a page of blank
 glosses. An unpublished pair is reported as such in the app.
-
-All 90 pairs of the ten offered languages currently build and pass: median coverage 93.5%, best
-es->en at 99.2%, worst ru->nl at 54.8% (Russian source words inflect further than the frequency
-list and the form table between them can follow). Roughly 4.5 GB of packs, ~50 MB each.
+The release build reports coverage against the 2,000 most frequent source words. With the release
+threshold set to 50%, pairs below that mark are excluded; every kept pair and its size is printed
+by the build tool.
 
 Content words are reliable across every pair. The commonest grammar words often are not: Wiktionary
 picks the wrong homograph for them (`sv->de` gives `är` as "Gut, Ware", `nl->pt` gives `is` as
