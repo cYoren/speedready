@@ -16,15 +16,10 @@ and the text gets cleaner as your vocabulary grows.
 
 <b>It stays on your device</b>
 
-The dictionary and the book ship inside the app. There is no account, no network access, and
-the app requests no permissions at all. Everything you mark, learn and bookmark stays on your
-phone, and everything you look up can be exported as an Anki deck.
+The dictionary and the book ship inside the app. The reader works offline without an account or permissions. Everything you mark, learn and bookmark stays on your phone, and everything you look up can be exported as an Anki deck.
 
 <b>Included</b>
 
-German to English and German to Portuguese, with a public-domain German storybook to start
-reading immediately. You can open any EPUB or text file of your own, and every book you open
-joins a library that remembers how far through each one you are.
+German to Portuguese with a public-domain German storybook to start reading immediately. You can open any EPUB or text file of your own, and every book you open joins a library that remembers how far through each one you are.
 
-Speedready is free software under the MIT licence. The same reader runs as a desktop
-application on Linux.
+The reader code is MIT-licensed. The bundled dictionary uses Wiktionary data under CC BY-SA 4.0; frequency data is from FrequencyWords under MIT. Attribution and licence details are in the source repository.

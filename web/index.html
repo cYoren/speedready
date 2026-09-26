@@ -222,12 +222,11 @@ body.rsvp main{display:none}
   <h3 data-t="language">Language</h3>
   <div class="list" id="langs"></div>
   <h3 data-t="about">About</h3>
-  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.1</b></div>
-  <div class="row"><label data-t="license">MIT licence</label>
+  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.4</b></div>
+  <div class="row"><label data-t="license">Code: MIT</label>
     <a class="btn" id="a-src" href="https://github.com/cYoren/speedready" target="_blank" rel="noopener" data-t="source">Source code</a></div>
   <p style="color:var(--dim);font-size:13px;line-height:1.5;margin:0">
-<span data-t="about_text">Offline dictionary built from Wiktionary and MUSE. Starter book: Japanische Märchen, public domain, from Project Gutenberg.
-    Everything works without a connection after the first load.</span>
+<span data-t="about_text">Offline dictionary built from Wiktionary. Starter book: Japanische Märchen, public domain, from Project Gutenberg. Everything works without a connection after the first load.</span>
   </p>
 </div></div>
 
@@ -246,7 +245,7 @@ const UI={
      tts_hint:'The device voice reads each sentence and the text follows it',
      voice_speed:'Voice speed',voice:'Voice',progress:'Your progress',words_known:'Words you already know',
      forget_all:'Forget all',about:'About',language:'Language',
-     about_text:'Offline dictionary built from Wiktionary and MUSE. Starter book: Japanische Märchen, public domain, from Project Gutenberg. Everything works without a connection after the first load.',
+     about_text:'Offline dictionary built from Wiktionary. Dictionary data: CC BY-SA 4.0. Starter book: Japanische Märchen, public domain, from Project Gutenberg. Everything works without a connection after the first load.',
      no_chapters:'This book has no chapters.',no_entry:'This word is not in the offline dictionary. Tap Dictionary to look it up online.',
      forget_confirm:'Forget every word you marked as known?',cannot_open:'Could not open: ',no_text_epub:'No text found in this .epub',
      no_voice_ios:'No voice for this language is installed. On iPhone: Settings › Accessibility › Spoken Content › Voices.',
@@ -259,8 +258,8 @@ const UI={
      remove_bookmark:'★ Remove bookmark',no_bookmarks:'No bookmarks in this book yet.',
      export:'Export for Anki',exported:'File saved. Import it in Anki with File › Import.',
      nothing_to_export:'Look a few words up first.',mode:'Reading mode',mode_pacer:'Flowing text',
-     mode_rsvp:'One word at a time',version:'Version',license:'MIT licence',source:'Source code',
-     credits:'Dictionary from Wiktionary and MUSE. Starter book from Project Gutenberg. Speech by your device.',
+     mode_rsvp:'One word at a time',version:'Version',license:'Code: MIT',source:'Source code',
+     credits:'Dictionary data: Wiktionary (CC BY-SA 4.0) and FrequencyWords (MIT). Starter book from Project Gutenberg. Speech by your device.',
      marked_unknown:'Marked as still learning',hold_hint:'Hold a word to mark it as one you are learning.'},
  pt:{loading:'Preparando o dicionário…',opening:'Abrindo o livro…',books:'Livros',settings:'Ajustes',back:'Frase anterior',
      start:'▶ Começar',resume:'▶ Continuar',pause:'❚❚ Pausar',listen:'🔊 Ouvir',read_here:'▶ Ler daqui',
@@ -272,7 +271,7 @@ const UI={
      tts_hint:'A voz do aparelho lê cada frase e o texto acompanha',
      voice_speed:'Velocidade da voz',voice:'Voz',progress:'Seu progresso',words_known:'Palavras que você já sabe',
      forget_all:'Esquecer todas',about:'Sobre',language:'Idioma',
-     about_text:'Dicionário offline feito a partir do Wiktionary e do MUSE. Livro inicial: Japanische Märchen, domínio público, do Project Gutenberg. Tudo funciona sem conexão depois da primeira abertura.',
+     about_text:'Dicionário offline feito a partir do Wiktionary. Dados do dicionário: CC BY-SA 4.0. Livro inicial: Japanische Märchen, domínio público, do Project Gutenberg. Tudo funciona sem conexão depois da primeira abertura.',
      no_chapters:'Este livro não tem capítulos.',no_entry:'Esta palavra não está no dicionário offline. Toque em Dicionário para ver na internet.',
      forget_confirm:'Esquecer todas as palavras marcadas como sabidas?',cannot_open:'Não foi possível abrir: ',no_text_epub:'Nenhum texto encontrado neste .epub',
      no_voice_ios:'Nenhuma voz deste idioma instalada. No iPhone: Ajustes › Acessibilidade › Conteúdo Falado › Vozes.',
@@ -285,8 +284,8 @@ const UI={
      remove_bookmark:'★ Remover favorito',no_bookmarks:'Este livro ainda não tem favoritos.',
      export:'Exportar para o Anki',exported:'Arquivo salvo. Importe no Anki em Arquivo › Importar.',
      nothing_to_export:'Consulte algumas palavras primeiro.',mode:'Modo de leitura',mode_pacer:'Texto corrido',
-     mode_rsvp:'Uma palavra por vez',version:'Versão',license:'Licença MIT',source:'Código-fonte',
-     credits:'Dicionário do Wiktionary e do MUSE. Livro inicial do Project Gutenberg. Voz do seu aparelho.',
+     mode_rsvp:'Uma palavra por vez',version:'Versão',license:'Código: MIT',source:'Código-fonte',
+     credits:'Dados do dicionário: Wiktionary (CC BY-SA 4.0) e FrequencyWords (MIT). Livro inicial do Project Gutenberg. Voz do seu aparelho.',
      marked_unknown:'Marcada como em aprendizado',hold_hint:'Segure uma palavra para marcá-la como em aprendizado.'},
 };
 const LANGS=[['en','English'],['pt','Português (Brasil)']];   // grows as the gloss packs do
