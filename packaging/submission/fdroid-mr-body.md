@@ -65,7 +65,7 @@ release; there are no TODO lines left.
 ### Pipeline
 
 * [ ] All pipelines should pass.
-  <br>Latest run for the existing MR head `510dcf4f` failed immediately with zero jobs, before any build or test ran. A maintainer must retrigger after the GitLab account-verification gate is cleared; there is no build result to assess yet.
+  <br>The latest pipelines on MR head `3207fdf1` failed before any build or test jobs ran. Retrying pipeline `2885129979` returned HTTP 403: `Identity verification is required in order to run CI jobs`. The account owner must complete GitLab identity verification before CI can run.
 * [ ] All warnings and errors in the Reports tab should be fixed or explained.
   <br>Same status: no jobs have run, so there is nothing reported yet.
 * [x] F-Droid CI runners are under GitLab's FOSS program, so there's no need for you to pay for any CI time. If Gitlab starts asking for phone numbers or credit cards don't submit anything, just leave a note in the MR so we know we need to trigger the CI.
