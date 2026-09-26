@@ -24,14 +24,14 @@ Binaries: https://github.com/cYoren/speedready/releases/download/v%v/speedready-
 AllowedAPKSigningKeys: eeb938688a5078f4a1536abbd1020774a538bb01f0a7a874ef3e0c8240a5e361
 
 Builds:
-  - versionName: 1.0.3
-    versionCode: 3
-    commit: a1e97725014bcbb5d862e0de401033ac0057aebe
+  - versionName: 1.0.4
+    versionCode: 4
+    commit: d1fe0b38263d461267453e7275c0a2f2c2971027
     subdir: android/app
     gradle:
       - yes
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.0.3
-CurrentVersionCode: 3
+CurrentVersion: 1.0.4
+CurrentVersionCode: 4
