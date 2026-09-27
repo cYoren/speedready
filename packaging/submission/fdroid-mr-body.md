@@ -45,7 +45,7 @@ release; there are no TODO lines left.
 * [x] External repos are added as git submodules instead of srclibs. You can update git submodules without opening an MR in this repo and the submodule is covered by our scanner.
   <br>No external repos: the app has no dependencies at all (`dependencies { }`).
 * [x] Enable [Reproducible Builds](https://f-droid.org/docs/Reproducible_Builds). We'll use your signature for improved security/reliability, also allowing users to switch between different channels. Do note that if you don't enable reproducible build then the apk will be signed with our key so you can't enable it later. If you can't enable this, please add the reasons here.
-  <br>Enabled. `Binaries` and `AllowedAPKSigningKeys` are set, and `speedready-v1.0.4.apk` is published.
+  <br>Enabled. `Binaries` and `AllowedAPKSigningKeys` are set, and `speedready-1.0.4.apk` is published.
   <br>The app is a WebView wrapper with no dependencies, `minifyEnabled false`, and `dependenciesInfo`
   disabled, so the build is deterministic. Measured on commit `d1fe0b3` (tag `v1.0.4`, JDK 21,
   Gradle 8.11.1 as pinned in the wrapper):
@@ -64,10 +64,10 @@ release; there are no TODO lines left.
 
 ### Pipeline
 
-* [ ] All pipelines should pass.
-  <br>The latest pipelines on MR head `3207fdf1` failed before any build or test jobs ran. Retrying pipeline `2885129979` returned HTTP 403: `Identity verification is required in order to run CI jobs`. The account owner must complete GitLab identity verification before CI can run.
-* [ ] All warnings and errors in the Reports tab should be fixed or explained.
-  <br>Same status: no jobs have run, so there is nothing reported yet.
+* [x] All pipelines should pass.
+  <br>MR pipeline `2886187302` passed all nine jobs on head `38601acde00994aeb046d5f91c67ecb4658ad87e`, including F-Droid lint, checkupdates and build. The build used source commit `d1fe0b38263d461267453e7275c0a2f2c2971027` and verified the published APK.
+* [x] All warnings and errors in the Reports tab should be fixed or explained.
+  <br>The pipeline's test report contains zero tests and no test failures; no code-quality report was generated. All lint and build jobs passed.
 * [x] F-Droid CI runners are under GitLab's FOSS program, so there's no need for you to pay for any CI time. If Gitlab starts asking for phone numbers or credit cards don't submit anything, just leave a note in the MR so we know we need to trigger the CI.
 
 ---
