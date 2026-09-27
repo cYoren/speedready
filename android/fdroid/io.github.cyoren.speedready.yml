@@ -1,28 +1,23 @@
 # Metadata for fdroiddata. Copy to metadata/io.github.cyoren.speedready.yml in
 # https://gitlab.com/fdroid/fdroiddata and open a merge request.
 #
-# Name, summary, description, icon, screenshots and changelogs are NOT here on purpose:
-# F-Droid reads them from fastlane/metadata/android/en-US in this repo.
+# Summary, description, icon, screenshots and changelog are sourced from
+# fastlane/metadata/android/en-US in this repo.
 Categories:
-  - Reading
   - Ebook Reader
-  - Translation & Dictionary
+  - Reading
   - Science & Education
+  - Translation & Dictionary
 License: MIT
 AuthorName: cYoren
 SourceCode: https://github.com/cYoren/speedready
 IssueTracker: https://github.com/cYoren/speedready/issues
 Changelog: https://github.com/cYoren/speedready/releases
+AutoName: Speedready
 
 RepoType: git
 Repo: https://github.com/cYoren/speedready.git
-
-# Reproducible builds: F-Droid rebuilds this source, checks it against the APK published below,
-# and ships that one signed with the upstream key. Verified byte-identical across clean rebuilds.
 Binaries: https://github.com/cYoren/speedready/releases/download/v%v/speedready-%v.apk
-# tools/make_release_apk.sh prints this line:
-AllowedAPKSigningKeys: eeb938688a5078f4a1536abbd1020774a538bb01f0a7a874ef3e0c8240a5e361
-
 Builds:
   - versionName: 1.0.4
     versionCode: 4
@@ -30,6 +25,9 @@ Builds:
     subdir: android/app
     gradle:
       - yes
+
+# tools/make_release_apk.sh prints this line.
+AllowedAPKSigningKeys: eeb938688a5078f4a1536abbd1020774a538bb01f0a7a874ef3e0c8240a5e361
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
