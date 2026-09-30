@@ -136,5 +136,32 @@ class CoreTests(unittest.TestCase):
         """)
         self.assertEqual(g.raw('Holztreppe')[0],None)
 
+    def test_print_leftovers_are_removed_and_positions_follow(self):
+        page='Er sah den Meister, der ihn lange und sehr genau und still an-\n– 7 –\nOtfried Preußler - Krabat\nschaute. Dann ging er.\n42\nNeu.\n'
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'Otfried Preußler - Krabat.txt';path.write_text(page*5)
+            b=app.Book(str(path),'de')
+        paras=[' '.join(b.words[a:e]) for a,e in zip(b.para_start,b.para_start[1:]+[b.n])]
+        self.assertEqual(paras[:3],['Er sah den Meister, der ihn lange und sehr genau und still anschaute. Dann ging er.','42','Neu.'])
+        old=page.split().index('Dann');self.assertEqual(b.words[b.remap(old)],'Dann')
+        self.assertTrue(app.END_RE.search('kalt.«'))   # German »…« dialogue ends a sentence
+
+    def test_pdf_style_lines_become_paragraphs_and_markup_junk_goes(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'x.txt';path.write_text('Kapitel 1.\n'+'Der Müller stand in der Tür der alten\nMühle und sah hinaus auf den Weg, der zum\nDorf führte. Es war kalt.\n'*4)
+            b=app.Book(str(path),'de')
+        self.assertEqual(b.para_start[:3],[0,2,24])   # heading, then each wrapped sentence reflowed into one paragraph
+        h=app.Html();h.feed('<html><head><title>section-0_1_x</title></head><body><p>a real fool<sup><a href="#n">1</a></sup> to try</p></body></html>')
+        self.assertEqual([w.split(app.DROP)[0] for w in ''.join(h.out).split()],['','a','real','fool','to','try'])
+
+
+    def test_german_nouns_get_their_gender_from_context(self):
+        import gender
+        d=app.gender_data();words='Er ging an die stille See . Der See war kalt . Das Teil lag im Haus , die Mühlen standen am Schwarzen Wasser . Essen gab es nicht . Die Hahnenfeder und die Eltern .'.split()
+        g=dict(zip(range(len(words)),gender.genders(words,d)))
+        at=lambda w,n=0:g[[i for i,x in enumerate(words) if x==w][n]]
+        self.assertEqual((at('See'),at('See',1),at('Teil'),at('Haus'),at('Mühlen'),at('Wasser'),at('Hahnenfeder')),('f','m','n','n','f','n','f'))
+        self.assertEqual((at('Er'),at('Schwarzen'),at('Essen'),at('Eltern')),(None,None,None,None))   # pronoun, adjective, sentence start, plural-only
+
 
 if __name__=='__main__':unittest.main()
