@@ -19,7 +19,7 @@ except ImportError:simplemma=None
 try:import gender   # German noun genders; lives next to this file, and so does its data
 except ImportError:gender=None
 
-APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.2'
+APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.3'
 DIR=Path.home()/'.config/speedready';DIR.mkdir(parents=True,exist_ok=True)
 CFG_FILE,POS_FILE,VOCAB,CACHE,UNKNOWN,BOOKMARKS=DIR/'config.json',DIR/'positions.json',DIR/'vocab.tsv',DIR/'dict-cache.json',DIR/'unknown.txt',DIR/'bookmarks.json'
 VOICES=Path.home()/'.cache/speedready/voices';PACKS=Path.home()/'.cache/speedready/packs'

@@ -86,6 +86,13 @@
   </screenshots>
 
   <releases>
+    <release version="1.0.3" date="2026-09-30">
+      <description>
+        <p>German nouns are colored by gender: blue for der, red for die, green for das.</p>
+        <p>Books read cleaner: page numbers, running headers and footnote markers are gone, sentences split by a page break are joined again, and new books open at the first chapter.</p>
+        <p>Looking up a word shows the offline meaning at once, and selected phrases are sent whole to the translator.</p>
+      </description>
+    </release>
     <release version="1.0.2" date="2026-09-23">
       <description>
         <p>Fixed the first run: choosing a language did nothing and left the app stuck on the welcome screen.</p>

@@ -20,9 +20,13 @@
   const isLower=c=>c!==c.toUpperCase()&&c===c.toLowerCase();
   const allUpper=w=>w!==w.toLowerCase()&&w===w.toUpperCase();
 
-  // gzipped JSON from a URL; a server that already unpacked it (Content-Encoding) is fine too
+  // gzipped JSON from a URL; a server that already unpacked it (Content-Encoding) is fine too, and so is
+  // the plain file: Android's packager unpacks 'x.json.gz' assets into 'x.json' inside the APK
   async function load(url){
-    const buf=new Uint8Array(await (await fetch(url)).arrayBuffer());
+    let res=await fetch(url);
+    if(!res.ok&&url.endsWith('.gz'))res=await fetch(url.slice(0,-3));
+    if(!res.ok)throw new Error(url+' '+res.status);
+    const buf=new Uint8Array(await res.arrayBuffer());
     const text=buf[0]===0x1f&&buf[1]===0x8b
       ?await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
       :new TextDecoder().decode(buf);
