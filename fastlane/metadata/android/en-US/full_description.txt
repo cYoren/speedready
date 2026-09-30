@@ -9,6 +9,8 @@ and the text gets cleaner as your vocabulary grows.
 <b>While you read</b>
 
 * A highlight sweeps through the text at your pace, or flashes one word at a time
+* German nouns are colored by gender: blue for der, red for die, green for das
+* Page numbers and headers left over from print are cleaned out, and new books open at chapter one
 * Tap a word for its translation, to hear it, or to start reading from there
 * Hold a word you are still learning: it is underlined everywhere and the pace slows for it
 * Have sentences read aloud by the voice already on your device, with the text following along

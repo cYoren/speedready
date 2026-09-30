@@ -112,3 +112,17 @@ with no code edit. A test enforces it: neither file may name a dictionary or a l
 One APK still ships one pair, because the dictionary is bundled and the app asks for no permissions
 at all. Shipping more than one means either a bigger APK or network access, which is a trade worth
 making deliberately.
+
+## iPhone and iPad app
+
+`ios/` is a native shell around `web/`, the same way `android/` is: the page does the reading, and
+`ios/Speedready/App.swift` serves it offline from the app bundle and adds dialogs, the Anki export via the
+share sheet, links out to Safari, and speech that plays with the silent switch on. It needs iOS 16.4+
+(the offline dictionary unpacks with `DecompressionStream`).
+
+```
+open ios/Speedready.xcodeproj                      # run in the simulator from Xcode
+ASC_KEY_PATH=… ASC_KEY_ID=… ASC_ISSUER=… ios/release.sh   # signed .ipa for App Store Connect, from Terminal on the Mac
+```
+
+Create the app record (bundle id `io.github.cyoren.speedready`) in App Store Connect before the first upload.
