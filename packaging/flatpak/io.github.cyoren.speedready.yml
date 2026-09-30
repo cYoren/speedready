@@ -25,6 +25,7 @@ modules:
     buildsystem: simple
     build-commands:
       - install -Dm755 speedready.py ${FLATPAK_DEST}/bin/speedready
+      - install -Dm644 gender.py genders-de.json.gz -t ${FLATPAK_DEST}/bin
       - install -Dm644 packaging/io.github.cyoren.speedready.desktop
         ${FLATPAK_DEST}/share/applications/io.github.cyoren.speedready.desktop
       - install -Dm644 packaging/io.github.cyoren.speedready.metainfo.xml

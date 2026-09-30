@@ -71,6 +71,20 @@ picks the wrong homograph for them (`sv->de` gives `är` as "Gut, Ware", `nl->pt
 once for de->en and pivoting it would fix every de->X pair at once, since knowing that `wollen` is
 "want" and not "woollen" does not depend on the target language.
 
+## German noun genders
+
+In German books every noun is colored by gender: blue for der, red for die, green for das (Settings → Deutsch).
+`gender.py` holds the logic, with no GTK code so a browser extension can port it line for line. It takes the
+gender from the article in front (`die stille See` is the sea, `der See` the lake), splits unknown compounds
+(`Hahnenfeder` → `Feder`), colors plurals by their singular, and leaves pronouns, names, plural-only nouns and
+ambiguous sentence-initial words alone. The data, `genders-de.json.gz` (0.6 MB, noun form → genders), comes from
+the kaikki.org English Wiktionary extract:
+
+```
+python tools/build_genders.py ~/.cache/speedready/build/en-German.jsonl.gz
+python gender.py   # self-check
+```
+
 ## Web version (any phone or browser)
 
 `web/` is a self-contained reader for learners: the German text with a Portuguese
