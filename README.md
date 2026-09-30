@@ -71,6 +71,21 @@ picks the wrong homograph for them (`sv->de` gives `är` as "Gut, Ware", `nl->pt
 once for de->en and pivoting it would fix every de->X pair at once, since knowing that `wollen` is
 "want" and not "woollen" does not depend on the target language.
 
+## German noun genders
+
+In German books every noun is colored by gender: blue for der, red for die, green for das (Settings → Deutsch).
+`gender.py` holds the logic, with no GTK code so a browser extension can port it line for line. It takes the
+gender from the article in front (`die stille See` is the sea, `der See` the lake), splits unknown compounds
+(`Hahnenfeder` → `Feder`), colors plurals by their singular, and leaves pronouns, names, plural-only nouns and
+ambiguous sentence-initial words alone. `web/gender.js` is the same logic for the web reader, and `web/textclean.js` is the book cleanup; `tests/test_web_parity.py`
+fails if the Python and JavaScript versions ever disagree (`PYTHONPATH=. python tests/test_web_parity.py *.epub` checks real books). The data, `web/genders-de.json.gz` (0.6 MB, noun form → genders), comes from
+the kaikki.org English Wiktionary extract:
+
+```
+python tools/build_genders.py ~/.cache/speedready/build/en-German.jsonl.gz
+python gender.py   # self-check
+```
+
 ## Web version (any phone or browser)
 
 `web/` is a self-contained reader for learners: the German text with a Portuguese
@@ -97,3 +112,17 @@ with no code edit. A test enforces it: neither file may name a dictionary or a l
 One APK still ships one pair, because the dictionary is bundled and the app asks for no permissions
 at all. Shipping more than one means either a bigger APK or network access, which is a trade worth
 making deliberately.
+
+## iPhone and iPad app
+
+`ios/` is a native shell around `web/`, the same way `android/` is: the page does the reading, and
+`ios/Speedready/App.swift` serves it offline from the app bundle and adds dialogs, the Anki export via the
+share sheet, links out to Safari, and speech that plays with the silent switch on. It needs iOS 16.4+
+(the offline dictionary unpacks with `DecompressionStream`).
+
+```
+open ios/Speedready.xcodeproj                      # run in the simulator from Xcode
+ASC_KEY_PATH=… ASC_KEY_ID=… ASC_ISSUER=… ios/release.sh   # signed .ipa for App Store Connect, from Terminal on the Mac
+```
+
+Create the app record (bundle id `io.github.cyoren.speedready`) in App Store Connect before the first upload.
