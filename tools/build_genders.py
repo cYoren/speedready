@@ -52,4 +52,4 @@ def main(src,out):
     with gzip.open(out,'wt',encoding='utf-8') as f:json.dump(data,f,ensure_ascii=False,separators=(',',':'),sort_keys=True)
     print(f'{len(data):,} forms -> {out} ({Path(out).stat().st_size/1e6:.1f} MB)')
 
-if __name__=='__main__':main(sys.argv[1] if len(sys.argv)>1 else Path.home()/'.cache/speedready/build/en-German.jsonl.gz',Path(__file__).parent.parent/'genders-de.json.gz')
+if __name__=='__main__':main(sys.argv[1] if len(sys.argv)>1 else Path.home()/'.cache/speedready/build/en-German.jsonl.gz',Path(__file__).parent.parent/'web'/'genders-de.json.gz')   # web/: the desktop app, the web reader and the APK share it

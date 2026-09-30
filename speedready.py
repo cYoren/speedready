@@ -220,8 +220,8 @@ def gender_data():
     """{noun form: readings}, loaded once; {} when the data file is missing (then nothing is colored)."""
     global _genders
     if _genders is None:
-        f=Path(__file__).with_name('genders-de.json.gz')
-        _genders=gender.load(f) if gender and f.exists() else {}
+        here=Path(__file__).parent;f=next((x for x in(here/'web'/'genders-de.json.gz',here/'genders-de.json.gz') if x.exists()),here)   # repo, or next to the script (flatpak)
+        _genders=gender.load(f) if gender and f.is_file() else {}
     return _genders
 def merged(cfg,key):
     """A 'k=v, k=v' setting layered over its default, so a user who customized one language in an

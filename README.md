@@ -77,7 +77,8 @@ In German books every noun is colored by gender: blue for der, red for die, gree
 `gender.py` holds the logic, with no GTK code so a browser extension can port it line for line. It takes the
 gender from the article in front (`die stille See` is the sea, `der See` the lake), splits unknown compounds
 (`Hahnenfeder` → `Feder`), colors plurals by their singular, and leaves pronouns, names, plural-only nouns and
-ambiguous sentence-initial words alone. The data, `genders-de.json.gz` (0.6 MB, noun form → genders), comes from
+ambiguous sentence-initial words alone. `web/gender.js` is the same logic for the web reader, and `web/textclean.js` is the book cleanup; `tests/test_web_parity.py`
+fails if the Python and JavaScript versions ever disagree (`PYTHONPATH=. python tests/test_web_parity.py *.epub` checks real books). The data, `web/genders-de.json.gz` (0.6 MB, noun form → genders), comes from
 the kaikki.org English Wiktionary extract:
 
 ```
