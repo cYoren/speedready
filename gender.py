@@ -2,6 +2,7 @@
 
 Pure Python, no GTK, one data file (genders-de.json.gz, built by tools/build_genders.py), so a browser
 extension can port it line for line. What makes it hard, and what each part below answers:
+web/gender.js is the same logic for the web reader (and a future browser extension); change both together.
   * which words are nouns      -> German capitalizes nouns; the dictionary says which capitalized words are
                                   nouns. At a sentence start everything is capitalized, so a word that is also
                                   a lowercase word ('Essen', 'Gestern', 'Aus') is left alone there.
@@ -25,7 +26,7 @@ for stem in('dies','jen','jed','welch','manch','solch'):
     for end,r in DER.items():DET[stem+end]=r
 END=re.compile(r'[.!?…:]["\'”’“‘)»«]*$')
 OPEN=re.compile(r'^[»«„“"‚‘\'(\[—–-]')
-WORD=re.compile(r'^\W+|\W+$')
+WORD=re.compile(r'^[\W_]+|[\W_]+$')   # '_Werk_' (Gutenberg italics) is 'Werk'
 PRONOUN={'Er','Sie','Es','Ihr','Ihre','Ihnen','Ihm','Ihn','Ich','Du','Dich','Dir','Wir','Man'}   # also nouns in Wiktionary ('das Ich'), almost never in a book
 ADJ=re.compile(r'(e|en|er|es|em)$')
 
@@ -71,7 +72,7 @@ def genders(words,data,para_start=()):
 
 if __name__=='__main__':   # self-check: python gender.py
     from pathlib import Path
-    d=load(Path(__file__).parent/'genders-de.json.gz')
+    d=load(Path(__file__).parent/'web'/'genders-de.json.gz')
     t='Er ging an die stille See . Der See war kalt . Das Teil lag im Haus , die Mühlen standen still . Essen gab es nicht . Die Hahnenfeder und die Eltern .'.split()
     got={w:g for w,g in zip(t,genders(t,d)) if g}
     assert got=={'See':'m','Teil':'n','Haus':'n','Mühlen':'f','Hahnenfeder':'f'} or print(got),got
