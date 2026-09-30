@@ -128,6 +128,30 @@ class CoreTests(unittest.TestCase):
         """)
         self.assertEqual(g.raw('Nun')[0],'agora')
 
+    def test_pack_pipeline_excludes_noncommercial_muse_data(self):
+        repo=Path(__file__).resolve().parent.parent
+        builder=(repo/'tools'/'build_pack.py').read_text()
+        fetcher=(repo/'tools'/'fetch_sources.py').read_text()
+        self.assertNotIn('muse-',builder.lower())
+        self.assertNotIn('MUSE=',fetcher)
+        sys_path=list(__import__('sys').path)
+        try:
+            __import__('sys').path.insert(0,str(repo/'tools'))
+            import fetch_sources
+            self.assertFalse(any(name.lower().startswith('muse-') for name,_,_ in fetch_sources.targets(['de','pt'])))
+        finally:
+            __import__('sys').path[:]=sys_path
+        credits=(repo/'web'/'index.html').read_text()
+        self.assertNotIn('MUSE',credits)
+        self.assertIn('CC BY-SA 4.0',credits)
+
+    def test_data_licences_distinguish_code_from_dictionary_data(self):
+        repo=Path(__file__).resolve().parent.parent
+        notice=(repo/'DATA-LICENSES.md').read_text()
+        self.assertIn('CC BY-SA 4.0',notice)
+        self.assertIn('FrequencyWords',notice)
+        self.assertIn('not used or distributed',notice)
+
     def test_non_target_fallback_is_hidden(self):
         g=object.__new__(app.Gloss);g.src='de';g.tgt='pt';g.cache={};g.learned=set();g.db=sqlite3.connect(':memory:')
         g.db.executescript("""

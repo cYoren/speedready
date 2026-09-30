@@ -19,7 +19,7 @@ except ImportError:simplemma=None
 try:import gender   # German noun genders; lives next to this file, and so does its data
 except ImportError:gender=None
 
-APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.3'
+APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.5'
 DIR=Path.home()/'.config/speedready';DIR.mkdir(parents=True,exist_ok=True)
 CFG_FILE,POS_FILE,VOCAB,CACHE,UNKNOWN,BOOKMARKS=DIR/'config.json',DIR/'positions.json',DIR/'vocab.tsv',DIR/'dict-cache.json',DIR/'unknown.txt',DIR/'bookmarks.json'
 VOICES=Path.home()/'.cache/speedready/voices';PACKS=Path.home()/'.cache/speedready/packs'
@@ -802,7 +802,7 @@ class Win(Adw.ApplicationWindow):
             comments=s.t('about_comments'),
             website='https://github.com/cYoren/speedready',
             issue_url='https://github.com/cYoren/speedready/issues')
-        d.add_credit_section('Data',['Wiktionary via kaikki.org','MUSE bilingual dictionaries','hermitdave/FrequencyWords'])
+        d.add_credit_section('Data',['Wiktionary via kaikki.org','hermitdave/FrequencyWords'])
         d.add_credit_section('Speech',['Piper (rhasspy)'])
         d.present(s)
     def shortcuts(s):
