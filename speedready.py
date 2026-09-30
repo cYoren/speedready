@@ -16,8 +16,10 @@ import gi;gi.require_version('Gtk','4.0');gi.require_version('Adw','1');gi.requi
 from gi.repository import Gtk,Adw,Gdk,Gio,GLib,Pango,PangoCairo
 try:import simplemma
 except ImportError:simplemma=None
+try:import gender   # German noun genders; lives next to this file, and so does its data
+except ImportError:gender=None
 
-APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.2'
+APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.5'
 DIR=Path.home()/'.config/speedready';DIR.mkdir(parents=True,exist_ok=True)
 CFG_FILE,POS_FILE,VOCAB,CACHE,UNKNOWN,BOOKMARKS=DIR/'config.json',DIR/'positions.json',DIR/'vocab.tsv',DIR/'dict-cache.json',DIR/'unknown.txt',DIR/'bookmarks.json'
 VOICES=Path.home()/'.cache/speedready/voices';PACKS=Path.home()/'.cache/speedready/packs'
@@ -34,7 +36,8 @@ DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'tts_voices':'de=de_DE-thorsten-medium, en=en_US-lessac-medium, fr=fr_FR-siwis-medium, es=es_ES-davefx-medium, it=it_IT-riccardo-x_low, pt=pt_PT-tugão-medium, nl=nl_NL-ronnie-medium, pl=pl_PL-gosia-medium, ru=ru_RU-irina-medium, sv=sv_SE-nst-medium',  # piper voices, downloaded on first use
  'tts_speed':1.0,'txt_lang':'de','save_vocab':True,
  'beginner':False,'native_lang':'en','ui_lang':'en','onboarded':False,'translate_provider':'deepl',
- 'gloss_threshold':0,'gloss':'#8ab4f8',  # beginner mode: mother-tongue gloss above every word you haven't learned yet (offline pack, downloaded once)
+ 'gloss_threshold':0,'gloss':'#8ab4f8',
+ 'noun_gender':True,'masculine':'#6ea8ff','feminine':'#ff7a85','neuter':'#6fd08c',   # German books only: nouns colored by gender (der / die / das)  # beginner mode: mother-tongue gloss above every word you haven't learned yet (offline pack, downloaded once)
 }
 RANGES={'wpm':(50,1500,5),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16,160,2),'long_word_len':(4,30,1),'page_words':(50,2000,50),'context_words':(10,200,10),'follow_margin':(0.0,0.49,0.05),'tts_speed':(0.5,2.0,0.05),'gloss_threshold':(0,5000,100)}
 BOOK_PREFS=('wpm','chunk','mode','beginner')
@@ -150,6 +153,7 @@ TEXT={
   'library':'Library (L)','library_title':'Library','add_books':'Add books…','remove_from_library':'Remove from library',
   'no_books':'No books yet. Add some, or drag them onto the window.','percent_read':'{percent}% read','not_started':'not started','gone':'file has moved or been deleted',
   'books_added':'{count} books added to the library','not_a_book':'Only .epub and .txt files can be added.',
+  'noun_gender':'Color German nouns by gender','masculine':'masculine (der)','feminine':'feminine (die)','neuter':'neuter (das)',
  },
  'pt':{
   'open':'Abrir (O)','play':'Reproduzir (espaço)','mode':'Modo (M)','words_step':'palavras por passo ( [ ] )','speed':'palavras por minuto (↑ ↓ = 5, shift = 25)',
@@ -169,12 +173,18 @@ TEXT={
   'library':'Biblioteca (L)','library_title':'Biblioteca','add_books':'Adicionar livros…','remove_from_library':'Remover da biblioteca',
   'no_books':'Nenhum livro ainda. Adicione alguns ou arraste-os para a janela.','percent_read':'{percent}% lido','not_started':'não iniciado','gone':'o arquivo foi movido ou excluído',
   'books_added':'{count} livros adicionados à biblioteca','not_a_book':'Só é possível adicionar arquivos .epub e .txt.',
+  'noun_gender':'Cores de gênero nos substantivos (alemão)','masculine':'masculino (der)','feminine':'feminino (die)','neuter':'neutro (das)',
  }
 }
 POS='Noun|Proper noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Numeral|Article|Particle|Determiner|Contraction|Phrase'
 BLOCK={'p','div','br','h1','h2','h3','h4','h5','h6','li','blockquote','tr','section','article','dd','dt','pre','hr'}
-END_RE=re.compile(r'[.!?…]["\'”’)»]*$');COMMA_RE=re.compile(r'[,;:]["\'”’)»]*$');UA={'User-Agent':'Speedready/1.0 (https://github.com/cYoren/speedready) python-urllib'}
+END_RE=re.compile(r'[.!?…]["\'”’“‘)»«]*$');COMMA_RE=re.compile(r'[,;:]["\'”’“‘)»«]*$')  # German closes quotes with « and “
+UA={'User-Agent':'Speedready/1.0 (https://github.com/cYoren/speedready) python-urllib'}
 strip=lambda w:re.sub(r'^\W+|\W+$','',w)
+CLEAN=1   # positions saved without this flag index the raw word list (what add() sees) and are remapped once through Book.old2new
+DROP='\x00'  # the parser prefixes words it knows are not text (page <title>s, footnote markers); clean() drops them, raw word counts stay put
+FRONT=re.compile(r'(cover|titel(seite)?|title( page)?|inhalt(sverzeichnis)?|(table of )?contents|impressum|copyright|widmung|dedication|(das |zum )?buch|(der |über den )?autor(in)?|about the author|introduction|how to read.*)',re.I)
+PAGE_NUM=re.compile(r'(?:[-–—|\[(]\s*)?(?:(?:seite|page|s\.|p\.)\s*)?\d{1,4}(?:\s*[-–—|\])])?',re.I)  # '– 7 –', '[7]', 'Seite 7', '7'
 def system_lang():
     code=(locale.getlocale()[0] or os.environ.get('LANG','en')).split('_')[0].split('.')[0].lower()
     return code if code in dict(LANGUAGES) else 'en'
@@ -205,6 +215,14 @@ def lemma_of(w,lang):
     try:return simplemma.lemmatize(w,lang=lang).lower() if simplemma else w.lower()
     except Exception:return w.lower()
 def table(spec):return dict(x.strip().split('=',1) for x in spec.split(',') if '=' in x)
+_genders=None
+def gender_data():
+    """{noun form: readings}, loaded once; {} when the data file is missing (then nothing is colored)."""
+    global _genders
+    if _genders is None:
+        here=Path(__file__).parent;f=next((x for x in(here/'web'/'genders-de.json.gz',here/'genders-de.json.gz') if x.exists()),here)   # repo, or next to the script (flatpak)
+        _genders=gender.load(f) if gender and f.is_file() else {}
+    return _genders
 def merged(cfg,key):
     """A 'k=v, k=v' setting layered over its default, so a user who customized one language in an
     older version still picks up the languages added since. Their entries always win."""
@@ -213,13 +231,17 @@ def merged(cfg,key):
 # ---------------------------------------------------------------- book
 class Html(HTMLParser):
     """Body text with newlines at block boundaries; records the word count at wanted anchors (for the chapter list)."""
-    def __init__(s,anchors=()):super().__init__();s.out=[];s.skip=0;s.want=set(anchors);s.found={}
+    def __init__(s,anchors=()):super().__init__();s.out=[];s.skip=0;s.head=0;s.sup=0;s.want=set(anchors);s.found={}
     def handle_starttag(s,t,a):
-        s.skip+=t in('style','script');t in BLOCK and s.out.append('\n')
+        s.skip+=t in('style','script');s.head+=t=='head';s.sup+=t=='sup';t in BLOCK and s.out.append('\n')
         i=dict(a).get('id')
         if i in s.want:s.found[i]=len(''.join(s.out).split())
-    def handle_endtag(s,t):s.skip-=t in('style','script');t in BLOCK and s.out.append('\n')
-    def handle_data(s,d):s.skip or s.out.append(d)
+    def handle_endtag(s,t):s.skip-=t in('style','script');s.head-=t=='head';s.sup=max(0,s.sup-(t=='sup'));t in BLOCK and s.out.append('\n')
+    def handle_data(s,d):
+        if s.skip:return
+        d=re.sub(r'[\r\n]+',' ',d)
+        if s.head or s.sup and re.fullmatch(r'\s*[\[(]?[\d*†‡]{1,3}[\])]?\s*',d):d=re.sub(r'(\S+)',DROP+r'\1',d)   # 'fool¹' -> 'fool'
+        s.out.append(d)
 
 class NavHtml(HTMLParser):
     """Links of the first <nav> in an EPUB3 nav document -> [(title, href)]."""
@@ -250,7 +272,7 @@ def read_epub(path):
     z=zipfile.ZipFile(path);names=set(z.namelist())
     opf_path=ET.fromstring(z.read('META-INF/container.xml')).find('.//{*}rootfile').get('full-path')
     opf=ET.fromstring(z.read(opf_path));d=posixpath.dirname(opf_path);d=d+'/' if d else ''
-    lang=(opf.findtext('.//{*}language') or 'en')[:2].lower();items={i.get('id'):i for i in opf.iterfind('.//{*}item')}
+    lang=(opf.findtext('.//{*}language') or 'en')[:2].lower();authors=' '.join(x.text or '' for x in opf.iterfind('.//{*}creator'));items={i.get('id'):i for i in opf.iterfind('.//{*}item')}
     def resolve(base,href):
         f,_,anchor=urllib.parse.unquote(href).partition('#');return posixpath.normpath(posixpath.join(posixpath.dirname(base),f)) if f else base,anchor
     toc=[]  # (title, file, anchor)
@@ -269,19 +291,64 @@ def read_epub(path):
         if name not in names:continue
         mine=[(t,a) for t,f,a in toc if f==name];p=Html(a for t,a in mine if a);p.feed(z.read(name).decode('utf-8','replace'))
         out.append((''.join(p.out),[(t,p.found.get(a) if a else 0) for t,a in mine]))  # None = anchor missing (broken epub), Book searches the title text
-    return out,lang
+    return out,lang,authors
 
 class Book:
     def __init__(s,path,txt_lang):
-        s.path=path;s.name=Path(path).name;s.title=book_title(path);s.words=[];s.para_start=[];s.chapters=[]
+        s.path=path;s.name=Path(path).name;s.title=book_title(path);s.words=[];s.para_start=[];s.chapters=[];s.old2new=[]
         if path.lower().endswith('.epub'):
-            parts,s.lang=read_epub(path)
+            parts,s.lang,authors=read_epub(path)
             for text,toc in parts:
                 base=len(s.words);s.add(text);s.chapters+=[(t,base+off if off is not None else None) for t,off in toc]
-            s.resolve_missing()
-        else:s.lang=txt_lang;s.add(Path(path).read_text(errors='replace'))
+            s.clean(s.title+' '+authors);s.resolve_missing()
+        else:  # hard-wrapped txt (Gutenberg): blank lines separate paragraphs, single newlines are just wrapping
+            s.lang=txt_lang;text=Path(path).read_text(errors='replace')
+            if re.search(r'\n[ \t]*\n',text):text=re.sub(r'(?<!\n)\n(?![ \t]*\n)',' ',text)
+            s.add(text);s.clean(s.title)
         s.n=len(s.words);s.chapters=[(t,i) for t,i in s.chapters if t and i<s.n];s.chapter_idx=[i for t,i in s.chapters]
         s.lemmas=[lemma_of(w,s.lang) for w in s.words]
+        s.genders=gender.genders(s.words,gender_data(),s.para_start) if s.lang=='de' and gender_data() else None
+    def clean(s,names):
+        """Drop what the printed page left behind: page numbers, running headers (the title or author, repeated),
+        and rejoin the sentences they cut in two. s.old2new maps word indices from before cleaning, for saved positions."""
+        P=s.para_start+[len(s.words)];pre=[];paras=[]
+        for k in range(len(s.para_start)):   # words the parser marked as not text go first
+            p=[]
+            for w in s.words[P[k]:P[k+1]]:
+                pre.append((len(paras),len(p)));w=w.split(DROP)[0];w and p.append(w)
+            paras.append(p)
+        texts=[' '.join(p) for p in paras]
+        meta={x for x in(strip(w).lower() for w in names.split()) if x};count={}
+        for t,p in zip(texts,paras):
+            if len(p)<=8:count[t]=count.get(t,0)+1
+        def header(t,p):
+            ws={x for x in(strip(w).lower() for w in p) if x}
+            return len(p)<=8 and count[t]>=5 and ws and ws<=meta
+        big=[p for p in paras if len(p)>=4]   # a book whose 'paragraphs' mostly stop mid-sentence is one line per paragraph (converted from PDF)
+        lines=bool(big) and sum(not END_RE.search(p[-1]) for p in big)>len(big)/2
+        words=[];starts=[];first=[];cut=False
+        for k,(p,t) in enumerate(zip(paras,texts)):
+            first.append(len(words))
+            if not p:continue
+            open_=bool(words) and not END_RE.search(words[-1]) and any(c.isalpha() for c in words[-1])   # last kept paragraph stops mid-sentence
+            if header(t,p) or PAGE_NUM.fullmatch(t) and (not t.isdigit() or open_):   # a bare number is a chapter heading unless it splits a sentence
+                first[-1]=None;cut=True;continue
+            lower=re.fullmatch(r'[^\W\d_A-ZÄÖÜ]+[,.;:!?]?',p[0]);run=len(words)-starts[-1] if starts else 0
+            if open_ and (lines and run>=4 or lower and (cut or run>=12)):   # continuation: a cut page, a long paragraph, or a wrapped line
+                if lower and (cut or lines) and re.search(r'[^\W\d_]-$',words[-1]) and p[0] not in('und','oder','bis','sowie','als','and','or'):
+                    words[-1]=words[-1][:-1]+p[0];p=p[1:];first[-1]-=1   # 'Mühlen-' | page break | 'knappe'
+            else:starts.append(len(words))
+            words+=p;cut=False
+        nxt=len(words);start=[]
+        for f in reversed(first):nxt=f if f is not None else nxt;start.append(nxt)   # a dropped paragraph maps to the next kept word
+        start.reverse();at=lambda k,j:min(start[k]+j if first[k] is not None else start[k],len(words))
+        old2new=[at(k,j) for k,j in pre]+[len(words)]   # the extra slot: an anchor right at the end of the text
+        # a word merged into its predecessor, or a dropped marker word, maps onto a neighbour: close enough for a reading position
+        s.chapters=[(t,old2new[min(i,len(pre))] if i is not None else None) for t,i in s.chapters];s.words,s.para_start,s.old2new=words,starts,old2new[:-1]
+    def remap(s,i):return min(s.old2new[i] if 0<=i<len(s.old2new) else i,max(0,len(s.words)-1)) if s.old2new else i
+    def start(s):
+        """Where a new book should open: the first chapter that is not cover, title page, contents or imprint."""
+        return next((i for t,i in s.chapters if not FRONT.fullmatch(t.strip(' .:')) and i<s.n*0.2),0) if s.chapters else 0
     def resolve_missing(s):
         """Broken epubs point at anchors that don't exist: find each title as a short heading paragraph instead, skipping the book's own table of contents."""
         if all(i is not None for t,i in s.chapters):return
@@ -318,17 +385,19 @@ class Book:
 # ---------------------------------------------------------------- dictionary + speech
 class Dict:
     """Wiktionary lookups, one request per wiktionary, cached on disk."""
-    def __init__(s):s.cache=json.loads(CACHE.read_text()) if CACHE.exists() else {};s.last=0
+    def __init__(s):s.cache=json.loads(CACHE.read_text()) if CACHE.exists() else {};s.last={};s.lock=threading.Lock()
     def get(s,url,retry=True,raw=False):
         if url in s.cache:return s.cache[url]
-        time.sleep(max(0,s.last+0.6-time.time()));s.last=time.time()  # ponytail: crude throttle, Wikimedia 429s on bursts
+        host=urllib.parse.urlsplit(url).netloc
+        time.sleep(max(0,s.last.get(host,0)+0.6-time.time()));s.last[host]=time.time()  # ponytail: crude per-host throttle, Wikimedia 429s on bursts
         try:r=urllib.request.urlopen(urllib.request.Request(url,headers=UA),timeout=8);s.cache[url]=r.read().decode('utf-8','replace') if raw else json.load(r)
         except urllib.error.HTTPError as e:
             if e.code==404:s.cache[url]=None
             elif e.code==429 and retry:time.sleep(float(e.headers.get('Retry-After') or 5));return s.get(url,retry=False)
             elif e.code==429:raise RuntimeError('Wiktionary rate limit hit, wait a minute')
             else:raise
-        CACHE.write_text(json.dumps(s.cache));return s.cache[url]
+        with s.lock:atomic_text(CACHE,json.dumps(s.cache))   # two lookups in flight must not interleave the file
+        return s.cache[url]
     def en(s,word,lang):  # en.wiktionary definition API: only the book-language section
         d=s.get(f'https://en.wiktionary.org/api/rest_v1/page/definition/{urllib.parse.quote(word)}');out=[]
         for e in (d or {}).get(lang,[]):
@@ -347,14 +416,15 @@ class Dict:
         kind=re.search(r'Wortart:.*?<dd[^>]*>(.*?)</dd>',h,re.S);means=[txt(m) for m in re.findall(r'<div class="enumeration__text">(.*?)</div>',h,re.S)]
         if not means:m=re.search(r'<div[^>]*id="bedeutung".*?<p>(.*?)</p>',h,re.S);means=[txt(m.group(1))] if m else []
         return (txt(kind.group(1))+'\n' if kind else '')+'\n'.join(f'  {k}. {x}' for k,x in enumerate(means[:8],1)) if means else ''
-    def lookup(s,word,lemma,lang,langs):
-        """-> [(source, text)], gloss for Anki. Lemma first, the inflected form only if the lemma has no entry."""
+    def lookup(s,word,lemma,lang,langs,emit=lambda out:None):
+        """-> [(source, text)], gloss for Anki. Lemma first, the inflected form only if the lemma has no entry.
+        emit(out so far) after each source, so the first answer shows without waiting for the slowest."""
         out=[];gloss=''
         for wl in langs:
             if wl=='duden' and lang!='de':continue
             for cand in dict.fromkeys([lemma,word]):
                 t=s.duden(cand) if wl=='duden' else s.en(cand,lang) if wl=='en' else s.extract(wl,cand,lang)
-                if t:out.append((f'{cand}  ·  {"Duden" if wl=="duden" else wl+".wiktionary"}',t));gloss=gloss or (s.gloss(t,cand) if wl not in('en','duden') else re.sub(r'\s+',' ',t)[:300]);break
+                if t:out.append((f'{cand}  ·  {"Duden" if wl=="duden" else wl+".wiktionary"}',t));gloss=gloss or (s.gloss(t,cand) if wl not in('en','duden') else re.sub(r'\s+',' ',t)[:300]);emit(list(out));break
         return out,gloss
     @staticmethod
     def gloss(t,cand):
@@ -453,6 +523,16 @@ class Gloss:
             part=part.strip()
             if part and len(', '.join(out+[part]))<=limit:out.append(part)
         return ', '.join(out) or g[:limit]
+    def senses(s,w,limit=8):
+        """-> [(pos, meanings)] for w's lemma, best first: the popup's instant offline answer. English fallbacks are marked."""
+        g,l=s.raw(w)
+        if not s.db:return []
+        by={}
+        for pos,tgt,prio in s.db.execute('SELECT pos,tgt,prio FROM gloss WHERE word IN (?,?) ORDER BY prio',(l,strip(w))):
+            pos=(pos or '')+(' (en)' if prio>=9 and s.tgt!='en' else '')
+            if tgt not in by.setdefault(pos,[]):by[pos].append(tgt)
+        out=[(pos,' · '.join(v[:4])) for pos,v in by.items()][:limit]
+        return out or ([('',g)] if g else [])
     def get(s,w,threshold=0):
         g,l=s.raw(w)
         if g is None or l in s.learned or l.lower()==g.lower():return None
@@ -489,8 +569,9 @@ class WordView(Gtk.TextView):
     def __init__(s,win,**kw):
         super().__init__(editable=False,cursor_visible=False,wrap_mode=Gtk.WrapMode.WORD_CHAR,**kw)
         s.win=win;s.a=s.b=0;s.offs=[];s.buf=s.get_buffer()
+        s.gtags={g:s.buf.create_tag('g_'+g) for g in 'mfn'}
         s.cur=s.buf.create_tag('cur');s.read=s.buf.create_tag('read');s.unk=s.buf.create_tag('unk',underline=Pango.Underline.SINGLE)
-        s.buf.connect('notify::has-selection',s.selection_changed)
+        s.buf.connect('mark-set',lambda b,it,m:m.get_name() in('insert','selection_bound') and s.selection_changed());s.follow=s.buf.create_mark('follow',s.buf.get_start_iter(),False)
         g=Gtk.GestureClick();g.connect('released',s.click);s.add_controller(g)
         g=Gtk.GestureClick(button=3);g.connect('pressed',lambda g,n,x,y:s.win.toggle_unknown(s.word_at(x,y)));s.add_controller(g)
     def render(s,a,b):
@@ -499,6 +580,8 @@ class WordView(Gtk.TextView):
             if i>a and bk.is_para_start(i):parts.append('\n\n');pos+=2
             s.offs.append(pos);w=bk.words[i]+' ';parts.append(w);pos+=len(w)
         s.buf.set_text(''.join(parts));s.mark_unknown()
+        if (gs:=s.win.genders()):
+            for i in range(a,b):gs[i] and s.buf.apply_tag(s.gtags[gs[i]],*s.span(i))
     def span(s,i):
         b=s.buf;st=b.get_iter_at_offset(s.offs[i-s.a]);return st,b.get_iter_at_offset(s.offs[i-s.a]+len(s.win.book.words[i]))
     def mark_unknown(s,only=None):
@@ -532,7 +615,7 @@ class WordView(Gtk.TextView):
         if not(s.a<=i<s.b):return
         e=min(i+n-1,s.b-1);st=s.span(i)[0];en=s.span(e)[1]
         b.apply_tag(s.cur,st,en);dim and b.apply_tag(s.read,b.get_start_iter(),st)
-        s.scroll_to_mark(b.create_mark(None,en,False),s.win.cfg['follow_margin'],False,0,0)  # scrolls only when the word leaves the middle band
+        b.move_mark(s.follow,en);s.scroll_to_mark(s.follow,s.win.cfg['follow_margin'],False,0,0)  # scrolls only when the word leaves the middle band
 
 class PageView(Gtk.Box):
     """Beginner mode: one page of words as widgets, one wrap box per paragraph, gloss label above each word."""
@@ -544,7 +627,7 @@ class PageView(Gtk.Box):
         for i in range(a,b):
             if fb is None or (i>a and bk.is_para_start(i)):fb=Adw.WrapBox(child_spacing=2,line_spacing=10,halign=Gtk.Align.START);s.append(fb)  # a real flow layout; Gtk.FlowBox is a grid
             full=s.gloss_full(i);cell=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,css_classes=['cell']);gl=Gtk.Label(label=s.gloss_for(i),tooltip_text=full or None,css_classes=['gloss']);wl=Gtk.Label(label=bk.words[i],css_classes=['w'])
-            cell.append(gl);cell.append(wl);bk.lemmas[i] in s.win.unknown and cell.add_css_class('unk')
+            cell.append(gl);cell.append(wl);bk.lemmas[i] in s.win.unknown and cell.add_css_class('unk');gs=s.win.genders();gs and gs[i] and cell.add_css_class('g-'+gs[i])
             k=Gtk.GestureClick();k.connect('released',lambda k,n,x,y,i=i:s.cell_click(n,i));cell.add_controller(k)
             k=Gtk.GestureClick(button=3);k.connect('pressed',lambda k,n,x,y,i=i:s.win.toggle_unknown(i));cell.add_controller(k)
             k=Gtk.GestureClick();k.connect('pressed',lambda k,n,x,y,i=i:(k.set_state(Gtk.EventSequenceState.CLAIMED),s.win.learn(i)));gl.add_controller(k)
@@ -597,7 +680,7 @@ class Win(Adw.ApplicationWindow):
         s.bookmarks=json.loads(BOOKMARKS.read_text()) if BOOKMARKS.exists() else {}
         s.seen={l.split('\t')[1].lower() for l in VOCAB.read_text().splitlines() if '\t' in l and not l.startswith('#')} if VOCAB.exists() else set()
         s.unknown=set(UNKNOWN.read_text().split()) if UNKNOWN.exists() else set()
-        s.book=None;s.i=0;s.timer=None;s.save_timer=None;s.playing=False;s.ra=False;s.token=0;s.dict=Dict();s.tts=TTS();s.gloss=None;s.beginner_row=None;s.req=0;s.resume=False;s.css=Gtk.CssProvider()
+        s.book=None;s.i=0;s.timer=None;s.save_timer=None;s.playing=False;s.ra=False;s.token=0;s.dict=Dict();s.tts=TTS();s.gloss=None;s.lex=None;s.lex_senses=[];s.beginner_row=None;s.req=0;s.resume=False;s.css=Gtk.CssProvider()
         s.selection_text='';s.selection_owner=None;s.page_selection_anchor=None
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),s.css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         Adw.StyleManager.get_default().set_color_scheme(Adw.ColorScheme.PREFER_DARK)
@@ -675,6 +758,7 @@ class Win(Adw.ApplicationWindow):
 
     # ---- language / onboarding
     def t(s,key,/,**values):return tr(s.cfg.get('ui_lang','en'),key,**values)
+    def genders(s):return s.book and s.cfg['noun_gender'] and s.book.genders
     def write_cfg(s):atomic_text(CFG_FILE,json.dumps(s.cfg,indent=1,ensure_ascii=False))
     def refresh_ui_text(s):
         for key,w in s.tip_widgets.items():w.set_tooltip_text(s.t(key))
@@ -718,7 +802,7 @@ class Win(Adw.ApplicationWindow):
             comments=s.t('about_comments'),
             website='https://github.com/cYoren/speedready',
             issue_url='https://github.com/cYoren/speedready/issues')
-        d.add_credit_section('Data',['Wiktionary via kaikki.org','MUSE bilingual dictionaries','hermitdave/FrequencyWords'])
+        d.add_credit_section('Data',['Wiktionary via kaikki.org','hermitdave/FrequencyWords'])
         d.add_credit_section('Speech',['Piper (rhasspy)'])
         d.present(s)
     def shortcuts(s):
@@ -780,9 +864,12 @@ class Win(Adw.ApplicationWindow):
         .chapters label{{font-family:"{c['font_text']}";font-size:{c['text_size']-2}px;}}
         .cell{{padding:2px 5px;border-radius:8px;}}.cell label.w{{font-family:"{c['font_text']}";font-size:{c['text_size']}px;}}
         .cell label.gloss{{font-family:"{c['font_text']}";font-size:{max(9,c['text_size']-7)}px;color:{c['gloss']};opacity:.82;min-height:{c['text_size']-3}px;}}
+        .cell.g-m label.w{{color:{c['masculine']};}}.cell.g-f label.w{{color:{c['feminine']};}}.cell.g-n label.w{{color:{c['neuter']};}}
         .cell.cur{{background-color:{c['highlight']};}}.cell.sel{{outline:2px solid {c['accent']};outline-offset:-1px;background-color:{c['panel']};}}.cell.read label.w{{color:{c['dim']};}}.cell.unk label.w{{text-decoration-line:underline;text-decoration-color:{c['unknown']};}}
         .selection-bar{{background-color:{c['panel']};border-top:1px solid alpha({c['fg']},.12);}}
         headerbar{{background-color:transparent;}}''')
+        for t in(s.pacer,s.ctx):
+            for g,key in(('m','masculine'),('f','feminine'),('n','neuter')):t.gtags[g].set_property('foreground',c[key])
         for t in(s.pacer,s.ctx):t.cur.set_property('background',c['highlight']);t.read.set_property('foreground',c['dim']);t.unk.set_property('underline-rgba',Gdk.RGBA(*[int(c['unknown'][i:i+2],16)/255 for i in(1,3,5)],1))
         s.tag_src.set_property('foreground',c['dim'])
         s.wpm.set_value(c['wpm']);s.chunk.set_value(c['chunk']);s.set_mode(c['mode'])
@@ -792,7 +879,7 @@ class Win(Adw.ApplicationWindow):
     def toggle_mode(s):s.set_mode('rsvp' if s.cfg['mode']=='pacer' else 'pacer')
     def toggle_full(s):s.unfullscreen() if s.is_fullscreen() else s.fullscreen()
     def key(s,ctl,kv,code,state):
-        if isinstance(s.get_focus(),Gtk.Text):return False
+        if isinstance(s.get_focus(),Gtk.Text) or state&(Gdk.ModifierType.CONTROL_MASK|Gdk.ModifierType.ALT_MASK):return False
         K=Gdk;big=25 if state&Gdk.ModifierType.SHIFT_MASK else 5
         if kv in(K.KEY_b,K.KEY_B):
             (s.bookmarks_dialog if state&Gdk.ModifierType.SHIFT_MASK else s.toggle_bookmark)();return True
@@ -857,6 +944,11 @@ class Win(Adw.ApplicationWindow):
         key=s.book_key();state=normalize_book_state(s.pos.get(key,s.pos.get(s.book.name,0)))
         for k in BOOK_PREFS:
             if k in state:s.cfg[k]=state[k]
+        if state.get('clean')!=CLEAN:   # saved against the uncleaned word list: move it (and the bookmarks) once
+            state['position']=s.book.remap(state.get('position',0))
+            for m in s.bookmarks.get(key,[]):m['i']=s.book.remap(m['i'])
+            key in s.bookmarks and s.write_bookmarks()
+        if 'n' not in state and not state.get('position'):state['position']=s.book.start()   # never read: skip the front matter
         s.i=min(state.get('position',0),s.book.n-1);s.ra=bool(state.get('read_along',False));s.pos['_last']=p;s.set_title(f'Speedready · {s.book.title}');s.pacer.a=s.pacer.b=0
         s.chapters.remove_all()
         for t,i in s.book.chapters:row=Gtk.ListBoxRow(child=Gtk.Label(label=t,xalign=0,wrap=True,margin_start=10,margin_end=10,margin_top=6,margin_bottom=6));row.idx=i;s.chapters.append(row)
@@ -887,7 +979,7 @@ class Win(Adw.ApplicationWindow):
     def flush_position(s):
         s.save_timer=None
         if s.book:
-            state={'position':s.i,**{k:s.cfg[k] for k in BOOK_PREFS},'read_along':s.ra,'n':s.book.n,'title':s.book.title,'read_at':time.time()}
+            state={'position':s.i,**{k:s.cfg[k] for k in BOOK_PREFS},'read_along':s.ra,'n':s.book.n,'title':s.book.title,'read_at':time.time(),'clean':CLEAN}
             s.pos[s.book_key()]=state;s.pos['_last']=s.book.path
         atomic_text(POS_FILE,json.dumps(s.pos,ensure_ascii=False));return False
     def save(s):
@@ -898,7 +990,7 @@ class Win(Adw.ApplicationWindow):
         if not s.book:return False
         s.show()
         if s.cfg['mode']=='pacer' and not s.cfg['beginner'] and s.pacer.a<=s.i<s.pacer.b:
-            end=s.pacer.span(s.i)[1];mark=s.pacer.buf.create_mark(None,end,False);s.pacer.scroll_to_mark(mark,0,True,0,.35)
+            s.pacer.buf.move_mark(s.pacer.follow,s.pacer.span(s.i)[1]);s.pacer.scroll_to_mark(s.pacer.follow,0,True,0,.35)
         return False
     def chunk_len(s,i):  # never merge across a sentence end or paragraph break
         b=s.book
@@ -960,7 +1052,8 @@ class Win(Adw.ApplicationWindow):
             rgb(c['dim']);cr.set_line_width(2)
             for y in(cy-ph*.75,cy+ph*.75):cr.move_to(cx,y-ph*.12);cr.line_to(cx,y+ph*.12)
             cr.stroke()
-        for lay_,x,col in((L,cx-pw/2-L.get_pixel_size()[0],c['fg']),(P,cx-pw/2,c['pivot']),(R,cx+pw/2,c['fg'])):
+        gs=s.genders();g=gs and len(chunk)==1 and gs[s.i];fg=c[{'m':'masculine','f':'feminine','n':'neuter'}[g]] if g else c['fg']
+        for lay_,x,col in((L,cx-pw/2-L.get_pixel_size()[0],fg),(P,cx-pw/2,c['pivot']),(R,cx+pw/2,fg)):
             rgb(col);cr.move_to(x,cy-ph/2);PangoCairo.show_layout(cr,lay_)
         if s.gloss and (gl:=' · '.join(g for g in (s.gloss.get(x,c['gloss_threshold']) for x in chunk) if g)):
             G=area.create_pango_layout(gl);G.set_font_description(Pango.FontDescription(f'{c["font_text"]} {c["word_size"]//3}px'));gw,gh=G.get_pixel_size();rgb(c['gloss']);cr.move_to(cx-gw/2,cy+ph*1.1);PangoCairo.show_layout(cr,G)
@@ -1046,18 +1139,33 @@ class Win(Adw.ApplicationWindow):
         was=s.playing;s.goto(i);s.resume=was  # flow resumes from here when the popup closes
         b=s.book;w=strip(b.words[i]);lemma=lemma_of(w,b.lang)
         if not w:return
+        pk=s.pack();s.lex_senses=pk.senses(w) if pk else []
         s.word,s.lemma=w,lemma;s.req+=1;s.show_def(w,lemma,[('','…')]);s.unkbtn.set_active(lemma in s.unknown)
         s.learnbtn.set_visible(bool(s.gloss));s.gloss and s.learnbtn.set_active(s.gloss.raw(w)[1] in s.gloss.learned);s.pop.present(s)
         threading.Thread(target=s.fetch,args=(s.req,w,lemma,b.lang,b.sentence(i),b.name),daemon=True).start()
+    def pack(s):
+        """The offline dictionary for book language -> native language, beginner mode or not. None when there is no pair."""
+        if s.gloss:return s.gloss
+        pair=(s.book.lang,s.cfg['native_lang'])
+        if pair[0]==pair[1]:return None
+        if not(s.lex and (s.lex.src,s.lex.tgt)==pair):s.lex=Gloss(*pair,s.status,lambda:False)   # downloads once if missing
+        return s.lex
     def fetch(s,req,w,lemma,lang,sent,bookname):
-        try:out,gloss=s.dict.lookup(w,lemma,lang,[x.strip() for x in s.cfg['dict_langs'].split(',') if x.strip()])
-        except Exception as e:out,gloss=[('lookup failed',str(e))],''
+        pending=[('','…')]
+        emit=lambda out:req==s.req and GLib.idle_add(s.show_def,w,lemma,out+pending,req)
+        try:out,gloss=s.dict.lookup(w,lemma,lang,[x.strip() for x in s.cfg['dict_langs'].split(',') if x.strip()],emit)
+        except Exception as e:out,gloss=[(s.t('lookup_failed'),str(e))],''
         if req!=s.req:return
-        GLib.idle_add(s.show_def,w,lemma,out or [(s.t('not_found'),s.t('no_entry'))])
-        out and gloss and s.add_vocab(w,lemma,gloss,sent,bookname)
-    def show_def(s,w,lemma,entries):
+        offline=s.lex_senses
+        GLib.idle_add(s.show_def,w,lemma,out or ([] if offline else [(s.t('not_found'),s.t('no_entry'))]),req)
+        gloss=gloss or '; '.join(m for _,m in offline)[:300]   # no web entry: the offline meaning still makes an Anki card
+        gloss and s.add_vocab(w,lemma,gloss,sent,bookname)
+    def show_def(s,w,lemma,entries,req=None):
+        if req is not None and req!=s.req:return False   # a slow answer for a word you already moved past
         s.pop_title.set_title(w);s.pop_title.set_subtitle(f'→ {lemma}' if lemma!=w.lower() else '');b=s.defn.get_buffer();b.set_text('')
-        if s.gloss and (g:=s.gloss.raw(w)[0]):b.insert_with_tags(b.get_end_iter(),f'{s.cfg["native_lang"]}: ',s.tag_src);b.insert(b.get_end_iter(),g+'\n\n')
+        if s.lex_senses:
+            b.insert_with_tags(b.get_end_iter(),f'{s.cfg["native_lang"]}  ·  offline\n',s.tag_src)
+            b.insert(b.get_end_iter(),'\n'.join(f'{pos}: {m}' if pos else m for pos,m in s.lex_senses)+'\n\n')
         for src,t in entries:src and b.insert_with_tags(b.get_end_iter(),src+'\n',s.tag_src);b.insert(b.get_end_iter(),t+'\n\n')
         return False
     def web_url(s):
@@ -1088,7 +1196,8 @@ class Win(Adw.ApplicationWindow):
                 s.t('pauses'):('sentence_pause','comma_pause','paragraph_pause','long_word_len','long_word_pause','unknown_pause'),
                 s.t('look'):('font_text','text_size','font_word','word_size','bg','fg','dim','pivot','highlight','panel','accent','unknown'),
                 s.t('dictionary_speech'):('dict_langs','web_dicts','translate_provider','tts_voices','txt_lang','save_vocab'),
-                s.t('beginner_mode'):('beginner','native_lang','ui_lang','gloss_threshold','gloss')}
+                s.t('beginner_mode'):('beginner','native_lang','ui_lang','gloss_threshold','gloss'),
+                'Deutsch':('noun_gender','masculine','feminine','neuter')}
         def upd(k,v):
             s.cfg[k]=v;s.write_cfg();k in BOOK_PREFS and s.save_later();k in('beginner','native_lang') and s.setup_gloss();k=='ui_lang' and s.refresh_ui_text();s.apply()
         for gname,keys in groups.items():

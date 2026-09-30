@@ -16,11 +16,13 @@
 :root{
   --bg:#101012; --fg:#e8e6e3; --dim:#8a8a90; --panel:#1b1b1f; --line:#2a2a30;
   --accent:#ff5252; --gloss:#8ab4f8; --hl:#2f5d45; --unk:#e0a030;
+  --masc:#6ea8ff; --fem:#ff7a85; --neut:#6fd08c;
   --pad:16px; --radius:14px;
 }
 :root[data-theme="light"]{
   --bg:#faf9f7; --fg:#1a1a1c; --dim:#6b6b72; --panel:#ffffff; --line:#e3e1dd;
   --accent:#d32f2f; --gloss:#1a56b8; --hl:#c8e6d0; --unk:#a86b00;
+  --masc:#1f5fd1; --fem:#c62839; --neut:#1b8a45;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;overscroll-behavior:none}
@@ -51,6 +53,7 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;p
 .c{display:flex;flex-direction:column;align-items:center;padding:1px 3px;border-radius:7px;line-height:1.2}
 .c .g{font-size:.56em;color:var(--gloss);line-height:1.4;min-height:1.4em;white-space:nowrap}
 .c.cur{background:var(--hl)}
+.c.g-m .w,#rsvp-word.g-m{color:var(--masc)}.c.g-f .w,#rsvp-word.g-f{color:var(--fem)}.c.g-n .w,#rsvp-word.g-n{color:var(--neut)}
 .c.read .w{color:var(--dim)}
 .c.unk .w{text-decoration:underline;text-decoration-color:var(--unk);text-underline-offset:3px}
 body.plain .c .g{display:none}
@@ -200,6 +203,7 @@ body.rsvp main{display:none}
   <div class="grab"></div>
   <h2 data-t="settings">Settings</h2>
   <div class="row"><label data-t="gloss_label">Translation above the words<small data-t="gloss_hint">Shows your language above every word you have not marked as known</small></label><div class="sw on" id="t-gloss"></div></div>
+  <div class="row" id="gender-row"><label data-t="gender_label">Colors for der, die, das<small data-t="gender_hint">German nouns in blue (der), red (die) or green (das)</small></label><div class="sw on" id="t-gender"></div></div>
   <div class="row"><label data-t="mode">Reading mode</label>
     <button class="btn" id="t-mode" style="min-width:150px"></button></div>
   <div class="row"><label data-t="dark">Dark mode</label><div class="sw on" id="t-dark"></div></div>
@@ -222,7 +226,7 @@ body.rsvp main{display:none}
   <h3 data-t="language">Language</h3>
   <div class="list" id="langs"></div>
   <h3 data-t="about">About</h3>
-  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.4</b></div>
+  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.5</b></div>
   <div class="row"><label data-t="license">Code: MIT</label>
     <a class="btn" id="a-src" href="https://github.com/cYoren/speedready" target="_blank" rel="noopener" data-t="source">Source code</a></div>
   <p style="color:var(--dim);font-size:13px;line-height:1.5;margin:0">
@@ -230,6 +234,8 @@ body.rsvp main{display:none}
   </p>
 </div></div>
 
+<script src="gender.js"></script>
+<script src="textclean.js"></script>
 <script>
 //////////////////// language ////////////////////
 // The interface language. Written English, translated at runtime; the reader picks on
@@ -240,6 +246,7 @@ const UI={
      know_it:'✓ I know this',dont_know:'↩ I do not know it',dictionary:'Dictionary ↗',chapters:'Chapters',
      open_other:'Open another book',file_label:'An .epub or .txt file',file_hint:'Pick a file from your device',
      back_to_starter:'Back to the starter book',gloss_label:'Translation above the words',
+     gender_label:'Colors for der, die, das',gender_hint:'German nouns in blue (der), red (die) or green (das)',
      gloss_hint:'Shows your language above every word you have not marked as known',
      dark:'Dark mode',text_size:'Text size',tts_label:'Read aloud while it advances',
      tts_hint:'The device voice reads each sentence and the text follows it',
@@ -266,6 +273,7 @@ const UI={
      know_it:'✓ Já sei',dont_know:'↩ Ainda não sei',dictionary:'Dicionário ↗',chapters:'Capítulos',
      open_other:'Abrir outro livro',file_label:'Arquivo .epub ou .txt',file_hint:'Escolha um arquivo do seu aparelho',
      back_to_starter:'Voltar ao livro de contos',gloss_label:'Tradução acima das palavras',
+     gender_label:'Cores para der, die, das',gender_hint:'Substantivos alemães em azul (der), vermelho (die) ou verde (das)',
      gloss_hint:'Mostra seu idioma acima de cada palavra que você ainda não marcou como sabida',
      dark:'Modo escuro',text_size:'Tamanho do texto',tts_label:'Ler em voz alta ao avançar',
      tts_hint:'A voz do aparelho lê cada frase e o texto acompanha',
@@ -321,7 +329,8 @@ const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],p
          unknown:new Set(LS.get('unknown',[])),vocab:LS.get('vocab',[]),bookmarks:[],
          wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',true),
          size:LS.get('size',19),tts:LS.get('tts',false),learned:new Set(LS.get('learned',[])),
-         voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false};
+         voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false,
+         genderOn:LS.get('gender',true),genderData:null};
 const $=s=>document.querySelector(s), page=$('#page');
 let toastTimer=null;
 function toast(msg){
@@ -373,8 +382,9 @@ function fit(gloss,word){          // keep only what fits above the word, so the
 //////////////////// book ////////////////////
 function paraOf(i){let lo=0,hi=S.book.para.length-1,r=0;while(lo<=hi){const m=(lo+hi)>>1;if(S.book.para[m]<=i){r=m;lo=m+1}else hi=m-1}return S.book.para[r]}
 function isParaStart(i){return S.book.para.includes(i)}
-function sentEnd(i){const w=S.book.words;while(i<w.length-1&&!/[.!?…»"']$/.test(w[i])&&!isParaStart(i+1))i++;return i+1}
-function sentStart(i){const w=S.book.words;while(i>0&&!isParaStart(i)&&!/[.!?…»"']$/.test(w[i-1]))i--;return i}
+const SENT_END=/[.!?…]["'”’“‘)»«]*$/;   // German closes quotes with « and “
+function sentEnd(i){const w=S.book.words;while(i<w.length-1&&!SENT_END.test(w[i])&&!isParaStart(i+1))i++;return i+1}
+function sentStart(i){const w=S.book.words;while(i>0&&!isParaStart(i)&&!SENT_END.test(w[i-1]))i--;return i}
 function chapterOf(i){let t='';for(const[name,at]of S.book.chapters){if(at<=i)t=name;else break}return t||S.book.title}
 
 //////////////////// rendering ////////////////////
@@ -393,9 +403,16 @@ function renderPage(i){
     const g=document.createElement('span'); g.className='g'; g.textContent=S.gloss?showGloss(b.words[k]):'';
     const w=document.createElement('span'); w.className='w'; w.textContent=b.words[k];
     if(isUnknown(b.words[k]))c.classList.add("unk");
+    const gk=genderAt(k); if(gk)c.classList.add('g-'+gk);
     c.append(g,w); p.appendChild(c); S.cells.push(c);
   }
   page.replaceChildren(frag);
+}
+// German noun genders, computed once per book (gender.js); off for other languages or when switched off
+function genderAt(i){return S.genderOn&&S.book.genders?S.book.genders[i]:null}
+function computeGenders(){
+  const b=S.book; if(!b||b.genders||b.lang!==Gender.LANG||!S.genderData)return;
+  b.genders=Gender.genders(b.words,S.genderData,b.para);
 }
 function refreshGlosses(){
   if(!S.cells.length)return;
@@ -428,6 +445,7 @@ function pivot(w){const p=Math.min(Math.floor((w.length-1)/3),4);
 function drawRsvp(){
   const w=S.book.words[S.i]||'',[a,b,c]=pivot(w);
   $('#rsvp-word').innerHTML=esc(a)+'<i>'+esc(b)+'</i>'+esc(c);
+  const gk=genderAt(S.i); $('#rsvp-word').className=gk?'g-'+gk:'';
   $('#rsvp-gloss').textContent=S.gloss?showGloss(w):'';
   const from=Math.max(0,S.i-7),to=Math.min(S.book.words.length,S.i+8);
   $('#rsvp-ctx').innerHTML=S.book.words.slice(from,S.i).map(esc).join(' ')+
@@ -445,7 +463,7 @@ function setMode(m){
 //////////////////// playback ////////////////////
 function delay(i){
   const w=S.book.words[i]; let d=60000/S.wpm;
-  if(/[.!?…]["'»)]*$/.test(w))d*=2.4; else if(/[,;:]["'»)]*$/.test(w))d*=1.5;
+  if(SENT_END.test(w))d*=2.4; else if(/[,;:]["'”’“‘)»«]*$/.test(w))d*=1.5;
   if(w.length>=10)d*=1.25;
   const[,l]=glossOf(w); if(!isLearned(l)&&showGloss(w))d*=1.35;   // linger on words still being learned
   if(S.unknown.has(l))d*=1.8;                                      // and longer on the ones marked by hand
@@ -665,7 +683,14 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();sa
 
 //////////////////// loading books ////////////////////
 async function loadBook(book,startAt){
-  S.book=book; S.i=Math.min(startAt??LS.get(bookKey(),0),book.words.length-1);
+  S.book=book;
+  if(book.old2new&&!LS.get('clean:'+book.id,false)){   // positions saved before cleanup index the raw words: move them once
+    const pos=LS.get(bookKey(),null),n=book.words.length,m=TextClean.remap.bind(null,book.old2new,n);
+    if(pos!==null)LS.set(bookKey(),m(pos));
+    LS.set(marksKey(),LS.get(marksKey(),[]).map(m));LS.set('clean:'+book.id,true);
+  }
+  S.i=Math.min(startAt??LS.get(bookKey(),book.old2new?TextClean.start(book.chapters,book.words.length):0),book.words.length-1);
+  computeGenders();
   const pr=LS.get(prefsKey(),null);                 // each book keeps its own pace and mode
   if(pr){S.wpm=pr.wpm??S.wpm;S.gloss=pr.gloss??S.gloss;S.tts=pr.tts??S.tts;
          $('#wpm').textContent=S.wpm;$('#t-gloss').classList.toggle('on',S.gloss);
@@ -691,7 +716,7 @@ function textToBook(text,title,id){
     const ws=p.split(/\s+/).filter(Boolean);
     if(ws.length){para.push(words.length);words.push(...ws)}
   }
-  return {id,title,lang:S.dict?.src||'en',words,para,chapters:[]};
+  return {id,title,lang:S.dict?.src||'en',...TextClean.clean(words,para,[],title)};
 }
 // --- epub via the browser's own zip inflater (no library) ---
 async function epubToBook(file){
@@ -719,27 +744,47 @@ async function epubToBook(file){
   const container=await read('META-INF/container.xml');
   const opfPath=container.match(/full-path="([^"]+)"/)[1];
   const opf=await read(opfPath), dir=opfPath.replace(/[^/]*$/,'');
-  const items={}; for(const m of opf.matchAll(/<item\b[^>]*>/g)){
-    const id=(m[0].match(/id="([^"]+)"/)||[])[1], href=(m[0].match(/href="([^"]+)"/)||[])[1];
-    if(id&&href)items[id]=href;
+  const items={},props={}; for(const m of opf.matchAll(/<item\b[^>]*>/g)){
+    const id=(m[0].match(/\bid="([^"]+)"/)||[])[1], href=(m[0].match(/href="([^"]+)"/)||[])[1];
+    if(id&&href){items[id]=href;props[id]=(m[0].match(/properties="([^"]+)"/)||[])[1]||''}
   }
   const parser=new DOMParser(); let words=[],para=[],chapters=[];
+  const path=(base,href)=>{const u=new URL(href,'http://x/'+base);return[decodeURIComponent(u.pathname.slice(1)),decodeURIComponent(u.hash.slice(1))]};
+  // the book's own table of contents (EPUB3 nav, else EPUB2 ncx) -> [title, file, anchor]
+  const toc=[], navId=Object.keys(props).find(id=>props[id].split(/\s+/).includes('nav'));
+  const ncxId=(opf.match(/<spine\b[^>]*\btoc="([^"]+)"/)||[])[1], tocId=navId||ncxId;
+  if(tocId&&items[tocId]){
+    const tp=path(dir,items[tocId])[0], src=await read(tp);
+    if(src){
+      const d=parser.parseFromString(src,navId?'text/html':'application/xml');
+      if(navId){const nav=d.querySelector('nav');nav&&nav.querySelectorAll('a[href]').forEach(a=>toc.push([a.textContent.split(/\s+/).filter(Boolean).join(' '),...path(tp,a.getAttribute('href'))]))}
+      else d.querySelectorAll('navPoint').forEach(n=>{const c=n.querySelector('content');c&&toc.push([(n.querySelector('text')?.textContent||'').split(/\s+/).filter(Boolean).join(' '),...path(tp,c.getAttribute('src'))])});
+    }
+  }
   for(const m of opf.matchAll(/<itemref\b[^>]*idref="([^"]+)"/g)){
     const href=items[m[1]]; if(!href)continue;
-    const html=await read(dir+decodeURIComponent(href)); if(!html)continue;
+    const name=path(dir,href)[0], html=await read(name); if(!html)continue;
     const doc=parser.parseFromString(html,'text/html');
     doc.querySelectorAll('style,script').forEach(e=>e.remove());
-    const head=doc.querySelector('h1,h2');
-    if(head&&head.textContent.trim())chapters.push([head.textContent.trim().replace(/\s+/g,' ').slice(0,60),words.length]);
-    for(const el of doc.body.querySelectorAll('p,div,li,h1,h2,h3,blockquote')){
+    doc.querySelectorAll('sup').forEach(e=>{if(/^\s*[\[(]?[\d*†‡]{1,3}[\])]?\s*$/.test(e.textContent))e.remove()});   // footnote markers: 'fool¹' -> 'fool'
+    const base=words.length, mine=toc.filter(([,f])=>f===name);
+    // each anchor lands on the first block that is it, holds it, or comes after it; a missing anchor is null (resolveMissing finds it by title)
+    const pending=mine.map(([t,,a])=>({t,el:a?doc.getElementById(a):null,a,at:a?null:base}));
+    if(!toc.length){const head=doc.querySelector('h1,h2');if(head&&head.textContent.trim())pending.push({t:head.textContent.trim().replace(/\s+/g,' ').slice(0,60),at:base})}
+    for(const el of doc.body.querySelectorAll('p,div,li,h1,h2,h3,h4,blockquote')){
       if(el.querySelector('p,div,li'))continue;
+      for(const x of pending)if(x.at===null&&x.el&&(x.el===el||x.el.contains(el)||el.contains(x.el)||x.el.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING))x.at=words.length;
       const ws=(el.textContent||'').split(/\s+/).filter(Boolean);
       if(ws.length){para.push(words.length);words.push(...ws)}
     }
+    chapters.push(...pending.map(x=>[x.t,x.at]));
   }
   if(!words.length)throw new Error(T('no_text_epub'));
   const title=(opf.match(/<dc:title[^>]*>([^<]+)/)||[])[1]||file.name.replace(/\.epub$/i,'');
-  return {id:'f:'+file.name+':'+file.size,title,lang:(opf.match(/<dc:language[^>]*>(\w\w)/)||[])[1]||S.dict?.src||'en',words,para,chapters};
+  const authors=[...opf.matchAll(/<dc:creator[^>]*>([^<]+)/g)].map(m=>m[1]).join(' ');
+  const c=TextClean.clean(words,para,chapters,title+' '+authors);   // page numbers, running headers, split sentences
+  c.chapters=TextClean.resolveMissing(c.words,c.para,c.chapters).filter(([t,i])=>t&&i!==null&&i<c.words.length);
+  return {id:'f:'+file.name+':'+file.size,title,lang:(opf.match(/<dc:language[^>]*>(\w\w)/)||[])[1]||S.dict?.src||'en',...c};
 }
 
 //////////////////// boot ////////////////////
@@ -755,13 +800,15 @@ async function boot(){
   if(!S.ui){const dev=(navigator.language||'en').slice(0,2).toLowerCase();S.ui=UI[dev]?dev:'en'}  // follow the device, changeable in settings
   applyLang();
   applyTheme(); applySize(); $('#wpm').textContent=S.wpm;
-  $('#t-gloss').classList.toggle('on',S.gloss); $('#t-dark').classList.toggle('on',S.dark);
+  $('#t-gloss').classList.toggle('on',S.gloss); $('#t-dark').classList.toggle('on',S.dark); $('#t-gender').classList.toggle('on',S.genderOn);
   $('#t-tts').classList.toggle('on',S.tts); $('#n-learned').textContent=S.learned.size; $('#n-unknown').textContent=S.unknown.size;
   setRate(S.rate); $('#voice-box').classList.toggle('hidden',!S.tts);
   document.body.classList.toggle('plain',!S.gloss);
   try{
     S.bundle=await fetchJSON('bundle.json');
+    const genders=Gender.load('genders-de.json.gz').catch(()=>null);
     S.dict=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%');
+    S.genderData=await genders;
     $('#splash-msg').textContent=T('opening');
     const book=await fetchJSON(S.bundle.starter); book.id='starter';
     await loadBook(book);
@@ -820,6 +867,8 @@ $('#b-library').onclick=()=>{buildMarks();openSheet('#s-library')};
 $('#b-settings').onclick=()=>openSheet('#s-settings');
 $('#t-gloss').onclick=e=>{S.gloss=!S.gloss;LS.set('gloss',S.gloss);e.target.classList.toggle('on',S.gloss);
   document.body.classList.toggle('plain',!S.gloss);refreshGlosses();S.mode==='rsvp'&&drawRsvp();saveBookPrefs()};
+$('#t-gender').onclick=e=>{S.genderOn=!S.genderOn;LS.set('gender',S.genderOn);e.target.classList.toggle('on',S.genderOn);
+  if(S.book){renderPage(S.i);show(false)}};
 $('#t-dark').onclick=e=>{S.dark=!S.dark;LS.set('dark',S.dark);e.target.classList.toggle('on',S.dark);applyTheme()};
 $('#t-tts').onclick=e=>{
   warmUpSpeech();                                  // must happen inside the tap for iOS to allow speech later
