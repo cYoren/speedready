@@ -11,13 +11,13 @@ Sources (all public, downloaded once into --dir):
   freq-<src>.txt     hermitdave/FrequencyWords "<word> <count>" list
 
 Pack schema: forms(form, lemma) · gloss(word, pos, tgt, prio) · freq(word, rank) · meta(key, value)
-prio: 1 own-edition translation · 2 pivot through English Wiktionary · 9 English gloss only
+prio: 1 own-edition translation (for English, English Wiktionary's own tables) · 2 pivot through English Wiktionary · 9 English gloss only
 """
 import argparse,collections,gzip,json,re,sqlite3,sys,time
 from pathlib import Path
 
 LANGNAME={'de':'German','pt':'Portuguese','en':'English','es':'Spanish','fr':'French','it':'Italian','nl':'Dutch','ru':'Russian','sv':'Swedish','pl':'Polish'}
-OWN_EDITION_NAME={'de':'Deutsch','fr':'Français','es':'Español','it':'Italiano','pt':'Português','nl':'Nederlands','ru':'Русский','pl':'język polski'}  # kaikki has no svwiktionary
+OWN_EDITION_NAME={'en':'English','de':'Deutsch','fr':'Français','es':'Español','it':'Italiano','pt':'Português','nl':'Nederlands','ru':'Русский','pl':'język polski'}  # kaikki has no svwiktionary
 PAREN=re.compile(r'\([^)]*\)|\[[^\]]*\]');SKIP_GLOSS=re.compile(r'^(?:\w+[ -])*(?:of|form of|inflection of|spelling of|abbreviation of|initialism of|misspelling of)\b',re.I)
 
 def jsonl(path):
@@ -57,7 +57,7 @@ def build(src,tgt,d,out):
             if 'form-of' in s.get('tags',[]) or 'alt-of' in s.get('tags',[]):continue
             for g in s.get('glosses',[])[:1]:
                 if not SKIP_GLOSS.match(g):glosses.append(g)
-        if glosses:en_gloss[(w,pos)]=glosses
+        if len(glosses)>len(en_gloss.get((w,pos),())):en_gloss[(w,pos)]=glosses   # homographs: the entry with the most senses is the main one (Buch 'book', not 'omasum'; sv bok 'book', not 'beech')
     print(f'en-{src}: {n:,} entries, {len(forms):,} forms, {len(en_gloss):,} glossed lemmas',file=sys.stderr)
     if tgt=='en':
         for (w,pos),gs in en_gloss.items():gloss[(w,pos)].setdefault(9,PAREN.sub('',gs[0]).strip()[:80])
@@ -65,10 +65,12 @@ def build(src,tgt,d,out):
         for (w,pos),gs in en_gloss.items():gloss[(w,pos)].setdefault(9,PAREN.sub('',gs[0]).strip()[:80])  # English fallback, shown only when nothing else exists
     # ---- 2. own-edition translation tables
     f=d/f'{src}-{OWN_EDITION_NAME.get(src,"")}.jsonl'
-    if tgt!='en' and (f.exists() or f.with_suffix('.jsonl.gz').exists()):
+    if f.exists() or f.with_suffix('.jsonl.gz').exists():   # also into English: de.wiktionary's 'Buch -> book' beats an English definition
         n=k=0
         for e in jsonl(f):
-            n+=1;w,pos=e.get('word',''),e.get('pos','');tr=[t.get('word') for t in e.get('translations',[]) if t.get('lang_code')==tgt and t.get('word')]
+            n+=1;w,pos=e.get('word',''),e.get('pos','')
+            tables=[t for s in e.get('senses',[]) for t in s.get('translations',[])]+e.get('translations',[])   # en.wiktionary often files them per sense ('book': all 623 there), main sense first
+            tr=[t.get('word') for t in tables if t.get('lang_code')==tgt and t.get('word')]
             if tr:
                 tr=[t for t in dict.fromkeys(tr) if len(t.split())<=3][:3]
                 if tr:gloss[(w,pos)].setdefault(1,', '.join(tr));k+=1
@@ -86,8 +88,9 @@ def build(src,tgt,d,out):
                     for c in candidates(g):en2t[(c,pos)][w]+=1;en2t[(c,None)][w]+=1
         k=0
         for (w,pos),gs in en_gloss.items():
-            for g in gs[:2]:
-                hit=next((en2t[(c,pos)] or en2t[(c,None)] for c in candidates(g) if en2t.get((c,pos)) or en2t.get((c,None))),None)
+            # an English book: the word itself is the English key ('water' -> Wasser), its definition is not ('to moisten')
+            for g in ([w] if src=='en' else gs[:2]):
+                hit=next((en2t[(c,pos)] or en2t[(c,None)] for c in ([w.lower()] if src=='en' else candidates(g)) if en2t.get((c,pos)) or en2t.get((c,None))),None)
                 if hit:gloss[(w,pos)].setdefault(2,', '.join(x for x,_ in hit.most_common(2)));k+=1;break
         print(f'pivot: {n:,} {tgt} entries, {k:,} {src} lemmas glossed via English',file=sys.stderr)
     # ---- 4. frequency
