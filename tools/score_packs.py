@@ -31,7 +31,7 @@ def score(path):
     for c,w in CONCEPTS.items():
         word=w[src].split('|')[0]
         row=db.execute("SELECT tgt FROM gloss WHERE word=? AND (prio IN (1,2) OR (prio=9 AND ?='en')) ORDER BY prio,rowid LIMIT 1",(word,tgt)).fetchone()
-        g=(row or [''])[0];parts=[re.sub(r'^(a|an|the|to) |[.:;!?]+$','',p.strip().lower()) for p in g.replace(';',',').split(',')]   # 'a dog', 'book:'
+        g=(row or [''])[0].replace('\u0301','');parts=[re.sub(r'^(a|an|the|to) |[.:;!?]+$','',p.strip().lower()) for p in g.replace(';',',').split(',')]   # 'a dog', 'book:'
         hit=any(a.lower() in parts or a.lower() in g.lower().split() for a in w[tgt].split('|'))
         ok+=hit;hit or bad.append(f'{word}={g[:20] or "-"}')
     return src,tgt,ok,bad
