@@ -38,7 +38,9 @@
       const open=words.length>0&&!END.test(last)&&ALPHA.test(last);
       if(header(t,p)||PAGE_NUM.test(t)&&(!/^\d+$/.test(t)||open)){first[k]=null;cut=true;continue}
       const lower=LOWER.test(p[0]),run=starts.length?words.length-starts[starts.length-1]:0;
-      const head=starts.length>0&&run<=8&&words.slice(starts[starts.length-1]).filter(w=>/[\p{L}\p{N}]/u.test(w)).every(w=>isUpper(w[0])||/\d/.test(w[0]));   // 'Chapter One The Arrival'
+      const hw=starts.length?words.slice(starts[starts.length-1]).filter(w=>/[\p{L}\p{N}]/u.test(w)):[];   // 'Chapter One', 'The End of the Road': capitals, short connectors
+      const cap=w=>isUpper(w[0])||/\d/.test(w[0]);
+      const head=hw.length>0&&run<=8&&cap(hw[0])&&hw.every(w=>cap(w)||w.length<=4);
       if(open&&(lines&&run>=4&&!head||lower&&(cut||run>=12))){
         if(lower&&(cut||lines)&&HYPHEN.test(last)&&!CONJ.has(p[0])){
           words[words.length-1]=last.slice(0,-1)+p[0];p=p.slice(1);first[k]-=1;   // 'Mühlen-' | page break | 'knappe'

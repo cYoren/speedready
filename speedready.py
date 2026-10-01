@@ -338,7 +338,8 @@ class Book:
             if header(t,p) or PAGE_NUM.fullmatch(t) and (not t.isdigit() or open_):   # a bare number is a chapter heading unless it splits a sentence
                 first[-1]=None;cut=True;continue
             lower=re.fullmatch(r'[^\W\d_A-ZÄÖÜ]+[,.;:!?]?',p[0]);run=len(words)-starts[-1] if starts else 0
-            head=run<=8 and all(w[:1].isupper() or w[:1].isdigit() for w in words[starts[-1]:] if any(c.isalnum() for c in w)) if starts else False   # 'Chapter One The Arrival'
+            hw=[w for w in words[starts[-1]:] if any(c.isalnum() for c in w)] if starts else []   # 'Chapter One', 'The End of the Road': capitals, short connectors
+            head=bool(hw) and run<=8 and(hw[0][:1].isupper() or hw[0][:1].isdigit()) and all(w[:1].isupper() or w[:1].isdigit() or len(w)<=4 for w in hw)
             if open_ and (lines and run>=4 and not head or lower and (cut or run>=12)):   # continuation: a cut page, a long paragraph, or a wrapped line
                 if lower and (cut or lines) and re.search(r'[^\W\d_]-$',words[-1]) and p[0] not in('und','oder','bis','sowie','als','and','or'):
                     words[-1]=words[-1][:-1]+p[0];p=p[1:];first[-1]-=1   # 'Mühlen-' | page break | 'knappe'
