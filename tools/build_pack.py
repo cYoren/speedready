@@ -125,7 +125,10 @@ def build(src,tgt,d,out):
     db.executescript('''CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT);CREATE TABLE forms(form TEXT PRIMARY KEY,lemma TEXT);
         CREATE TABLE gloss(word TEXT,pos TEXT,tgt TEXT,prio INT);CREATE INDEX gw ON gloss(word);CREATE TABLE freq(word TEXT PRIMARY KEY,rank INT);''')
     db.executemany('INSERT INTO forms VALUES(?,?)',forms.items())
-    db.executemany('INSERT INTO gloss VALUES(?,?,?,?)',((w,pos,t,p) for (w,pos),d_ in gloss.items() for p,t in d_.items()))
+    # rows go in main-sense-first order: per word, the part of speech with the most senses first ('wollen' the verb
+    # before the adjective 'woollen', 'book' the noun before the verb); readers take the first row of a prio
+    rows=sorted(gloss.items(),key=lambda kv:(kv[0][0],-len(en_gloss.get(kv[0],()))))
+    db.executemany('INSERT INTO gloss VALUES(?,?,?,?)',((w,pos,t,p) for (w,pos),d_ in rows for p,t in d_.items()))
     db.executemany('INSERT INTO freq VALUES(?,?)',freq.items())
     db.executemany('INSERT INTO meta VALUES(?,?)',[('src',src),('tgt',tgt),('built',time.strftime('%Y-%m-%d')),('format','2'),('sources','en.wiktionary (kaikki.org), own-edition wiktionary, hermitdave/FrequencyWords')])
     db.commit();db.execute('VACUUM');db.close()
