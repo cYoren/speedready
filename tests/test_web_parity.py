@@ -46,7 +46,10 @@ def compare(t,books):
 class WebParity(unittest.TestCase):
     def test_same_output_on_the_starter_book_and_page_junk(self):
         s=json.loads((ROOT/'web/starter-de.json').read_text())
-        compare(self,[synthetic(),{'words':s['words'],'para':s['para'],'chapters':s['chapters'],'names':s['title']}])
+        wrapped='Der Müller stand in der Tür der alten Mühle und sah hinaus auf den Weg, der zum Dorf führte. Es war kalt'.split()
+        words=['Chapter','One','The','Arrival'];para=[0]   # a punctuation-free heading, then a book broken into one line per paragraph
+        for k in range(0,len(wrapped)*4,8):para.append(len(words));words+=(wrapped*4)[k:k+8]
+        compare(self,[synthetic(),{'words':words,'para':para,'chapters':[],'names':''},{'words':s['words'],'para':s['para'],'chapters':s['chapters'],'names':s['title']}])
 
 if __name__=='__main__':   # python tests/test_web_parity.py book.epub … : the same check over real books
     import sys

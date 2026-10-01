@@ -1,0 +1,4 @@
+Read in 10 languages: pick the language you want translations in, and any book in English, German,
+Spanish, French, Italian, Portuguese, Dutch, Polish, Russian or Swedish gets its dictionary, downloaded
+once and kept offline. Book languages are recognized automatically.
+Speed reading up to 1,500 words per minute.
