@@ -407,13 +407,14 @@ async function dictFor(src){
   if(S.bundled.src===src&&S.bundled.tgt===tgt){dicts.set(key,S.bundled);return S.bundled}
   let d=null;
   try{
-    let buf=await idb('readonly',s=>s.get(key)).catch(()=>null);
-    if(!buf){
+    const stored=await idb('readonly',s=>s.get(key)).catch(()=>null);
+    if(stored)d=await unpack(stored).catch(()=>{idb('readwrite',s=>s.delete(key)).catch(()=>{});return null});   // a bad copy: drop it, download again
+    if(!d){
       toast(T('dict_loading').replace('{pair}',pairName(src,tgt)));
       const r=await fetch(S.bundle.packs+'dict-'+key+'.json.gz');if(!r.ok)throw new Error(r.status);
-      buf=await r.arrayBuffer();idb('readwrite',s=>s.put(buf,key)).catch(()=>{});   // private mode etc.: works, just not offline
+      const buf=await r.arrayBuffer();d=await unpack(buf);   // throws on anything that is not a dictionary, before it is kept
+      idb('readwrite',s=>s.put(buf,key)).catch(()=>{});      // private mode etc.: works, just not offline
     }
-    d=await unpack(buf);
   }catch(e){toast(T('dict_failed').replace('{pair}',pairName(src,tgt)));return null}   // not cached: back online, the next try downloads it
   dicts.set(key,d);return d;
 }
@@ -678,15 +679,16 @@ function markLearned(){
 
 //////////////////// vocabulary ////////////////////
 function remember(word,lemma,gloss,i){
-  if(!gloss||S.vocab.some(v=>v[1]===lemma))return;
-  S.vocab.push([word,lemma,gloss,S.book.words.slice(sentStart(i),sentEnd(i)).join(' '),S.book.title]);
+  const id=lk(lemma)+'>'+S.native;   // German 'in' and English 'in' are different cards; so is the same word in another language
+  if(!gloss||S.vocab.some(v=>(v[5]||S.bundled.src+':'+v[1]+'>'+S.bundled.tgt)===id))return;   // entries from before 1.0.6 have no id: the bundled pair
+  S.vocab.push([word,lemma,gloss,S.book.words.slice(sentStart(i),sentEnd(i)).join(' '),S.book.title,id]);
   if(S.vocab.length>5000)S.vocab.shift();
   LS.set('vocab',S.vocab);
 }
 function exportAnki(){
   if(!S.vocab.length)return toast(T('nothing_to_export'));
   const head='#separator:tab\n#html:false\n#tags:speedready\n#columns:Word\tLemma\tMeaning\tSentence\tBook\n';
-  const body=S.vocab.map(v=>v.map(x=>String(x).replace(/[\t\n]/g,' ')).join('\t')).join('\n');
+  const body=S.vocab.map(v=>v.slice(0,5).map(x=>String(x).replace(/[\t\n]/g,' ')).join('\t')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([head+body],{type:'text/tab-separated-values'}));
   a.download='speedready-vocabulary.tsv';a.click();
