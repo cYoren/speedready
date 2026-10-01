@@ -47,7 +47,7 @@ class WebParity(unittest.TestCase):
     def test_same_output_on_the_starter_book_and_page_junk(self):
         s=json.loads((ROOT/'web/starter-de.json').read_text())
         wrapped='Der Müller stand in der Tür der alten Mühle und sah hinaus auf den Weg, der zum Dorf führte. Es war kalt'.split()
-        words=['Chapter','One','The','Arrival'];para=[0]   # a punctuation-free heading, then a book broken into one line per paragraph
+        words=['The','End','of','the','Road'];para=[0]   # a punctuation-free heading, then a book broken into one line per paragraph
         for k in range(0,len(wrapped)*4,8):para.append(len(words));words+=(wrapped*4)[k:k+8]
         compare(self,[synthetic(),{'words':words,'para':para,'chapters':[],'names':''},{'words':s['words'],'para':s['para'],'chapters':s['chapters'],'names':s['title']}])
 
