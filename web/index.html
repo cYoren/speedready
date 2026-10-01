@@ -342,6 +342,7 @@ const strip=w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
 //////////////////// dictionary ////////////////////
 function glossOf(word){            // -> [gloss|null, lemma]
   const w=strip(word); if(!w||!S.dict) return [null,w];
+  if(S.book&&S.book.lang!==S.dict.src) return [null,w];   // an English book read for speed gets no German glosses ('die', 'was', 'man')
   const o=S.dict.o[w.toLowerCase()]; if(o) return [o[0],o[1]];
   // An exact-case hit beats any lowercased form lookup: German capitalisation is what separates
   // the noun from the verb, and 'Haus'/'haus' would otherwise resolve through 'hausen' and gloss
@@ -826,8 +827,9 @@ function applySize(){page.style.setProperty('--size',S.size+'px')}
 //////////////////// events ////////////////////
 $('#play').onclick=()=>{warmUpSpeech();toggle()};
 $('#b-back').onclick=()=>{const was=S.playing;pause();S.i=sentStart(Math.max(0,S.i-1));show();if(was)play()};
-$('#faster').onclick=()=>setWpm(S.wpm+10); $('#slower').onclick=()=>setWpm(S.wpm-10);
-function setWpm(v){S.wpm=Math.max(40,Math.min(800,v));$('#wpm').textContent=S.wpm;LS.set('wpm',S.wpm);updateHeader();saveBookPrefs()}
+$('#faster').onclick=()=>setWpm(S.wpm+wpmStep(true)); $('#slower').onclick=()=>setWpm(S.wpm-wpmStep(false));
+const wpmStep=up=>(up?S.wpm>=300:S.wpm>300)?50:10;   // learners fine-tune slow speeds, speed readers jump in 50s up to 1500
+function setWpm(v){S.wpm=Math.max(40,Math.min(1500,v));$('#wpm').textContent=S.wpm;LS.set('wpm',S.wpm);updateHeader();saveBookPrefs()}
 let holdTimer=null,held=false;
 page.addEventListener('pointerdown',e=>{
   const c=e.target.closest('.c');if(!c)return;
@@ -902,7 +904,7 @@ addEventListener('keydown',e=>{
   if(e.key===' '){e.preventDefault();toggle()}
   else if(e.key==='ArrowRight'){pause();S.i=Math.min(S.book.words.length-1,S.i+10);show()}
   else if(e.key==='ArrowLeft'){pause();S.i=Math.max(0,S.i-10);show()}
-  else if(e.key==='ArrowUp'){setWpm(S.wpm+10)} else if(e.key==='ArrowDown'){setWpm(S.wpm-10)}
+  else if(e.key==='ArrowUp'){setWpm(S.wpm+wpmStep(true))} else if(e.key==='ArrowDown'){setWpm(S.wpm-wpmStep(false))}
   else if(e.key==='m'){setMode(S.mode==='pacer'?'rsvp':'pacer');saveBookPrefs()}
   else if(e.key==='b')toggleBookmark();
   else if(e.key==='Escape')closeSheets();

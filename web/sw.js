@@ -1,5 +1,5 @@
 // Cache everything on first visit so the app works with no connection afterwards.
-const CACHE='speedready-v2';   // bump on every release: the cache is served first, so a new name is what makes clients update
+const CACHE='speedready-v3';   // bump on every release: the cache is served first, so a new name is what makes clients update
 const ASSETS=['./','index.html','bundle.json','manifest.webmanifest','icon.svg','icon-180.png','icon-512.png','gender.js','textclean.js','genders-de.json.gz'];
 // The dictionary and starter book are named in bundle.json, so this build caches whichever
 // language pair it ships without the filenames being written here twice.
