@@ -223,10 +223,12 @@ body.rsvp main{display:none}
     <button class="btn" id="b-export" data-t="export">Export for Anki</button>
     <button class="btn" id="b-forget" data-t="forget_all">Forget all</button>
   </div>
+  <h3 data-t="translate_into">Translations in</h3>
+  <div class="list" id="natives"></div>
   <h3 data-t="language">Language</h3>
   <div class="list" id="langs"></div>
   <h3 data-t="about">About</h3>
-  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.5</b></div>
+  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.6</b></div>
   <div class="row"><label data-t="license">Code: MIT</label>
     <a class="btn" id="a-src" href="https://github.com/cYoren/speedready" target="_blank" rel="noopener" data-t="source">Source code</a></div>
   <p style="color:var(--dim);font-size:13px;line-height:1.5;margin:0">
@@ -246,6 +248,7 @@ const UI={
      know_it:'✓ I know this',dont_know:'↩ I do not know it',dictionary:'Dictionary ↗',chapters:'Chapters',
      open_other:'Open another book',file_label:'An .epub or .txt file',file_hint:'Pick a file from your device',
      back_to_starter:'Back to the starter book',gloss_label:'Translation above the words',
+     translate_into:'Translations in',dict_loading:'Downloading the {pair} dictionary…',dict_failed:'No {pair} dictionary right now. Reading without translations.',
      gender_label:'Colors for der, die, das',gender_hint:'German nouns in blue (der), red (die) or green (das)',
      gloss_hint:'Shows your language above every word you have not marked as known',
      dark:'Dark mode',text_size:'Text size',tts_label:'Read aloud while it advances',
@@ -273,6 +276,7 @@ const UI={
      know_it:'✓ Já sei',dont_know:'↩ Ainda não sei',dictionary:'Dicionário ↗',chapters:'Capítulos',
      open_other:'Abrir outro livro',file_label:'Arquivo .epub ou .txt',file_hint:'Escolha um arquivo do seu aparelho',
      back_to_starter:'Voltar ao livro de contos',gloss_label:'Tradução acima das palavras',
+     translate_into:'Traduções em',dict_loading:'Baixando o dicionário {pair}…',dict_failed:'Dicionário {pair} indisponível agora. Lendo sem traduções.',
      gender_label:'Cores para der, die, das',gender_hint:'Substantivos alemães em azul (der), vermelho (die) ou verde (das)',
      gloss_hint:'Mostra seu idioma acima de cada palavra que você ainda não marcou como sabida',
      dark:'Modo escuro',text_size:'Tamanho do texto',tts_label:'Ler em voz alta ao avançar',
@@ -330,7 +334,7 @@ const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],p
          wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',true),
          size:LS.get('size',19),tts:LS.get('tts',false),learned:new Set(LS.get('learned',[])),
          voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false,
-         genderOn:LS.get('gender',true),genderData:null};
+         genderOn:LS.get('gender',true),genderData:null,bundled:null,native:LS.get('native',null)};
 const $=s=>document.querySelector(s), page=$('#page');
 let toastTimer=null;
 function toast(msg){
@@ -342,7 +346,7 @@ const strip=w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
 //////////////////// dictionary ////////////////////
 function glossOf(word){            // -> [gloss|null, lemma]
   const w=strip(word); if(!w||!S.dict) return [null,w];
-  if(S.book&&S.book.lang!==S.dict.src) return [null,w];   // an English book read for speed gets no German glosses ('die', 'was', 'man')
+  if(S.book&&(S.book.lang!==S.dict.src||S.dict.tgt!==S.native)) return [null,w];   // only the loaded pair; an English book never gets German glosses
   const o=S.dict.o[w.toLowerCase()]; if(o) return [o[0],o[1]];
   // An exact-case hit beats any lowercased form lookup: German capitalisation is what separates
   // the noun from the verb, and 'Haus'/'haus' would otherwise resolve through 'hausen' and gloss
@@ -378,6 +382,53 @@ function fit(gloss,word){          // keep only what fits above the word, so the
   let out='';
   for(const p of parts){const next=out?out+', '+p:p; if(next.length>room)break; out=next}
   return out||parts[0].slice(0,room);
+}
+
+//////////////////// dictionaries ////////////////////
+// One pair ships inside the app (bundle.json "dict"). Every other pair of bundle.json "languages" is downloaded
+// once from bundle.json "packs" and kept in IndexedDB, which the browser, the Android WebView and iOS all have,
+// so it works offline afterwards. Translations always go into S.native, the reader's language.
+const pairName=(s,t)=>`${s.toUpperCase()}→${t.toUpperCase()}`;
+function idb(mode,fn){return new Promise((ok,no)=>{
+  const r=indexedDB.open('speedready',1);r.onupgradeneeded=()=>r.result.createObjectStore('dicts');r.onerror=()=>no(r.error);
+  r.onsuccess=()=>{const tx=r.result.transaction('dicts',mode),q=fn(tx.objectStore('dicts'));tx.oncomplete=()=>ok(q.result);tx.onerror=()=>no(tx.error)};
+})}
+async function unpack(buf){   // gzip from a static host, or already unpacked by a server that sent Content-Encoding
+  const b=new Uint8Array(buf);
+  const text=b[0]===0x1f&&b[1]===0x8b?await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(b);
+  return JSON.parse(text);
+}
+const dicts=new Map();
+async function dictFor(src){
+  const tgt=S.native,key=src+'-'+tgt;
+  if(!src||src===tgt||!S.bundle.languages[src])return null;
+  if(dicts.has(key))return dicts.get(key);
+  if(S.bundled.src===src&&S.bundled.tgt===tgt){dicts.set(key,S.bundled);return S.bundled}
+  let d=null;
+  try{
+    let buf=await idb('readonly',s=>s.get(key)).catch(()=>null);
+    if(!buf){
+      toast(T('dict_loading').replace('{pair}',pairName(src,tgt)));
+      const r=await fetch(S.bundle.packs+'dict-'+key+'.json.gz');if(!r.ok)throw new Error(r.status);
+      buf=await r.arrayBuffer();idb('readwrite',s=>s.put(buf,key)).catch(()=>{});   // private mode etc.: works, just not offline
+    }
+    d=await unpack(buf);
+  }catch(e){toast(T('dict_failed').replace('{pair}',pairName(src,tgt)))}
+  dicts.set(key,d);return d;
+}
+async function useDictFor(book){   // the page renders first; translations appear when the dictionary is in
+  const d=await dictFor(book.lang);
+  if(S.book!==book)return;
+  if(d)S.dict=d;
+  refreshGlosses();markUnknown();if(S.mode==='rsvp')drawRsvp();
+}
+function buildNativeList(){
+  const box=$('#natives');if(!box||!S.bundle)return;box.replaceChildren();
+  for(const[code,name]of Object.entries(S.bundle.languages)){
+    const b=document.createElement('button');b.textContent=name;b.className=code===S.native?'on':'';
+    b.onclick=()=>{S.native=code;LS.set('native',code);buildNativeList();S.book&&useDictFor(S.book)};
+    box.appendChild(b);
+  }
 }
 
 //////////////////// book ////////////////////
@@ -691,7 +742,7 @@ async function loadBook(book,startAt){
     LS.set(marksKey(),LS.get(marksKey(),[]).map(m));LS.set('clean:'+book.id,true);
   }
   S.i=Math.min(startAt??LS.get(bookKey(),book.old2new?TextClean.start(book.chapters,book.words.length):0),book.words.length-1);
-  computeGenders();
+  computeGenders();useDictFor(book);
   const pr=LS.get(prefsKey(),null);                 // each book keeps its own pace and mode
   if(pr){S.wpm=pr.wpm??S.wpm;S.gloss=pr.gloss??S.gloss;S.tts=pr.tts??S.tts;
          $('#wpm').textContent=S.wpm;$('#t-gloss').classList.toggle('on',S.gloss);
@@ -717,7 +768,7 @@ function textToBook(text,title,id){
     const ws=p.split(/\s+/).filter(Boolean);
     if(ws.length){para.push(words.length);words.push(...ws)}
   }
-  return {id,title,lang:S.dict?.src||'en',...TextClean.clean(words,para,[],title)};
+  return {id,title,lang:TextClean.detectLang(words)||S.bundled.src,...TextClean.clean(words,para,[],title)};
 }
 // --- epub via the browser's own zip inflater (no library) ---
 async function epubToBook(file){
@@ -785,7 +836,9 @@ async function epubToBook(file){
   const authors=[...opf.matchAll(/<dc:creator[^>]*>([^<]+)/g)].map(m=>m[1]).join(' ');
   const c=TextClean.clean(words,para,chapters,title+' '+authors);   // page numbers, running headers, split sentences
   c.chapters=TextClean.resolveMissing(c.words,c.para,c.chapters).filter(([t,i])=>t&&i!==null&&i<c.words.length);
-  return {id:'f:'+file.name+':'+file.size,title,lang:(opf.match(/<dc:language[^>]*>(\w\w)/)||[])[1]||S.dict?.src||'en',...c};
+  const tagged=TextClean.langCode((opf.match(/<dc:language[^>]*>([^<]*)</)||[])[1]||'');
+  const lang=S.bundle.languages[tagged]?tagged:TextClean.detectLang(c.words)||tagged||'en';   // calibre often writes 'und' or nothing
+  return {id:'f:'+file.name+':'+file.size,title,lang,...c};
 }
 
 //////////////////// boot ////////////////////
@@ -808,7 +861,9 @@ async function boot(){
   try{
     S.bundle=await fetchJSON('bundle.json');
     const genders=Gender.load('genders-de.json.gz').catch(()=>null);
-    S.dict=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%');
+    S.dict=S.bundled=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%');
+    if(!S.native||!S.bundle.languages[S.native])S.native=S.bundle.languages[S.ui]?S.ui:S.bundled.tgt;   // first run: the interface language
+    buildNativeList();
     S.genderData=await genders;
     $('#splash-msg').textContent=T('opening');
     const book=await fetchJSON(S.bundle.starter); book.id='starter';
