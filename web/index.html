@@ -356,12 +356,13 @@ function glossOf(word){            // -> [gloss|null, lemma]
               (S.dict.g[w.toLowerCase()]?w.toLowerCase():w);
   return [S.dict.g[lemma]||S.dict.g[w]||S.dict.g[w.toLowerCase()]||null,lemma];
 }
-const isLearned=lemma=>S.learned.has(lemma);
+const lk=l=>(S.book?S.book.lang:'')+':'+l;   // learned and still-learning words are kept per book language
+const isLearned=lemma=>S.learned.has(lk(lemma));
 function lemmaOf(word){return glossOf(word)[1]}
-const isUnknown=w=>S.unknown.has(lemmaOf(w));
+const isUnknown=w=>S.unknown.has(lk(lemmaOf(w)));
 function setUnknown(word,flag){
   const l=lemmaOf(word);if(!l)return;
-  flag?S.unknown.add(l):S.unknown.delete(l);
+  flag?S.unknown.add(lk(l)):S.unknown.delete(lk(l));
   LS.set('unknown',[...S.unknown]);
   $('#n-unknown').textContent=S.unknown.size;
   markUnknown();
@@ -413,12 +414,12 @@ async function dictFor(src){
       buf=await r.arrayBuffer();idb('readwrite',s=>s.put(buf,key)).catch(()=>{});   // private mode etc.: works, just not offline
     }
     d=await unpack(buf);
-  }catch(e){toast(T('dict_failed').replace('{pair}',pairName(src,tgt)))}
+  }catch(e){toast(T('dict_failed').replace('{pair}',pairName(src,tgt)));return null}   // not cached: back online, the next try downloads it
   dicts.set(key,d);return d;
 }
 async function useDictFor(book){   // the page renders first; translations appear when the dictionary is in
-  const d=await dictFor(book.lang);
-  if(S.book!==book)return;
+  const tgt=S.native,d=await dictFor(book.lang);
+  if(S.book!==book||S.native!==tgt)return;   // the reader moved on (another book, another language) while this downloaded
   if(d)S.dict=d;
   refreshGlosses();markUnknown();if(S.mode==='rsvp')drawRsvp();
 }
@@ -518,7 +519,7 @@ function delay(i){
   if(SENT_END.test(w))d*=2.4; else if(/[,;:]["'”’“‘)»«]*$/.test(w))d*=1.5;
   if(w.length>=10)d*=1.25;
   const[,l]=glossOf(w); if(!isLearned(l)&&showGloss(w))d*=1.35;   // linger on words still being learned
-  if(S.unknown.has(l))d*=1.8;                                      // and longer on the ones marked by hand
+  if(S.unknown.has(lk(l)))d*=1.8;                                      // and longer on the ones marked by hand
   return d;
 }
 function step(){
@@ -663,14 +664,14 @@ function openWord(i){
   $('#w-gloss').textContent=g||'—';
   $('#w-more').textContent=g?'':T('no_entry');
   $('#w-learned').textContent=isLearned(l)?T('dont_know'):T('know_it');
-  $('#w-unknown').textContent=S.unknown.has(l)?T('known_again'):T('dont_know_it');
+  $('#w-unknown').textContent=S.unknown.has(lk(l))?T('known_again'):T('dont_know_it');
   if(g)remember(strip(word),l,g,i);
   openSheet('#s-word');
 }
 function markLearned(){
   if(!sheetWord)return;
   const l=sheetWord.lemma;
-  if(isLearned(l))S.learned.delete(l); else S.learned.add(l);
+  if(isLearned(l))S.learned.delete(lk(l)); else S.learned.add(lk(l));
   LS.set('learned',[...S.learned]); $('#n-learned').textContent=S.learned.size;
   refreshGlosses(); closeSheets();
 }
@@ -837,7 +838,8 @@ async function epubToBook(file){
   const c=TextClean.clean(words,para,chapters,title+' '+authors);   // page numbers, running headers, split sentences
   c.chapters=TextClean.resolveMissing(c.words,c.para,c.chapters).filter(([t,i])=>t&&i!==null&&i<c.words.length);
   const tagged=TextClean.langCode((opf.match(/<dc:language[^>]*>([^<]*)</)||[])[1]||'');
-  const lang=S.bundle.languages[tagged]?tagged:TextClean.detectLang(c.words)||tagged||'en';   // calibre often writes 'und' or nothing
+  const real=tagged&&!['un','mu','zx'].includes(tagged);   // und, mul, zxx: calibre's 'undetermined' and friends
+  const lang=S.bundle.languages[tagged]?tagged:TextClean.detectLang(c.words)||(real?tagged:S.bundled.src);
   return {id:'f:'+file.name+':'+file.size,title,lang,...c};
 }
 
@@ -862,6 +864,10 @@ async function boot(){
     S.bundle=await fetchJSON('bundle.json');
     const genders=Gender.load('genders-de.json.gz').catch(()=>null);
     S.dict=S.bundled=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%');
+    for(const[set,key]of[[S.learned,'learned'],[S.unknown,'unknown']]){   // words saved before 1.0.6 were all learned in the bundled language
+      const old=[...set].filter(x=>!x.includes(':'));if(!old.length)continue;
+      old.forEach(x=>{set.delete(x);set.add(S.bundled.src+':'+x)});LS.set(key,[...set]);
+    }
     if(!S.native||!S.bundle.languages[S.native])S.native=S.bundle.languages[S.ui]?S.ui:S.bundled.tgt;   // first run: the interface language
     buildNativeList();
     S.genderData=await genders;
@@ -902,7 +908,7 @@ page.addEventListener('click',e=>{
   const g=e.target.closest('.g'), c=e.target.closest('.c'); if(!c)return;
   const i=+c.dataset.i;
   if(g&&g.textContent){                       // tapping the translation = "I know this word"
-    const[,l]=glossOf(S.book.words[i]); S.learned.add(l); LS.set('learned',[...S.learned]);
+    const[,l]=glossOf(S.book.words[i]); S.learned.add(lk(l)); LS.set('learned',[...S.learned]);
     $('#n-learned').textContent=S.learned.size; refreshGlosses(); return;
   }
   openWord(i);
@@ -910,11 +916,11 @@ page.addEventListener('click',e=>{
 $('#w-here').onclick=()=>{closeSheets();play()};
 $('#w-learned').onclick=markLearned;
 $('#w-speak').onclick=()=>{warmUpSpeech();sheetWord&&speakText(sheetWord.word)};
-$('#w-web').onclick=()=>sheetWord&&open('https://de.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
+$('#w-web').onclick=()=>sheetWord&&open('https://'+(S.book?.lang||S.bundled.src)+'.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
 $('#w-unknown').onclick=()=>{
   if(!sheetWord)return;
-  setUnknown(sheetWord.word,!S.unknown.has(sheetWord.lemma));
-  toast(S.unknown.has(sheetWord.lemma)?T('marked_unknown'):T('known_again'));
+  setUnknown(sheetWord.word,!S.unknown.has(lk(sheetWord.lemma)));
+  toast(S.unknown.has(lk(sheetWord.lemma))?T('marked_unknown'):T('known_again'));
   closeSheets();
 };
 $('#b-mark').onclick=toggleBookmark;
