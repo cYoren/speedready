@@ -28,7 +28,8 @@ def export(src,tgt,pack,out,starter=None):
     bundle=out.parent/'bundle.json'
     if starter is None:          # keep whatever starter book is already bundled
         starter=json.loads(bundle.read_text())['starter'] if bundle.exists() else f'starter-{src}.json'
-    bundle.write_text(json.dumps({'dict':out.name,'starter':starter},indent=2)+'\n',encoding='utf-8')
+    keep=json.loads(bundle.read_text()) if bundle.exists() else {}   # 'packs' and 'languages' too: the reader needs them
+    bundle.write_text(json.dumps({**keep,'dict':out.name,'starter':starter},indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
     print(f"{bundle} -> dict {out.name}, starter {starter}")
     if not (out.parent/starter).exists():
         print(f'  WARNING: {starter} is not in {out.parent}; the reader will fail to open its starter book',file=sys.stderr)
