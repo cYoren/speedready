@@ -31,7 +31,7 @@ def jsonl(path):
 def candidates(gloss):
     """'to go, to walk (on foot)' -> ['go','walk']: short pieces of an English gloss usable as dictionary keys."""
     g=PAREN.sub('',gloss);out=[]
-    for part in re.split(r'[,;]',g):
+    for part in re.split(r'[,;:]',g):   # 'book: a collection of pages' -> 'book'
         part=part.strip().strip('.').lower();part=re.sub(r'^(to|a|an|the) ','',part)
         if part and len(part.split())<=2 and re.fullmatch(r"[a-z' -]+",part):out.append(part)
     return out
@@ -75,6 +75,27 @@ def build(src,tgt,d,out):
                 tr=[t for t in dict.fromkeys(tr) if len(t.split())<=3][:3]
                 if tr:gloss[(w,pos)].setdefault(1,', '.join(tr));k+=1
         print(f'own edition: {n:,} entries, {k:,} with {tgt} translations',file=sys.stderr)
+    # ---- 2b. no own edition (Swedish): triangulate through the English word the source word means. sv hus is
+    # defined as 'house'; en.wiktionary's 'house' lists hus and the pt casa under the same sense, so hus -> casa.
+    # Going via the definition matters: hus also turns up in the tables of 'casing', which would give 'caixa'.
+    f=d/'en-English.jsonl'
+    if src not in OWN_EDITION_NAME and (f.exists() or f.with_suffix('.jsonl.gz').exists()):
+        senses=collections.defaultdict(list)   # (english word, pos) -> [(src words, tgt words)] per sense
+        for e in jsonl(f):
+            if e.get('lang_code')!='en':continue
+            w,pos=e.get('word',''),e.get('pos','')
+            for s in e.get('senses',[])+[e]:
+                tabs=s.get('translations',[]);sw={x.get('word') for x in tabs if x.get('lang_code')==src}
+                if not sw:continue
+                tw=[w] if tgt=='en' else [x.get('word') for x in tabs if x.get('lang_code')==tgt and x.get('word')]
+                tw=[x for x in dict.fromkeys(tw) if len(x.split())<=3][:3]
+                if tw:senses[(w.lower(),pos)].append((sw,tw))
+        k=0
+        for (w,pos),gs in en_gloss.items():
+            for c in (c for g in gs[:2] for c in candidates(g)):   # the first English word that lists w; its senses vote
+                votes=collections.Counter(x for sw,tw in senses.get((c,pos),()) if w in sw for x in tw)
+                if votes:gloss[(w,pos)].setdefault(2,', '.join(x for x,_ in votes.most_common(3)));k+=1;break
+        print(f'en.wiktionary tables: {k:,} {src} lemmas triangulated to {tgt}',file=sys.stderr)
     # ---- 3. pivot through English: target-language extract inverted
     f=d/f'en-{LANGNAME.get(tgt,"")}.jsonl'
     if tgt!='en' and (f.exists() or f.with_suffix('.jsonl.gz').exists()):
