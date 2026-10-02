@@ -249,7 +249,7 @@ const UI={
      know_it:'✓ I know this',dont_know:'↩ I do not know it',dictionary:'Dictionary ↗',chapters:'Chapters',
      open_other:'Open another book',file_label:'An .epub or .txt file',file_hint:'Pick a file from your device',
      back_to_starter:'Back to the starter book',gloss_label:'Translation above the words',
-     translate_into:'Translations in',dict_wait:'Translations for this book are still loading.',form_of:'form of',dict_loading:'Downloading the {pair} dictionary…',dict_failed:'No {pair} dictionary right now. Reading without translations.',
+     translate_into:'Translations in',dict_wait:'Translations for this book are still loading.',marks_need_pair:'To mark words, pick a translation language different from the book in Settings.',form_of:'form of',dict_loading:'Downloading the {pair} dictionary…',dict_failed:'No {pair} dictionary right now. Reading without translations.',
      gender_label:'Colors for der, die, das',gender_hint:'German nouns in blue (der), red (die) or green (das)',
      gloss_hint:'Shows your language above every word you have not marked as known',
      dark:'Dark mode',text_size:'Text size',tts_label:'Read aloud while it advances',
@@ -277,7 +277,7 @@ const UI={
      know_it:'✓ Já sei',dont_know:'↩ Ainda não sei',dictionary:'Dicionário ↗',chapters:'Capítulos',
      open_other:'Abrir outro livro',file_label:'Arquivo .epub ou .txt',file_hint:'Escolha um arquivo do seu aparelho',
      back_to_starter:'Voltar ao livro de contos',gloss_label:'Tradução acima das palavras',
-     translate_into:'Traduções em',dict_wait:'As traduções deste livro ainda estão carregando.',form_of:'forma de',dict_loading:'Baixando o dicionário {pair}…',dict_failed:'Dicionário {pair} indisponível agora. Lendo sem traduções.',
+     translate_into:'Traduções em',dict_wait:'As traduções deste livro ainda estão carregando.',marks_need_pair:'Para marcar palavras, escolha em Ajustes um idioma de tradução diferente do livro.',form_of:'forma de',dict_loading:'Baixando o dicionário {pair}…',dict_failed:'Dicionário {pair} indisponível agora. Lendo sem traduções.',
      gender_label:'Cores para der, die, das',gender_hint:'Substantivos alemães em azul (der), vermelho (die) ou verde (das)',
      gloss_hint:'Mostra seu idioma acima de cada palavra que você ainda não marcou como sabida',
      dark:'Modo escuro',text_size:'Tamanho do texto',tts_label:'Ler em voz alta ao avançar',
@@ -357,9 +357,12 @@ function glossOf(word){            // -> [gloss|null, lemma]
               (S.dict.g[w.toLowerCase()]?w.toLowerCase():w);
   return [S.dict.g[lemma]||S.dict.g[w]||S.dict.g[w.toLowerCase()]||null,lemma];
 }
-// a book whose dictionary should exist but has not arrived: marks would be saved under the surface form ('Häuser')
-// and stop applying once the real lemma ('Haus') is known, so learning actions wait
-const pairPending=()=>!!(S.book&&S.bundle.languages[S.book.lang]&&S.book.lang!==S.native&&!(S.dict&&S.dict.src===S.book.lang&&S.dict.tgt===S.native));
+// Learning marks are saved per lemma, and only the book's dictionary knows the lemma: without it ('Häuser') the mark
+// would stop applying once a dictionary resolves the real one ('Haus'). So marks need the book's pair loaded; pairPending
+// says whether it is on its way (else: same language as the reader's, or a language with no dictionaries).
+const hasPair=()=>!!(S.book&&S.dict&&S.dict.src===S.book.lang&&S.dict.tgt===S.native);
+const pairPending=()=>!!(S.book&&S.bundle.languages[S.book.lang]&&S.book.lang!==S.native&&!hasPair());
+const noMarks=()=>T(pairPending()?'dict_wait':'marks_need_pair');
 const lk=l=>(S.book?S.book.lang:'')+':'+l;   // learned and still-learning words are kept per book language
 const isLearned=lemma=>S.learned.has(lk(lemma));
 function lemmaOf(word){return glossOf(word)[1]}
@@ -667,15 +670,15 @@ function openWord(i){
   $('#w-word').textContent=strip(word);
   $('#w-lemma').textContent=(l&&l.toLowerCase()!==strip(word).toLowerCase())?T('form_of')+' '+l:'';
   $('#w-gloss').textContent=g||'—';
-  const wait=pairPending();$('#w-learned').disabled=$('#w-unknown').disabled=wait;
-  $('#w-more').textContent=wait?T('dict_wait'):g?'':T('no_entry');
+  const wait=!hasPair();$('#w-learned').disabled=$('#w-unknown').disabled=wait;
+  $('#w-more').textContent=wait?noMarks():g?'':T('no_entry');
   $('#w-learned').textContent=isLearned(l)?T('dont_know'):T('know_it');
   $('#w-unknown').textContent=S.unknown.has(lk(l))?T('known_again'):T('dont_know_it');
   if(g)remember(strip(word),l,g,i);
   openSheet('#s-word');
 }
 function markLearned(){
-  if(!sheetWord||pairPending())return;
+  if(!sheetWord||!hasPair())return;
   const l=sheetWord.lemma;
   if(isLearned(l))S.learned.delete(lk(l)); else S.learned.add(lk(l));
   LS.set('learned',[...S.learned]); $('#n-learned').textContent=S.learned.size;
@@ -904,7 +907,7 @@ page.addEventListener('pointerdown',e=>{
   held=false;clearTimeout(holdTimer);
   holdTimer=setTimeout(()=>{
     held=true;const w=S.book.words[+c.dataset.i];
-    if(pairPending())return toast(T('dict_wait'));
+    if(!hasPair())return toast(noMarks());
     setUnknown(w,!isUnknown(w));
     toast(isUnknown(w)?T('marked_unknown'):T('known_again'));
     navigator.vibrate?.(12);
@@ -915,7 +918,7 @@ page.addEventListener('click',e=>{
   if(held){held=false;return}
   const g=e.target.closest('.g'), c=e.target.closest('.c'); if(!c)return;
   const i=+c.dataset.i;
-  if(g&&g.textContent&&!pairPending()){                       // tapping the translation = "I know this word"
+  if(g&&g.textContent&&hasPair()){                       // tapping the translation = "I know this word"
     const[,l]=glossOf(S.book.words[i]); S.learned.add(lk(l)); LS.set('learned',[...S.learned]);
     $('#n-learned').textContent=S.learned.size; refreshGlosses(); return;
   }
@@ -926,7 +929,7 @@ $('#w-learned').onclick=markLearned;
 $('#w-speak').onclick=()=>{warmUpSpeech();sheetWord&&speakText(sheetWord.word)};
 $('#w-web').onclick=()=>sheetWord&&open('https://'+(S.book?.lang||S.bundled.src)+'.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
 $('#w-unknown').onclick=()=>{
-  if(!sheetWord||pairPending())return;
+  if(!sheetWord||!hasPair())return;
   setUnknown(sheetWord.word,!S.unknown.has(lk(sheetWord.lemma)));
   toast(S.unknown.has(lk(sheetWord.lemma))?T('marked_unknown'):T('known_again'));
   closeSheets();
