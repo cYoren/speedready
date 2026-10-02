@@ -35,6 +35,7 @@ body{
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .btn{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn:active{background:var(--line)}
+.btn:disabled{opacity:.4}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 .icon{width:44px;min-width:44px;padding:0;font-size:19px}
 
@@ -248,7 +249,7 @@ const UI={
      know_it:'✓ I know this',dont_know:'↩ I do not know it',dictionary:'Dictionary ↗',chapters:'Chapters',
      open_other:'Open another book',file_label:'An .epub or .txt file',file_hint:'Pick a file from your device',
      back_to_starter:'Back to the starter book',gloss_label:'Translation above the words',
-     translate_into:'Translations in',dict_loading:'Downloading the {pair} dictionary…',dict_failed:'No {pair} dictionary right now. Reading without translations.',
+     translate_into:'Translations in',dict_wait:'Translations for this book are still loading.',form_of:'form of',dict_loading:'Downloading the {pair} dictionary…',dict_failed:'No {pair} dictionary right now. Reading without translations.',
      gender_label:'Colors for der, die, das',gender_hint:'German nouns in blue (der), red (die) or green (das)',
      gloss_hint:'Shows your language above every word you have not marked as known',
      dark:'Dark mode',text_size:'Text size',tts_label:'Read aloud while it advances',
@@ -276,7 +277,7 @@ const UI={
      know_it:'✓ Já sei',dont_know:'↩ Ainda não sei',dictionary:'Dicionário ↗',chapters:'Capítulos',
      open_other:'Abrir outro livro',file_label:'Arquivo .epub ou .txt',file_hint:'Escolha um arquivo do seu aparelho',
      back_to_starter:'Voltar ao livro de contos',gloss_label:'Tradução acima das palavras',
-     translate_into:'Traduções em',dict_loading:'Baixando o dicionário {pair}…',dict_failed:'Dicionário {pair} indisponível agora. Lendo sem traduções.',
+     translate_into:'Traduções em',dict_wait:'As traduções deste livro ainda estão carregando.',form_of:'forma de',dict_loading:'Baixando o dicionário {pair}…',dict_failed:'Dicionário {pair} indisponível agora. Lendo sem traduções.',
      gender_label:'Cores para der, die, das',gender_hint:'Substantivos alemães em azul (der), vermelho (die) ou verde (das)',
      gloss_hint:'Mostra seu idioma acima de cada palavra que você ainda não marcou como sabida',
      dark:'Modo escuro',text_size:'Tamanho do texto',tts_label:'Ler em voz alta ao avançar',
@@ -356,6 +357,9 @@ function glossOf(word){            // -> [gloss|null, lemma]
               (S.dict.g[w.toLowerCase()]?w.toLowerCase():w);
   return [S.dict.g[lemma]||S.dict.g[w]||S.dict.g[w.toLowerCase()]||null,lemma];
 }
+// a book whose dictionary should exist but has not arrived: marks would be saved under the surface form ('Häuser')
+// and stop applying once the real lemma ('Haus') is known, so learning actions wait
+const pairPending=()=>!!(S.book&&S.bundle.languages[S.book.lang]&&S.book.lang!==S.native&&!(S.dict&&S.dict.src===S.book.lang&&S.dict.tgt===S.native));
 const lk=l=>(S.book?S.book.lang:'')+':'+l;   // learned and still-learning words are kept per book language
 const isLearned=lemma=>S.learned.has(lk(lemma));
 function lemmaOf(word){return glossOf(word)[1]}
@@ -661,16 +665,17 @@ function openWord(i){
   pause(); S.i=i; show(false);
   const word=S.book.words[i], [g,l]=glossOf(word); sheetWord={word:strip(word),lemma:l};
   $('#w-word').textContent=strip(word);
-  $('#w-lemma').textContent=(l&&l.toLowerCase()!==strip(word).toLowerCase())?'forma de: '+l:'';
+  $('#w-lemma').textContent=(l&&l.toLowerCase()!==strip(word).toLowerCase())?T('form_of')+' '+l:'';
   $('#w-gloss').textContent=g||'—';
-  $('#w-more').textContent=g?'':T('no_entry');
+  const wait=pairPending();$('#w-learned').disabled=$('#w-unknown').disabled=wait;
+  $('#w-more').textContent=wait?T('dict_wait'):g?'':T('no_entry');
   $('#w-learned').textContent=isLearned(l)?T('dont_know'):T('know_it');
   $('#w-unknown').textContent=S.unknown.has(lk(l))?T('known_again'):T('dont_know_it');
   if(g)remember(strip(word),l,g,i);
   openSheet('#s-word');
 }
 function markLearned(){
-  if(!sheetWord)return;
+  if(!sheetWord||pairPending())return;
   const l=sheetWord.lemma;
   if(isLearned(l))S.learned.delete(lk(l)); else S.learned.add(lk(l));
   LS.set('learned',[...S.learned]); $('#n-learned').textContent=S.learned.size;
@@ -899,6 +904,7 @@ page.addEventListener('pointerdown',e=>{
   held=false;clearTimeout(holdTimer);
   holdTimer=setTimeout(()=>{
     held=true;const w=S.book.words[+c.dataset.i];
+    if(pairPending())return toast(T('dict_wait'));
     setUnknown(w,!isUnknown(w));
     toast(isUnknown(w)?T('marked_unknown'):T('known_again'));
     navigator.vibrate?.(12);
@@ -920,7 +926,7 @@ $('#w-learned').onclick=markLearned;
 $('#w-speak').onclick=()=>{warmUpSpeech();sheetWord&&speakText(sheetWord.word)};
 $('#w-web').onclick=()=>sheetWord&&open('https://'+(S.book?.lang||S.bundled.src)+'.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
 $('#w-unknown').onclick=()=>{
-  if(!sheetWord)return;
+  if(!sheetWord||pairPending())return;
   setUnknown(sheetWord.word,!S.unknown.has(lk(sheetWord.lemma)));
   toast(S.unknown.has(lk(sheetWord.lemma))?T('marked_unknown'):T('known_again'));
   closeSheets();
