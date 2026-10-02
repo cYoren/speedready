@@ -1,27 +1,28 @@
-Speedready is a reader for people learning a language. It carries you through a book at a
-pace you set, so you keep reading instead of stopping at every unfamiliar word, and it puts
-the translation right where your eyes already are.
+Read faster, and read in the language you are learning. Speedready is a speed reader and a bilingual reader in one, for any book you own.
 
-Above every word you have not marked as known yet sits its translation in your own language.
-Tap that translation and the word is marked as learned: it disappears from the whole book,
-and the text gets cleaner as your vocabulary grows.
+<b>Read faster</b>
 
-<b>While you read</b>
+* A highlight sweeps through the text at your pace, or words flash one at a time in the center of the screen, so your eyes stop jumping around
+* Set your speed anywhere from 40 to 1,500 words per minute
+* Natural pauses at commas, sentence ends and paragraphs keep it readable at speed
+* See how many minutes are left in the chapter and the book
 
-* A highlight sweeps through the text at your pace, or flashes one word at a time
-* German nouns are colored by gender: blue for der, red for die, green for das
-* Page numbers and headers left over from print are cleaned out, and new books open at chapter one
-* Tap a word for its translation, to hear it, or to start reading from there
+<b>Learn a language by reading</b>
+
+* Ten languages, in any combination: English, German, Spanish, French, Italian, Portuguese, Dutch, Polish, Russian and Swedish
+* Above every word you do not know yet sits its translation in your own language
+* Tap the translation once you know a word: it disappears from the whole book, and the page gets cleaner as your vocabulary grows
 * Hold a word you are still learning: it is underlined everywhere and the pace slows for it
-* Have sentences read aloud by the voice already on your device, with the text following along
-* Bookmark a spot, jump between chapters, and pick up where you left off in every book
+* Sentences are read aloud by your device's voice, with the text following along
+* Export everything you look up as an Anki deck
+* Reading German? Nouns are colored by gender: blue for der, red for die, green for das
 
-<b>It stays on your device</b>
+<b>Your own books, cleanly</b>
 
-The dictionary and the book ship inside the app. The reader works offline without an account or permissions. Everything you mark, learn and bookmark stays on your phone, and everything you look up can be exported as an Anki deck.
+Open any EPUB or text file; the app recognizes its language. Page numbers and headers left over from print are removed, sentences broken by a page are joined again, and every book opens at chapter one. A German storybook is built in so you can start right away.
 
-<b>Included</b>
+<b>Private</b>
 
-German to Portuguese with a public-domain German storybook to start reading immediately. You can open any EPUB or text file of your own, and every book you open joins a library that remembers how far through each one you are.
+No account, no tracking, no ads. A language pair's dictionary downloads once (about 2 MB) and then works offline. Your books and your progress never leave your device.
 
-The reader code is MIT-licensed. The bundled dictionary uses Wiktionary data under CC BY-SA 4.0; frequency data is from FrequencyWords under MIT. Attribution and licence details are in the source repository.
+The reader is free, open-source software. The reader code is MIT-licensed. Dictionaries use Wiktionary data under CC BY-SA 4.0; frequency data is from FrequencyWords under MIT. Attribution and licence details are in the source repository.

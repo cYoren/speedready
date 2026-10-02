@@ -8,6 +8,8 @@
   const FRONT=/^(cover|titel(seite)?|title( page)?|inhalt(sverzeichnis)?|(table of )?contents|impressum|copyright|widmung|dedication|(das |zum )?buch|(der |über den )?autor(in)?|about the author|introduction|how to read.*)$/i;
   const LOWER=/^(?:(?![A-ZÄÖÜ])\p{L})+[,.;:!?]?$/u, HYPHEN=/\p{L}-$/u, ALPHA=/\p{L}/u;
   const CONJ=new Set(['und','oder','bis','sowie','als','and','or']);
+  const CONNECTORS=new Set('a an the of and or in on at to for by with from der die das des dem den und oder von zu im am an auf mit für le la les de du des et à au aux en el los las del y il lo gli di e o os as do da dos das em no na het een van op och i av på ett w z na do и в на с к о'.split(' '));   // the only lowercase words a heading may have (same list as speedready.py)
+  const isUpper=c=>c!==c.toLowerCase()&&c===c.toUpperCase();
   const strip=w=>w.replace(/^[^\p{L}\p{N}_]+|[^\p{L}\p{N}_]+$/gu,'');
 
   // words/para as parsed, chapters [[title, wordIndex|null]], names = title + authors
@@ -37,7 +39,10 @@
       const open=words.length>0&&!END.test(last)&&ALPHA.test(last);
       if(header(t,p)||PAGE_NUM.test(t)&&(!/^\d+$/.test(t)||open)){first[k]=null;cut=true;continue}
       const lower=LOWER.test(p[0]),run=starts.length?words.length-starts[starts.length-1]:0;
-      if(open&&(lines&&run>=4||lower&&(cut||run>=12))){
+      const hw=starts.length?words.slice(starts[starts.length-1]).filter(w=>/[\p{L}\p{N}]/u.test(w)):[];   // 'Chapter One', 'The End of the Road': capitals, short connectors
+      const cap=w=>isUpper(w[0])||/\d/.test(w[0]);
+      const head=hw.length>0&&run<=8&&cap(hw[0])&&hw.every(w=>cap(w)||CONNECTORS.has(w.toLowerCase()));
+      if(open&&(lines&&run>=4&&!head||lower&&(cut||run>=12))){
         if(lower&&(cut||lines)&&HYPHEN.test(last)&&!CONJ.has(p[0])){
           words[words.length-1]=last.slice(0,-1)+p[0];p=p.slice(1);first[k]-=1;   // 'Mühlen-' | page break | 'knappe'
         }
@@ -81,6 +86,23 @@
     for(const[t,i]of chapters)if(!FRONT.test(t.replace(/^[ .:]+|[ .:]+$/g,''))&&i<n*0.2)return i;
     return 0;
   }
-  const TextClean={clean,resolveMissing,remap,start,DROP};
+  // The language of a book with no (or a wrong) <dc:language>: whichever language's commonest little words
+  // turn up most. A thousand words is plenty; ponytail: stopword vote, an n-gram model if languages ever blur.
+  const STOP={de:'der die und das ist nicht ich sie es zu den mit sich ein auch auf dem nach',en:'the and of to is that it was he you with for his as not had her',
+    fr:'le la les et des est un une que il pas qui dans pour sur au elle',es:'el la los las que y en un una es por con para no se lo del',
+    it:'il di che e un una per non sono del della con mi si ma gli',pt:'o os as que e do da em um uma não para com se no na',
+    nl:'het een en van is dat niet ik je op te zijn met er maar',pl:'i w nie na się z do to że jest jak co ale jego',
+    ru:'и в не на я что он с как то это по она его',sv:'och att det som är på jag inte med för har av till men'};
+  const SETS=Object.fromEntries(Object.entries(STOP).map(([l,s])=>[l,new Set(s.split(' '))]));
+  function detectLang(words){
+    const score={};for(const l in SETS)score[l]=0;
+    for(const w of words.slice(0,1000)){const t=strip(w).toLowerCase();for(const l in SETS)if(SETS[l].has(t))score[l]++}
+    const best=Object.entries(score).sort((a,b)=>b[1]-a[1])[0];
+    return best&&best[1]>=5?best[0]:null;
+  }
+  // an epub's <dc:language> as a two-letter code: 'DE', 'de-DE', 'ger' and 'deu' are all 'de' (same as lang_code in speedready.py)
+  const ISO3={ger:'de',deu:'de',eng:'en',spa:'es',fre:'fr',fra:'fr',ita:'it',dut:'nl',nld:'nl',pol:'pl',por:'pt',rus:'ru',swe:'sv'};
+  const langCode=tag=>{const t=tag.trim().toLowerCase();return ISO3[t.slice(0,3)]||t.slice(0,2)};
+  const TextClean={clean,resolveMissing,remap,start,detectLang,langCode,DROP};
   if(typeof module!=='undefined'&&module.exports)module.exports=TextClean;else root.TextClean=TextClean;
 })(typeof self!=='undefined'?self:this);

@@ -35,6 +35,7 @@ body{
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .btn{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn:active{background:var(--line)}
+.btn:disabled{opacity:.4}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 .icon{width:44px;min-width:44px;padding:0;font-size:19px}
 
@@ -223,10 +224,12 @@ body.rsvp main{display:none}
     <button class="btn" id="b-export" data-t="export">Export for Anki</button>
     <button class="btn" id="b-forget" data-t="forget_all">Forget all</button>
   </div>
+  <h3 data-t="translate_into">Translations in</h3>
+  <div class="list" id="natives"></div>
   <h3 data-t="language">Language</h3>
   <div class="list" id="langs"></div>
   <h3 data-t="about">About</h3>
-  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.5</b></div>
+  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.6</b></div>
   <div class="row"><label data-t="license">Code: MIT</label>
     <a class="btn" id="a-src" href="https://github.com/cYoren/speedready" target="_blank" rel="noopener" data-t="source">Source code</a></div>
   <p style="color:var(--dim);font-size:13px;line-height:1.5;margin:0">
@@ -246,6 +249,7 @@ const UI={
      know_it:'✓ I know this',dont_know:'↩ I do not know it',dictionary:'Dictionary ↗',chapters:'Chapters',
      open_other:'Open another book',file_label:'An .epub or .txt file',file_hint:'Pick a file from your device',
      back_to_starter:'Back to the starter book',gloss_label:'Translation above the words',
+     translate_into:'Translations in',dict_wait:'Translations for this book are still loading.',marks_need_pair:'To mark words, pick a translation language different from the book in Settings.',form_of:'form of',dict_loading:'Downloading the {pair} dictionary…',dict_failed:'No {pair} dictionary right now. Reading without translations.',
      gender_label:'Colors for der, die, das',gender_hint:'German nouns in blue (der), red (die) or green (das)',
      gloss_hint:'Shows your language above every word you have not marked as known',
      dark:'Dark mode',text_size:'Text size',tts_label:'Read aloud while it advances',
@@ -273,6 +277,7 @@ const UI={
      know_it:'✓ Já sei',dont_know:'↩ Ainda não sei',dictionary:'Dicionário ↗',chapters:'Capítulos',
      open_other:'Abrir outro livro',file_label:'Arquivo .epub ou .txt',file_hint:'Escolha um arquivo do seu aparelho',
      back_to_starter:'Voltar ao livro de contos',gloss_label:'Tradução acima das palavras',
+     translate_into:'Traduções em',dict_wait:'As traduções deste livro ainda estão carregando.',marks_need_pair:'Para marcar palavras, escolha em Ajustes um idioma de tradução diferente do livro.',form_of:'forma de',dict_loading:'Baixando o dicionário {pair}…',dict_failed:'Dicionário {pair} indisponível agora. Lendo sem traduções.',
      gender_label:'Cores para der, die, das',gender_hint:'Substantivos alemães em azul (der), vermelho (die) ou verde (das)',
      gloss_hint:'Mostra seu idioma acima de cada palavra que você ainda não marcou como sabida',
      dark:'Modo escuro',text_size:'Tamanho do texto',tts_label:'Ler em voz alta ao avançar',
@@ -330,7 +335,7 @@ const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],p
          wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',true),
          size:LS.get('size',19),tts:LS.get('tts',false),learned:new Set(LS.get('learned',[])),
          voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false,
-         genderOn:LS.get('gender',true),genderData:null};
+         genderOn:LS.get('gender',true),genderData:null,bundled:null,native:LS.get('native',null)};
 const $=s=>document.querySelector(s), page=$('#page');
 let toastTimer=null;
 function toast(msg){
@@ -342,6 +347,7 @@ const strip=w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
 //////////////////// dictionary ////////////////////
 function glossOf(word){            // -> [gloss|null, lemma]
   const w=strip(word); if(!w||!S.dict) return [null,w];
+  if(S.book&&(S.book.lang!==S.dict.src||S.dict.tgt!==S.native)) return [null,w];   // only the loaded pair; an English book never gets German glosses
   const o=S.dict.o[w.toLowerCase()]; if(o) return [o[0],o[1]];
   // An exact-case hit beats any lowercased form lookup: German capitalisation is what separates
   // the noun from the verb, and 'Haus'/'haus' would otherwise resolve through 'hausen' and gloss
@@ -351,12 +357,19 @@ function glossOf(word){            // -> [gloss|null, lemma]
               (S.dict.g[w.toLowerCase()]?w.toLowerCase():w);
   return [S.dict.g[lemma]||S.dict.g[w]||S.dict.g[w.toLowerCase()]||null,lemma];
 }
-const isLearned=lemma=>S.learned.has(lemma);
+// Learning marks are saved per lemma, and only the book's dictionary knows the lemma: without it ('Häuser') the mark
+// would stop applying once a dictionary resolves the real one ('Haus'). So marks need the book's pair loaded; pairPending
+// says whether it is on its way (else: same language as the reader's, or a language with no dictionaries).
+const hasPair=()=>!!(S.book&&S.dict&&S.dict.src===S.book.lang&&S.dict.tgt===S.native);
+const pairPending=()=>!!(S.book&&S.bundle.languages[S.book.lang]&&S.book.lang!==S.native&&!hasPair());
+const noMarks=()=>T(pairPending()?'dict_wait':'marks_need_pair');
+const lk=l=>(S.book?S.book.lang:'')+':'+l;   // learned and still-learning words are kept per book language
+const isLearned=lemma=>S.learned.has(lk(lemma));
 function lemmaOf(word){return glossOf(word)[1]}
-const isUnknown=w=>S.unknown.has(lemmaOf(w));
+const isUnknown=w=>S.unknown.has(lk(lemmaOf(w)));
 function setUnknown(word,flag){
   const l=lemmaOf(word);if(!l)return;
-  flag?S.unknown.add(l):S.unknown.delete(l);
+  flag?S.unknown.add(lk(l)):S.unknown.delete(lk(l));
   LS.set('unknown',[...S.unknown]);
   $('#n-unknown').textContent=S.unknown.size;
   markUnknown();
@@ -377,6 +390,54 @@ function fit(gloss,word){          // keep only what fits above the word, so the
   let out='';
   for(const p of parts){const next=out?out+', '+p:p; if(next.length>room)break; out=next}
   return out||parts[0].slice(0,room);
+}
+
+//////////////////// dictionaries ////////////////////
+// One pair ships inside the app (bundle.json "dict"). Every other pair of bundle.json "languages" is downloaded
+// once from bundle.json "packs" and kept in IndexedDB, which the browser, the Android WebView and iOS all have,
+// so it works offline afterwards. Translations always go into S.native, the reader's language.
+const pairName=(s,t)=>`${s.toUpperCase()}→${t.toUpperCase()}`;
+function idb(mode,fn){return new Promise((ok,no)=>{
+  const r=indexedDB.open('speedready',1);r.onupgradeneeded=()=>r.result.createObjectStore('dicts');r.onerror=()=>no(r.error);
+  r.onsuccess=()=>{const tx=r.result.transaction('dicts',mode),q=fn(tx.objectStore('dicts'));tx.oncomplete=()=>ok(q.result);tx.onerror=()=>no(tx.error)};
+})}
+async function unpack(buf){   // gzip from a static host, or already unpacked by a server that sent Content-Encoding
+  const b=new Uint8Array(buf);
+  const text=b[0]===0x1f&&b[1]===0x8b?await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(b);
+  return JSON.parse(text);
+}
+const dicts=new Map();
+async function dictFor(src){
+  const tgt=S.native,key=src+'-'+tgt;
+  if(!src||src===tgt||!S.bundle.languages[src])return null;
+  if(dicts.has(key))return dicts.get(key);
+  if(S.bundled.src===src&&S.bundled.tgt===tgt){dicts.set(key,S.bundled);return S.bundled}
+  let d=null;
+  try{
+    const stored=await idb('readonly',s=>s.get(key)).catch(()=>null);
+    if(stored)d=await unpack(stored).catch(()=>{idb('readwrite',s=>s.delete(key)).catch(()=>{});return null});   // a bad copy: drop it, download again
+    if(!d){
+      toast(T('dict_loading').replace('{pair}',pairName(src,tgt)));
+      const r=await fetch(S.bundle.packs+'dict-'+key+'.json.gz');if(!r.ok)throw new Error(r.status);
+      const buf=await r.arrayBuffer();d=await unpack(buf);   // throws on anything that is not a dictionary, before it is kept
+      idb('readwrite',s=>s.put(buf,key)).catch(()=>{});      // private mode etc.: works, just not offline
+    }
+  }catch(e){toast(T('dict_failed').replace('{pair}',pairName(src,tgt)));return null}   // not cached: back online, the next try downloads it
+  dicts.set(key,d);return d;
+}
+async function useDictFor(book){   // the page renders first; translations appear when the dictionary is in
+  const tgt=S.native,d=await dictFor(book.lang);
+  if(S.book!==book||S.native!==tgt)return;   // the reader moved on (another book, another language) while this downloaded
+  if(d)S.dict=d;
+  refreshGlosses();markUnknown();if(S.mode==='rsvp')drawRsvp();
+}
+function buildNativeList(){
+  const box=$('#natives');if(!box||!S.bundle)return;box.replaceChildren();
+  for(const[code,name]of Object.entries(S.bundle.languages)){
+    const b=document.createElement('button');b.textContent=name;b.className=code===S.native?'on':'';
+    b.onclick=()=>{S.native=code;LS.set('native',code);buildNativeList();refreshGlosses();S.book&&useDictFor(S.book)};   // old glosses go at once
+    box.appendChild(b);
+  }
 }
 
 //////////////////// book ////////////////////
@@ -466,7 +527,7 @@ function delay(i){
   if(SENT_END.test(w))d*=2.4; else if(/[,;:]["'”’“‘)»«]*$/.test(w))d*=1.5;
   if(w.length>=10)d*=1.25;
   const[,l]=glossOf(w); if(!isLearned(l)&&showGloss(w))d*=1.35;   // linger on words still being learned
-  if(S.unknown.has(l))d*=1.8;                                      // and longer on the ones marked by hand
+  if(S.unknown.has(lk(l)))d*=1.8;                                      // and longer on the ones marked by hand
   return d;
 }
 function step(){
@@ -607,33 +668,35 @@ function openWord(i){
   pause(); S.i=i; show(false);
   const word=S.book.words[i], [g,l]=glossOf(word); sheetWord={word:strip(word),lemma:l};
   $('#w-word').textContent=strip(word);
-  $('#w-lemma').textContent=(l&&l.toLowerCase()!==strip(word).toLowerCase())?'forma de: '+l:'';
+  $('#w-lemma').textContent=(l&&l.toLowerCase()!==strip(word).toLowerCase())?T('form_of')+' '+l:'';
   $('#w-gloss').textContent=g||'—';
-  $('#w-more').textContent=g?'':T('no_entry');
+  const wait=!hasPair();$('#w-learned').disabled=$('#w-unknown').disabled=wait;
+  $('#w-more').textContent=wait?noMarks():g?'':T('no_entry');
   $('#w-learned').textContent=isLearned(l)?T('dont_know'):T('know_it');
-  $('#w-unknown').textContent=S.unknown.has(l)?T('known_again'):T('dont_know_it');
+  $('#w-unknown').textContent=S.unknown.has(lk(l))?T('known_again'):T('dont_know_it');
   if(g)remember(strip(word),l,g,i);
   openSheet('#s-word');
 }
 function markLearned(){
-  if(!sheetWord)return;
+  if(!sheetWord||!hasPair())return;
   const l=sheetWord.lemma;
-  if(isLearned(l))S.learned.delete(l); else S.learned.add(l);
+  if(isLearned(l))S.learned.delete(lk(l)); else S.learned.add(lk(l));
   LS.set('learned',[...S.learned]); $('#n-learned').textContent=S.learned.size;
   refreshGlosses(); closeSheets();
 }
 
 //////////////////// vocabulary ////////////////////
 function remember(word,lemma,gloss,i){
-  if(!gloss||S.vocab.some(v=>v[1]===lemma))return;
-  S.vocab.push([word,lemma,gloss,S.book.words.slice(sentStart(i),sentEnd(i)).join(' '),S.book.title]);
+  const id=lk(lemma)+'>'+S.native;   // German 'in' and English 'in' are different cards; so is the same word in another language
+  if(!gloss||S.vocab.some(v=>(v[5]||S.bundled.src+':'+v[1]+'>'+S.bundled.tgt)===id))return;   // entries from before 1.0.6 have no id: the bundled pair
+  S.vocab.push([word,lemma,gloss,S.book.words.slice(sentStart(i),sentEnd(i)).join(' '),S.book.title,id]);
   if(S.vocab.length>5000)S.vocab.shift();
   LS.set('vocab',S.vocab);
 }
 function exportAnki(){
   if(!S.vocab.length)return toast(T('nothing_to_export'));
   const head='#separator:tab\n#html:false\n#tags:speedready\n#columns:Word\tLemma\tMeaning\tSentence\tBook\n';
-  const body=S.vocab.map(v=>v.map(x=>String(x).replace(/[\t\n]/g,' ')).join('\t')).join('\n');
+  const body=S.vocab.map(v=>v.slice(0,5).map(x=>String(x).replace(/[\t\n]/g,' ')).join('\t')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([head+body],{type:'text/tab-separated-values'}));
   a.download='speedready-vocabulary.tsv';a.click();
@@ -690,7 +753,7 @@ async function loadBook(book,startAt){
     LS.set(marksKey(),LS.get(marksKey(),[]).map(m));LS.set('clean:'+book.id,true);
   }
   S.i=Math.min(startAt??LS.get(bookKey(),book.old2new?TextClean.start(book.chapters,book.words.length):0),book.words.length-1);
-  computeGenders();
+  computeGenders();useDictFor(book);
   const pr=LS.get(prefsKey(),null);                 // each book keeps its own pace and mode
   if(pr){S.wpm=pr.wpm??S.wpm;S.gloss=pr.gloss??S.gloss;S.tts=pr.tts??S.tts;
          $('#wpm').textContent=S.wpm;$('#t-gloss').classList.toggle('on',S.gloss);
@@ -716,7 +779,7 @@ function textToBook(text,title,id){
     const ws=p.split(/\s+/).filter(Boolean);
     if(ws.length){para.push(words.length);words.push(...ws)}
   }
-  return {id,title,lang:S.dict?.src||'en',...TextClean.clean(words,para,[],title)};
+  return {id,title,lang:TextClean.detectLang(words)||S.bundled.src,...TextClean.clean(words,para,[],title)};
 }
 // --- epub via the browser's own zip inflater (no library) ---
 async function epubToBook(file){
@@ -784,7 +847,10 @@ async function epubToBook(file){
   const authors=[...opf.matchAll(/<dc:creator[^>]*>([^<]+)/g)].map(m=>m[1]).join(' ');
   const c=TextClean.clean(words,para,chapters,title+' '+authors);   // page numbers, running headers, split sentences
   c.chapters=TextClean.resolveMissing(c.words,c.para,c.chapters).filter(([t,i])=>t&&i!==null&&i<c.words.length);
-  return {id:'f:'+file.name+':'+file.size,title,lang:(opf.match(/<dc:language[^>]*>(\w\w)/)||[])[1]||S.dict?.src||'en',...c};
+  const tagged=TextClean.langCode((opf.match(/<dc:language[^>]*>([^<]*)</)||[])[1]||'');
+  const real=tagged&&!['un','mu','zx'].includes(tagged);   // und, mul, zxx: calibre's 'undetermined' and friends
+  const lang=S.bundle.languages[tagged]?tagged:TextClean.detectLang(c.words)||(real?tagged:S.bundled.src);
+  return {id:'f:'+file.name+':'+file.size,title,lang,...c};
 }
 
 //////////////////// boot ////////////////////
@@ -807,7 +873,13 @@ async function boot(){
   try{
     S.bundle=await fetchJSON('bundle.json');
     const genders=Gender.load('genders-de.json.gz').catch(()=>null);
-    S.dict=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%');
+    S.dict=S.bundled=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%');
+    for(const[set,key]of[[S.learned,'learned'],[S.unknown,'unknown']]){   // words saved before 1.0.6 were all learned in the bundled language
+      const old=[...set].filter(x=>!x.includes(':'));if(!old.length)continue;
+      old.forEach(x=>{set.delete(x);set.add(S.bundled.src+':'+x)});LS.set(key,[...set]);
+    }
+    if(!S.native||!S.bundle.languages[S.native])S.native=S.bundle.languages[S.ui]?S.ui:S.bundled.tgt;   // first run: the interface language
+    buildNativeList();
     S.genderData=await genders;
     $('#splash-msg').textContent=T('opening');
     const book=await fetchJSON(S.bundle.starter); book.id='starter';
@@ -826,14 +898,16 @@ function applySize(){page.style.setProperty('--size',S.size+'px')}
 //////////////////// events ////////////////////
 $('#play').onclick=()=>{warmUpSpeech();toggle()};
 $('#b-back').onclick=()=>{const was=S.playing;pause();S.i=sentStart(Math.max(0,S.i-1));show();if(was)play()};
-$('#faster').onclick=()=>setWpm(S.wpm+10); $('#slower').onclick=()=>setWpm(S.wpm-10);
-function setWpm(v){S.wpm=Math.max(40,Math.min(800,v));$('#wpm').textContent=S.wpm;LS.set('wpm',S.wpm);updateHeader();saveBookPrefs()}
+$('#faster').onclick=()=>setWpm(S.wpm+wpmStep(true)); $('#slower').onclick=()=>setWpm(S.wpm-wpmStep(false));
+const wpmStep=up=>(up?S.wpm>=300:S.wpm>300)?50:10;   // learners fine-tune slow speeds, speed readers jump in 50s up to 1500
+function setWpm(v){S.wpm=Math.max(40,Math.min(1500,v));$('#wpm').textContent=S.wpm;LS.set('wpm',S.wpm);updateHeader();saveBookPrefs()}
 let holdTimer=null,held=false;
 page.addEventListener('pointerdown',e=>{
   const c=e.target.closest('.c');if(!c)return;
   held=false;clearTimeout(holdTimer);
   holdTimer=setTimeout(()=>{
     held=true;const w=S.book.words[+c.dataset.i];
+    if(!hasPair())return toast(noMarks());
     setUnknown(w,!isUnknown(w));
     toast(isUnknown(w)?T('marked_unknown'):T('known_again'));
     navigator.vibrate?.(12);
@@ -844,8 +918,8 @@ page.addEventListener('click',e=>{
   if(held){held=false;return}
   const g=e.target.closest('.g'), c=e.target.closest('.c'); if(!c)return;
   const i=+c.dataset.i;
-  if(g&&g.textContent){                       // tapping the translation = "I know this word"
-    const[,l]=glossOf(S.book.words[i]); S.learned.add(l); LS.set('learned',[...S.learned]);
+  if(g&&g.textContent&&hasPair()){                       // tapping the translation = "I know this word"
+    const[,l]=glossOf(S.book.words[i]); S.learned.add(lk(l)); LS.set('learned',[...S.learned]);
     $('#n-learned').textContent=S.learned.size; refreshGlosses(); return;
   }
   openWord(i);
@@ -853,11 +927,11 @@ page.addEventListener('click',e=>{
 $('#w-here').onclick=()=>{closeSheets();play()};
 $('#w-learned').onclick=markLearned;
 $('#w-speak').onclick=()=>{warmUpSpeech();sheetWord&&speakText(sheetWord.word)};
-$('#w-web').onclick=()=>sheetWord&&open('https://de.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
+$('#w-web').onclick=()=>sheetWord&&open('https://'+(S.book?.lang||S.bundled.src)+'.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
 $('#w-unknown').onclick=()=>{
-  if(!sheetWord)return;
-  setUnknown(sheetWord.word,!S.unknown.has(sheetWord.lemma));
-  toast(S.unknown.has(sheetWord.lemma)?T('marked_unknown'):T('known_again'));
+  if(!sheetWord||!hasPair())return;
+  setUnknown(sheetWord.word,!S.unknown.has(lk(sheetWord.lemma)));
+  toast(S.unknown.has(lk(sheetWord.lemma))?T('marked_unknown'):T('known_again'));
   closeSheets();
 };
 $('#b-mark').onclick=toggleBookmark;
@@ -902,7 +976,7 @@ addEventListener('keydown',e=>{
   if(e.key===' '){e.preventDefault();toggle()}
   else if(e.key==='ArrowRight'){pause();S.i=Math.min(S.book.words.length-1,S.i+10);show()}
   else if(e.key==='ArrowLeft'){pause();S.i=Math.max(0,S.i-10);show()}
-  else if(e.key==='ArrowUp'){setWpm(S.wpm+10)} else if(e.key==='ArrowDown'){setWpm(S.wpm-10)}
+  else if(e.key==='ArrowUp'){setWpm(S.wpm+wpmStep(true))} else if(e.key==='ArrowDown'){setWpm(S.wpm-wpmStep(false))}
   else if(e.key==='m'){setMode(S.mode==='pacer'?'rsvp':'pacer');saveBookPrefs()}
   else if(e.key==='b')toggleBookmark();
   else if(e.key==='Escape')closeSheets();

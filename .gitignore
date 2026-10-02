@@ -18,3 +18,4 @@ android/app/build/
 # on the machine that wrote it, which breaks F-Droid's buildserver
 local.properties
 android/local.properties
+.asc/

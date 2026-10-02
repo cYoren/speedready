@@ -1,5 +1,5 @@
 // Cache everything on first visit so the app works with no connection afterwards.
-const CACHE='speedready-v2';   // bump on every release: the cache is served first, so a new name is what makes clients update
+const CACHE='speedready-v4';   // bump on every release: the cache is served first, so a new name is what makes clients update
 const ASSETS=['./','index.html','bundle.json','manifest.webmanifest','icon.svg','icon-180.png','icon-512.png','gender.js','textclean.js','genders-de.json.gz'];
 // The dictionary and starter book are named in bundle.json, so this build caches whichever
 // language pair it ships without the filenames being written here twice.
@@ -18,9 +18,9 @@ self.addEventListener('activate',e=>{
   e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
 self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
+  if(e.request.method!=='GET'||new URL(e.request.url).origin!==location.origin)return;   // other sites (the dictionary host): the browser's own fetch, failures and all
   e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(hit=>hit||fetch(e.request).then(res=>{
     if(res.ok&&new URL(e.request.url).origin===location.origin){const copy=res.clone();caches.open(CACHE).then(c=>c.put(e.request,copy))}
     return res;
-  }).catch(()=>caches.match('index.html'))));
+  }).catch(()=>e.request.mode==='navigate'?caches.match('index.html'):Response.error())));   // only a page load falls back to the app
 });

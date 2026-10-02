@@ -170,6 +170,24 @@ class CoreTests(unittest.TestCase):
         old=page.split().index('Dann');self.assertEqual(b.words[b.remap(old)],'Dann')
         self.assertTrue(app.END_RE.search('kalt.«'))   # German »…« dialogue ends a sentence
 
+    def test_a_heading_without_punctuation_stays_its_own_paragraph_when_lines_are_reflowed(self):
+        lines='Der Müller stand in der Tür der alten\nMühle und sah hinaus auf den Weg, der zum\nDorf führte. Es war kalt.\n'
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'x.txt';path.write_text('Chapter One The Arrival\n'+lines*4)
+            b=app.Book(str(path),'de')
+        self.assertEqual(' '.join(b.words[b.para_start[0]:b.para_start[1]]),'Chapter One The Arrival')
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'x.txt';path.write_text('The End of the Road\n'+lines*4)
+            b=app.Book(str(path),'de')
+        self.assertEqual(' '.join(b.words[b.para_start[0]:b.para_start[1]]),'The End of the Road')
+        with tempfile.TemporaryDirectory() as d:   # short lowercase words that are not connectors: prose, reflowed
+            path=Path(d)/'x.txt';path.write_text('Er sah ihn an und ging\n'+lines*4)
+            b=app.Book(str(path),'de')
+        self.assertTrue(' '.join(b.words[:b.para_start[1]]).startswith('Er sah ihn an und ging Der Müller'))
+
+    def test_epub_language_tags_in_any_spelling(self):
+        self.assertEqual([app.lang_code(x) for x in('DE','de-DE','ger','deu','pt-BR','ENG')],['de','de','de','de','pt','en'])
+
     def test_pdf_style_lines_become_paragraphs_and_markup_junk_goes(self):
         with tempfile.TemporaryDirectory() as d:
             path=Path(d)/'x.txt';path.write_text('Kapitel 1.\n'+'Der Müller stand in der Tür der alten\nMühle und sah hinaus auf den Weg, der zum\nDorf führte. Es war kalt.\n'*4)
