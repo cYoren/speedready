@@ -1,4 +1,17 @@
 {
   "dict": "dict-de-pt.json",
-  "starter": "starter-de.json"
+  "starter": "starter-de.json",
+  "packs": "https://cyoren.github.io/speedready-packs/",
+  "languages": {
+    "de": "Deutsch",
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "it": "Italiano",
+    "nl": "Nederlands",
+    "pl": "Polski",
+    "pt": "Português",
+    "ru": "Русский",
+    "sv": "Svenska"
+  }
 }

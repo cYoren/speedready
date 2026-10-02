@@ -11,13 +11,13 @@ Sources (all public, downloaded once into --dir):
   freq-<src>.txt     hermitdave/FrequencyWords "<word> <count>" list
 
 Pack schema: forms(form, lemma) · gloss(word, pos, tgt, prio) · freq(word, rank) · meta(key, value)
-prio: 1 own-edition translation · 2 pivot through English Wiktionary · 9 English gloss only
+prio: 1 own-edition translation (for English, English Wiktionary's own tables) · 2 pivot through English Wiktionary · 9 English gloss only
 """
 import argparse,collections,gzip,json,re,sqlite3,sys,time
 from pathlib import Path
 
 LANGNAME={'de':'German','pt':'Portuguese','en':'English','es':'Spanish','fr':'French','it':'Italian','nl':'Dutch','ru':'Russian','sv':'Swedish','pl':'Polish'}
-OWN_EDITION_NAME={'de':'Deutsch','fr':'Français','es':'Español','it':'Italiano','pt':'Português','nl':'Nederlands','ru':'Русский','pl':'język polski'}  # kaikki has no svwiktionary
+OWN_EDITION_NAME={'en':'English','de':'Deutsch','fr':'Français','es':'Español','it':'Italiano','pt':'Português','nl':'Nederlands','ru':'Русский','pl':'język polski'}  # kaikki has no svwiktionary
 PAREN=re.compile(r'\([^)]*\)|\[[^\]]*\]');SKIP_GLOSS=re.compile(r'^(?:\w+[ -])*(?:of|form of|inflection of|spelling of|abbreviation of|initialism of|misspelling of)\b',re.I)
 
 def jsonl(path):
@@ -31,7 +31,7 @@ def jsonl(path):
 def candidates(gloss):
     """'to go, to walk (on foot)' -> ['go','walk']: short pieces of an English gloss usable as dictionary keys."""
     g=PAREN.sub('',gloss);out=[]
-    for part in re.split(r'[,;]',g):
+    for part in re.split(r'[,;:]',g):   # 'book: a collection of pages' -> 'book'
         part=part.strip().strip('.').lower();part=re.sub(r'^(to|a|an|the) ','',part)
         if part and len(part.split())<=2 and re.fullmatch(r"[a-z' -]+",part):out.append(part)
     return out
@@ -57,7 +57,7 @@ def build(src,tgt,d,out):
             if 'form-of' in s.get('tags',[]) or 'alt-of' in s.get('tags',[]):continue
             for g in s.get('glosses',[])[:1]:
                 if not SKIP_GLOSS.match(g):glosses.append(g)
-        if glosses:en_gloss[(w,pos)]=glosses
+        if len(glosses)>len(en_gloss.get((w,pos),())):en_gloss[(w,pos)]=glosses   # homographs: the entry with the most senses is the main one (Buch 'book', not 'omasum'; sv bok 'book', not 'beech')
     print(f'en-{src}: {n:,} entries, {len(forms):,} forms, {len(en_gloss):,} glossed lemmas',file=sys.stderr)
     if tgt=='en':
         for (w,pos),gs in en_gloss.items():gloss[(w,pos)].setdefault(9,PAREN.sub('',gs[0]).strip()[:80])
@@ -65,14 +65,37 @@ def build(src,tgt,d,out):
         for (w,pos),gs in en_gloss.items():gloss[(w,pos)].setdefault(9,PAREN.sub('',gs[0]).strip()[:80])  # English fallback, shown only when nothing else exists
     # ---- 2. own-edition translation tables
     f=d/f'{src}-{OWN_EDITION_NAME.get(src,"")}.jsonl'
-    if tgt!='en' and (f.exists() or f.with_suffix('.jsonl.gz').exists()):
+    if f.exists() or f.with_suffix('.jsonl.gz').exists():   # also into English: de.wiktionary's 'Buch -> book' beats an English definition
         n=k=0
         for e in jsonl(f):
-            n+=1;w,pos=e.get('word',''),e.get('pos','');tr=[t.get('word') for t in e.get('translations',[]) if t.get('lang_code')==tgt and t.get('word')]
+            n+=1;w,pos=e.get('word',''),e.get('pos','')
+            tables=[t for s in e.get('senses',[]) for t in s.get('translations',[])]+e.get('translations',[])   # en.wiktionary often files them per sense ('book': all 623 there), main sense first
+            tr=[t.get('word') for t in tables if t.get('lang_code')==tgt and t.get('word')]
             if tr:
                 tr=[t for t in dict.fromkeys(tr) if len(t.split())<=3][:3]
                 if tr:gloss[(w,pos)].setdefault(1,', '.join(tr));k+=1
         print(f'own edition: {n:,} entries, {k:,} with {tgt} translations',file=sys.stderr)
+    # ---- 2b. no own edition (Swedish): triangulate through the English word the source word means. sv hus is
+    # defined as 'house'; en.wiktionary's 'house' lists hus and the pt casa under the same sense, so hus -> casa.
+    # Going via the definition matters: hus also turns up in the tables of 'casing', which would give 'caixa'.
+    f=d/'en-English.jsonl'
+    if src not in OWN_EDITION_NAME and (f.exists() or f.with_suffix('.jsonl.gz').exists()):
+        senses=collections.defaultdict(list)   # (english word, pos) -> [(src words, tgt words)] per sense
+        for e in jsonl(f):
+            if e.get('lang_code')!='en':continue
+            w,pos=e.get('word',''),e.get('pos','')
+            for s in e.get('senses',[])+[e]:
+                tabs=s.get('translations',[]);sw={x.get('word') for x in tabs if x.get('lang_code')==src}
+                if not sw:continue
+                tw=[w] if tgt=='en' else [x.get('word') for x in tabs if x.get('lang_code')==tgt and x.get('word')]
+                tw=[x for x in dict.fromkeys(tw) if len(x.split())<=3][:3]
+                if tw:senses[(w.lower(),pos)].append((sw,tw))
+        k=0
+        for (w,pos),gs in en_gloss.items():
+            for c in (c for g in gs[:2] for c in candidates(g)):   # the first English word that lists w; its senses vote
+                votes=collections.Counter(x for sw,tw in senses.get((c,pos),()) if w in sw for x in tw)
+                if votes:gloss[(w,pos)].setdefault(2,', '.join(x for x,_ in votes.most_common(3)));k+=1;break
+        print(f'en.wiktionary tables: {k:,} {src} lemmas triangulated to {tgt}',file=sys.stderr)
     # ---- 3. pivot through English: target-language extract inverted
     f=d/f'en-{LANGNAME.get(tgt,"")}.jsonl'
     if tgt!='en' and (f.exists() or f.with_suffix('.jsonl.gz').exists()):
@@ -86,8 +109,9 @@ def build(src,tgt,d,out):
                     for c in candidates(g):en2t[(c,pos)][w]+=1;en2t[(c,None)][w]+=1
         k=0
         for (w,pos),gs in en_gloss.items():
-            for g in gs[:2]:
-                hit=next((en2t[(c,pos)] or en2t[(c,None)] for c in candidates(g) if en2t.get((c,pos)) or en2t.get((c,None))),None)
+            # an English book: the word itself is the English key ('water' -> Wasser), its definition is not ('to moisten')
+            for g in ([w] if src=='en' else gs[:2]):
+                hit=next((en2t[(c,pos)] or en2t[(c,None)] for c in ([w.lower()] if src=='en' else candidates(g)) if en2t.get((c,pos)) or en2t.get((c,None))),None)
                 if hit:gloss[(w,pos)].setdefault(2,', '.join(x for x,_ in hit.most_common(2)));k+=1;break
         print(f'pivot: {n:,} {tgt} entries, {k:,} {src} lemmas glossed via English',file=sys.stderr)
     # ---- 4. frequency
@@ -101,7 +125,10 @@ def build(src,tgt,d,out):
     db.executescript('''CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT);CREATE TABLE forms(form TEXT PRIMARY KEY,lemma TEXT);
         CREATE TABLE gloss(word TEXT,pos TEXT,tgt TEXT,prio INT);CREATE INDEX gw ON gloss(word);CREATE TABLE freq(word TEXT PRIMARY KEY,rank INT);''')
     db.executemany('INSERT INTO forms VALUES(?,?)',forms.items())
-    db.executemany('INSERT INTO gloss VALUES(?,?,?,?)',((w,pos,t,p) for (w,pos),d_ in gloss.items() for p,t in d_.items()))
+    # rows go in main-sense-first order: per word, the part of speech with the most senses first ('wollen' the verb
+    # before the adjective 'woollen', 'book' the noun before the verb); readers take the first row of a prio
+    rows=sorted(gloss.items(),key=lambda kv:(kv[0][0],-len(en_gloss.get(kv[0],()))))
+    db.executemany('INSERT INTO gloss VALUES(?,?,?,?)',((w,pos,t,p) for (w,pos),d_ in rows for p,t in d_.items()))
     db.executemany('INSERT INTO freq VALUES(?,?)',freq.items())
     db.executemany('INSERT INTO meta VALUES(?,?)',[('src',src),('tgt',tgt),('built',time.strftime('%Y-%m-%d')),('format','2'),('sources','en.wiktionary (kaikki.org), own-edition wiktionary, hermitdave/FrequencyWords')])
     db.commit();db.execute('VACUUM');db.close()

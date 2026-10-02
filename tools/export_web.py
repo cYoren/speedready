@@ -16,8 +16,8 @@ sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
 from speedready import GLOSS_OVERRIDES,Gloss
 
 def export(src,tgt,pack,out,starter=None):
-    db=sqlite3.connect(pack);best={}
-    for w,t in db.execute('SELECT word,tgt FROM gloss WHERE prio<9 ORDER BY prio DESC'):best[w]=Gloss.short(t)
+    db=sqlite3.connect(pack);best={}   # prio 1-2: Wiktionary translations; 9: English definitions, the gloss itself when tgt is en. 3 was MUSE (CC BY-NC), still in packs built before 1.0.4
+    for w,t in db.execute("SELECT word,tgt FROM gloss WHERE prio IN (1,2) OR (prio=9 AND ?='en') ORDER BY prio DESC,rowid DESC",(tgt,)):best[w]=Gloss.short(t)
     forms={f:l for f,l in db.execute('SELECT form,lemma FROM forms') if l in best}
     over={w:list(v) for w,v in GLOSS_OVERRIDES.get((src,tgt),{}).items()}
     freq={w:r for w,r in db.execute('SELECT word,rank FROM freq WHERE rank<=2000')}
@@ -28,7 +28,8 @@ def export(src,tgt,pack,out,starter=None):
     bundle=out.parent/'bundle.json'
     if starter is None:          # keep whatever starter book is already bundled
         starter=json.loads(bundle.read_text())['starter'] if bundle.exists() else f'starter-{src}.json'
-    bundle.write_text(json.dumps({'dict':out.name,'starter':starter},indent=2)+'\n',encoding='utf-8')
+    keep=json.loads(bundle.read_text()) if bundle.exists() else {}   # 'packs' and 'languages' too: the reader needs them
+    bundle.write_text(json.dumps({**keep,'dict':out.name,'starter':starter},indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
     print(f"{bundle} -> dict {out.name}, starter {starter}")
     if not (out.parent/starter).exists():
         print(f'  WARNING: {starter} is not in {out.parent}; the reader will fail to open its starter book',file=sys.stderr)

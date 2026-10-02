@@ -214,6 +214,11 @@ def lemma_of(w,lang):
     if not w:return ''
     try:return simplemma.lemmatize(w,lang=lang).lower() if simplemma else w.lower()
     except Exception:return w.lower()
+CONNECTORS=set('a an the of and or in on at to for by with from der die das des dem den und oder von zu im am an auf mit für le la les de du des et à au aux en el los las del y il lo gli di e o os as do da dos das em no na het een van op och i av på ett w z na do и в на с к о'.split())   # the only lowercase words a heading may have ('The End of the Road', 'Die Mühle im Koselbruch')
+ISO3={'ger':'de','deu':'de','eng':'en','spa':'es','fre':'fr','fra':'fr','ita':'it','dut':'nl','nld':'nl','pol':'pl','por':'pt','rus':'ru','swe':'sv'}
+def lang_code(tag):
+    """An epub's <dc:language> as a two-letter code: 'DE', 'de-DE', 'ger' and 'deu' are all 'de'."""
+    t=tag.strip().lower();return ISO3.get(t[:3],t[:2])
 def table(spec):return dict(x.strip().split('=',1) for x in spec.split(',') if '=' in x)
 _genders=None
 def gender_data():
@@ -272,7 +277,7 @@ def read_epub(path):
     z=zipfile.ZipFile(path);names=set(z.namelist())
     opf_path=ET.fromstring(z.read('META-INF/container.xml')).find('.//{*}rootfile').get('full-path')
     opf=ET.fromstring(z.read(opf_path));d=posixpath.dirname(opf_path);d=d+'/' if d else ''
-    lang=(opf.findtext('.//{*}language') or 'en')[:2].lower();authors=' '.join(x.text or '' for x in opf.iterfind('.//{*}creator'));items={i.get('id'):i for i in opf.iterfind('.//{*}item')}
+    lang=lang_code(opf.findtext('.//{*}language') or 'en');authors=' '.join(x.text or '' for x in opf.iterfind('.//{*}creator'));items={i.get('id'):i for i in opf.iterfind('.//{*}item')}
     def resolve(base,href):
         f,_,anchor=urllib.parse.unquote(href).partition('#');return posixpath.normpath(posixpath.join(posixpath.dirname(base),f)) if f else base,anchor
     toc=[]  # (title, file, anchor)
@@ -334,7 +339,9 @@ class Book:
             if header(t,p) or PAGE_NUM.fullmatch(t) and (not t.isdigit() or open_):   # a bare number is a chapter heading unless it splits a sentence
                 first[-1]=None;cut=True;continue
             lower=re.fullmatch(r'[^\W\d_A-ZÄÖÜ]+[,.;:!?]?',p[0]);run=len(words)-starts[-1] if starts else 0
-            if open_ and (lines and run>=4 or lower and (cut or run>=12)):   # continuation: a cut page, a long paragraph, or a wrapped line
+            hw=[w for w in words[starts[-1]:] if any(c.isalnum() for c in w)] if starts else []   # 'Chapter One', 'The End of the Road': capitals, short connectors
+            head=bool(hw) and run<=8 and(hw[0][:1].isupper() or hw[0][:1].isdigit()) and all(w[:1].isupper() or w[:1].isdigit() or w.lower() in CONNECTORS for w in hw)
+            if open_ and (lines and run>=4 and not head or lower and (cut or run>=12)):   # continuation: a cut page, a long paragraph, or a wrapped line
                 if lower and (cut or lines) and re.search(r'[^\W\d_]-$',words[-1]) and p[0] not in('und','oder','bis','sowie','als','and','or'):
                     words[-1]=words[-1][:-1]+p[0];p=p[1:];first[-1]-=1   # 'Mühlen-' | page break | 'knappe'
             else:starts.append(len(words))
