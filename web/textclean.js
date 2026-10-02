@@ -8,6 +8,7 @@
   const FRONT=/^(cover|titel(seite)?|title( page)?|inhalt(sverzeichnis)?|(table of )?contents|impressum|copyright|widmung|dedication|(das |zum )?buch|(der |über den )?autor(in)?|about the author|introduction|how to read.*)$/i;
   const LOWER=/^(?:(?![A-ZÄÖÜ])\p{L})+[,.;:!?]?$/u, HYPHEN=/\p{L}-$/u, ALPHA=/\p{L}/u;
   const CONJ=new Set(['und','oder','bis','sowie','als','and','or']);
+  const CONNECTORS=new Set('a an the of and or in on at to for by with from der die das des dem den und oder von zu im am an auf mit für le la les de du des et à au aux en el los las del y il lo gli di e o os as do da dos das em no na het een van op och i av på ett w z na do и в на с к о'.split(' '));   // the only lowercase words a heading may have (same list as speedready.py)
   const isUpper=c=>c!==c.toLowerCase()&&c===c.toUpperCase();
   const strip=w=>w.replace(/^[^\p{L}\p{N}_]+|[^\p{L}\p{N}_]+$/gu,'');
 
@@ -40,7 +41,7 @@
       const lower=LOWER.test(p[0]),run=starts.length?words.length-starts[starts.length-1]:0;
       const hw=starts.length?words.slice(starts[starts.length-1]).filter(w=>/[\p{L}\p{N}]/u.test(w)):[];   // 'Chapter One', 'The End of the Road': capitals, short connectors
       const cap=w=>isUpper(w[0])||/\d/.test(w[0]);
-      const head=hw.length>0&&run<=8&&cap(hw[0])&&hw.every(w=>cap(w)||w.length<=4);
+      const head=hw.length>0&&run<=8&&cap(hw[0])&&hw.every(w=>cap(w)||CONNECTORS.has(w.toLowerCase()));
       if(open&&(lines&&run>=4&&!head||lower&&(cut||run>=12))){
         if(lower&&(cut||lines)&&HYPHEN.test(last)&&!CONJ.has(p[0])){
           words[words.length-1]=last.slice(0,-1)+p[0];p=p.slice(1);first[k]-=1;   // 'Mühlen-' | page break | 'knappe'

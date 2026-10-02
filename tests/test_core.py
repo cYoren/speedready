@@ -180,6 +180,10 @@ class CoreTests(unittest.TestCase):
             path=Path(d)/'x.txt';path.write_text('The End of the Road\n'+lines*4)
             b=app.Book(str(path),'de')
         self.assertEqual(' '.join(b.words[b.para_start[0]:b.para_start[1]]),'The End of the Road')
+        with tempfile.TemporaryDirectory() as d:   # short lowercase words that are not connectors: prose, reflowed
+            path=Path(d)/'x.txt';path.write_text('Er sah ihn an und ging\n'+lines*4)
+            b=app.Book(str(path),'de')
+        self.assertTrue(' '.join(b.words[:b.para_start[1]]).startswith('Er sah ihn an und ging Der Müller'))
 
     def test_epub_language_tags_in_any_spelling(self):
         self.assertEqual([app.lang_code(x) for x in('DE','de-DE','ger','deu','pt-BR','ENG')],['de','de','de','de','pt','en'])

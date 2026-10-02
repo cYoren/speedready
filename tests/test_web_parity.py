@@ -49,7 +49,9 @@ class WebParity(unittest.TestCase):
         wrapped='Der Müller stand in der Tür der alten Mühle und sah hinaus auf den Weg, der zum Dorf führte. Es war kalt'.split()
         words=['The','End','of','the','Road'];para=[0]   # a punctuation-free heading, then a book broken into one line per paragraph
         for k in range(0,len(wrapped)*4,8):para.append(len(words));words+=(wrapped*4)[k:k+8]
-        compare(self,[synthetic(),{'words':words,'para':para,'chapters':[],'names':''},{'words':s['words'],'para':s['para'],'chapters':s['chapters'],'names':s['title']}])
+        prose=['Er','sah','ihn','an','und','ging'];ppara=[0]   # short, but not a heading: gets reflowed
+        for k in range(0,len(wrapped)*4,8):ppara.append(len(prose));prose+=(wrapped*4)[k:k+8]
+        compare(self,[synthetic(),{'words':words,'para':para,'chapters':[],'names':''},{'words':prose,'para':ppara,'chapters':[],'names':''},{'words':s['words'],'para':s['para'],'chapters':s['chapters'],'names':s['title']}])
 
 if __name__=='__main__':   # python tests/test_web_parity.py book.epub … : the same check over real books
     import sys
