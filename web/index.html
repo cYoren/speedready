@@ -432,7 +432,7 @@ function buildNativeList(){
   const box=$('#natives');if(!box||!S.bundle)return;box.replaceChildren();
   for(const[code,name]of Object.entries(S.bundle.languages)){
     const b=document.createElement('button');b.textContent=name;b.className=code===S.native?'on':'';
-    b.onclick=()=>{S.native=code;LS.set('native',code);buildNativeList();S.book&&useDictFor(S.book)};
+    b.onclick=()=>{S.native=code;LS.set('native',code);buildNativeList();refreshGlosses();S.book&&useDictFor(S.book)};   // old glosses go at once
     box.appendChild(b);
   }
 }
@@ -915,7 +915,7 @@ page.addEventListener('click',e=>{
   if(held){held=false;return}
   const g=e.target.closest('.g'), c=e.target.closest('.c'); if(!c)return;
   const i=+c.dataset.i;
-  if(g&&g.textContent){                       // tapping the translation = "I know this word"
+  if(g&&g.textContent&&!pairPending()){                       // tapping the translation = "I know this word"
     const[,l]=glossOf(S.book.words[i]); S.learned.add(lk(l)); LS.set('learned',[...S.learned]);
     $('#n-learned').textContent=S.learned.size; refreshGlosses(); return;
   }

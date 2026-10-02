@@ -33,9 +33,12 @@ def targets(langs):
     out=[]
     for c in langs:
         out.append((f'en-{LANGNAME[c]}.jsonl.gz',kaikki_url('dictionary',LANGNAME[c]),True))
-        if c in OWN_EDITION_NAME:out.append((f'{c}-{OWN_EDITION_NAME[c]}.jsonl.gz',kaikki_url(f'{c}wiktionary',OWN_EDITION_NAME[c]),False))
+        if c in OWN_EDITION_NAME and c!='en':out.append((f'{c}-{OWN_EDITION_NAME[c]}.jsonl.gz',kaikki_url(f'{c}wiktionary',OWN_EDITION_NAME[c]),False))
         out.append((f'freq-{c}.txt',FREQ.format(c=c),False))
-    return out
+    # en-English is English's own edition and the triangulation source for languages without one (Swedish),
+    # so it is always fetched, once: two workers on the same .part file would collide
+    out.append(('en-English.jsonl.gz',kaikki_url('dictionary','English'),True))
+    return list({name:(name,url,req) for name,url,req in out}.values())
 
 def get(d,name,url,required):
     """Ask for gzip only where we mean to keep the compressed bytes. Asking for it on a plain .txt
