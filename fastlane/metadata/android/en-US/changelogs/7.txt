@@ -1,0 +1,2 @@
+Maintenance release: the app is now built with code optimization enabled.
+Nothing changes in how it reads or looks.

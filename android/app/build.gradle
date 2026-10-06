@@ -16,8 +16,8 @@ android {
         applicationId 'io.github.cyoren.speedready'
         minSdk 26                 // WebView with DecompressionStream and modern JS
         targetSdk 35
-        versionCode 6
-        versionName '1.0.6'
+        versionCode 7
+        versionName '1.0.7'
     }
 
     signingConfigs {
@@ -33,7 +33,12 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false   // no obfuscation: F-Droid builds and verifies this source
+            // R8 shrinking is on at F-Droid's request (fdroiddata MR !49884). It does not
+            // break reproducible builds: the same source and toolchain still produce the
+            // same bytes. shrinkResources stays off, because the reader is loaded from
+            // assets at runtime and the resource shrinker cannot see it.
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig keystoreFile.exists() ? signingConfigs.release : null
         }
     }
