@@ -132,6 +132,80 @@ GLOSS_OVERRIDES={('de','pt'):{
  'neu':('novo','neu'),'alt':('velho','alt'),'jung':('jovem','jung'),'richtig':('certo','richtig'),'falsch':('errado','falsch'),
  'klar':('claro','klar'),'einfach':('simples; só','einfach'),'schwer':('difícil; pesado','schwer'),'sicher':('certo; seguro','sicher'),
  'genau':('exatamente','genau'),'wahr':('verdadeiro','wahr'),'voll':('cheio','voll'),'leer':('vazio','leer'),
+},('de','en'):{
+ # English Wiktionary glosses German grammar words by their rarest homograph often enough ('für' -> "before",
+ # 'eine' -> "unite", 'der' -> "he") that English readers, the stores' default pair, need these spelled out too.
+ # Content words come from the pack: they are reliable in English.
+ # --- articles and contractions
+ 'der':('the','der'),'die':('the','der'),'das':('the; that','der'),'den':('the','der'),'dem':('the; to the','der'),'des':('of the','der'),
+ 'ein':('a','ein'),'eine':('a','ein'),'einen':('a','ein'),'einem':('a; to a','ein'),'einer':('a; of a','ein'),'eines':('of a','ein'),
+ 'im':('in the','in'),'ins':('into the','in'),'am':('at the; on the','an'),'ans':('to the','an'),'zum':('to the','zu'),'zur':('to the','zu'),
+ 'vom':('from the; of the','von'),'beim':('at the; while','bei'),'aufs':('onto the','auf'),'durchs':('through the','durch'),
+ # --- pronouns and possessives
+ 'ich':('I','ich'),'du':('you','du'),'er':('he; it','er'),'sie':('she; they','sie'),'es':('it','es'),'wir':('we','wir'),'ihr':('you; her','ihr'),
+ 'mich':('me','ich'),'mir':('me; to me','ich'),'dich':('you','du'),'dir':('you; to you','du'),'uns':('us','wir'),'euch':('you','ihr'),
+ 'ihn':('him; it','er'),'ihm':('him; to him','er'),'ihnen':('them; to them','sie'),'sich':('oneself','sich'),'einander':('each other','einander'),
+ 'man':('one; you','man'),'selbst':('itself; even','selbst'),'jemand':('someone','jemand'),'niemand':('nobody','niemand'),
+ 'mein':('my','mein'),'meine':('my','mein'),'meinen':('my','mein'),'meinem':('my','mein'),'meiner':('my','mein'),'meines':('of my','mein'),
+ 'dein':('your','dein'),'deine':('your','dein'),'deinen':('your','dein'),'sein':('his; to be','sein'),'seine':('his','sein'),
+ 'seinen':('his','sein'),'seinem':('his','sein'),'seiner':('his','sein'),'seines':('of his','sein'),
+ 'unser':('our','unser'),'unsere':('our','unser'),'unseren':('our','unser'),'unserem':('our','unser'),
+ 'ihre':('her; their','ihr'),'ihren':('her; their','ihr'),'ihrem':('her; their','ihr'),'ihrer':('her; their','ihr'),'euer':('your','euer'),
+ 'dieser':('this','dieser'),'diese':('this; these','dieser'),'dieses':('this','dieser'),'diesem':('this','dieser'),'diesen':('this; these','dieser'),
+ 'dies':('this','dieser'),'jener':('that','jener'),'jene':('that; those','jener'),'jenes':('that','jener'),
+ 'dessen':('whose','der'),'deren':('whose; their','der'),'denen':('whom; which','der'),
+ 'welche':('which','welcher'),'welcher':('which','welcher'),'welches':('which','welcher'),
+ # --- question words
+ 'wie':('how; like','wie'),'wo':('where','wo'),'was':('what','was'),'wer':('who','wer'),'wann':('when','wann'),'warum':('why','warum'),
+ 'wieso':('why','wieso'),'wohin':('where to','wohin'),'woher':('where from','woher'),'wessen':('whose','wessen'),
+ # --- conjunctions and particles
+ 'und':('and','und'),'oder':('or','oder'),'aber':('but','aber'),'denn':('because; then','denn'),'dass':('that','dass'),'daß':('that','dass'),
+ 'weil':('because','weil'),'wenn':('if; when','wenn'),'als':('as; than; when','als'),'ob':('whether','ob'),'obwohl':('although','obwohl'),
+ 'sondern':('but rather','sondern'),'also':('so','also'),'zwar':('indeed','zwar'),'sowie':('as well as','sowie'),
+ 'doch':('but; yes','doch'),'ja':('yes','ja'),'nein':('no','nein'),'nicht':('not','nicht'),'kein':('no','kein'),'keine':('no; none','kein'),
+ 'keinen':('no','kein'),'keiner':('nobody; no','kein'),'nichts':('nothing','nichts'),'etwas':('something','etwas'),
+ # --- adverbs
+ 'so':('so; like this','so'),'noch':('still; yet','noch'),'schon':('already','schon'),'nur':('only','nur'),'auch':('also','auch'),'immer':('always','immer'),
+ 'wieder':('again','wieder'),'jetzt':('now','jetzt'),'dann':('then','dann'),'da':('there; since','da'),
+ 'hier':('here','hier'),'dort':('there','dort'),'her':('here; ago','her'),'hin':('there','hin'),'heraus':('out','heraus'),'raus':('out','heraus'),
+ 'herein':('in','herein'),'hinaus':('out','hinaus'),'zurück':('back','zurück'),'weg':('away; way','weg'),
+ 'gar':('at all; even','gar'),'sehr':('very','sehr'),'ganz':('quite; whole','ganz'),'viel':('much','viel'),'viele':('many','viel'),'mehr':('more','mehr'),
+ 'wenig':('little','wenig'),'genug':('enough','genug'),'fast':('almost','fast'),'kaum':('hardly','kaum'),'etwa':('about','etwa'),
+ 'eben':('just','eben'),'gerade':('just; straight','gerade'),'gleich':('right away; same','gleich'),'sofort':('at once','sofort'),
+ 'endlich':('finally','endlich'),'schließlich':('finally','schließlich'),'plötzlich':('suddenly','plötzlich'),'vielleicht':('maybe','vielleicht'),
+ 'natürlich':('of course','natürlich'),'eigentlich':('actually','eigentlich'),'wirklich':('really','wirklich'),'wohl':('probably; well','wohl'),
+ 'heute':('today','heute'),'gestern':('yesterday','gestern'),'damals':('back then','damals'),'bald':('soon','bald'),
+ 'nie':('never','nie'),'oft':('often','oft'),'zusammen':('together','zusammen'),'allein':('alone','allein'),'trotzdem':('anyway','trotzdem'),
+ 'weiter':('further; on','weiter'),'zuerst':('first','zuerst'),'einmal':('once','einmal'),'mal':('time; just','mal'),'sonst':('otherwise','sonst'),
+ 'meistens':('mostly','meistens'),'manche':('some','manch'),'jedermann':('everyone','jedermann'),'jeder':('every; everyone','jeder'),'jede':('every','jeder'),
+ # --- da-compounds
+ 'dafür':('for it','dafür'),'davon':('of it','davon'),'darauf':('on it; then','darauf'),'daran':('on it','daran'),
+ 'darüber':('about it','darüber'),'dabei':('with it; while','dabei'),'dazu':('to it; for that','dazu'),'danach':('after that','danach'),
+ 'deshalb':('therefore','deshalb'),'deswegen':('therefore','deswegen'),'darum':('that is why','darum'),'dadurch':('thereby','dadurch'),
+ 'darin':('in it','darin'),'daraus':('from it','daraus'),'damit':('with it; so that','damit'),'dagegen':('against it','dagegen'),
+ # --- prepositions
+ 'in':('in','in'),'auf':('on','auf'),'an':('at; on','an'),'zu':('to; too','zu'),'mit':('with','mit'),'von':('from; of','von'),'aus':('from; out of','aus'),
+ 'bei':('at; near','bei'),'nach':('after; to','nach'),'vor':('before; in front of','vor'),'über':('over; about','über'),'unter':('under; among','unter'),
+ 'für':('for','für'),'um':('around; at','um'),'durch':('through','durch'),'gegen':('against','gegen'),'ohne':('without','ohne'),
+ 'seit':('since','seit'),'bis':('until','bis'),'zwischen':('between','zwischen'),'neben':('next to','neben'),'hinter':('behind','hinter'),
+ 'während':('during; while','während'),'wegen':('because of','wegen'),'statt':('instead of','statt'),'außer':('except','außer'),'ab':('from; off','ab'),
+ # --- sein / haben / werden
+ 'ist':('is','sein'),'sind':('are','sein'),'bin':('am','sein'),'bist':('are','sein'),'seid':('are','sein'),
+ 'war':('was','sein'),'waren':('were','sein'),'warst':('were','sein'),'wäre':('would be','sein'),'sei':('be','sein'),'gewesen':('been','sein'),
+ 'haben':('to have','haben'),'hat':('has','haben'),'habe':('have','haben'),'hab':('have','haben'),'hast':('have','haben'),'hatte':('had','haben'),
+ 'hatten':('had','haben'),'hätte':('would have','haben'),'gehabt':('had','haben'),
+ 'werden':('to become; will','werden'),'wird':('becomes; will','werden'),'werde':('will','werden'),'wirst':('will','werden'),
+ 'wurde':('became; was','werden'),'wurden':('became; were','werden'),'würde':('would','werden'),'geworden':('become','werden'),
+ # --- modal verbs
+ 'können':('can','können'),'kann':('can','können'),'kannst':('can','können'),'könnte':('could','können'),'konnte':('could','können'),
+ 'müssen':('must','müssen'),'muss':('must','müssen'),'musst':('must','müssen'),'musste':('had to','müssen'),'mußten':('had to','müssen'),'mussten':('had to','müssen'),
+ 'wollen':('to want','wollen'),'will':('wants','wollen'),'willst':('want','wollen'),'wollte':('wanted','wollen'),
+ 'sollen':('should','sollen'),'soll':('should','sollen'),'sollte':('should','sollen'),
+ 'dürfen':('may','dürfen'),'darf':('may','dürfen'),'durfte':('was allowed','dürfen'),'dürfte':('might','dürfen'),
+ 'mögen':('to like','mögen'),'mag':('likes; may','mögen'),'möchte':('would like','mögen'),
+ # --- everyday words Wiktionary's main sense gets wrong
+ 'lassen':('to let','lassen'),'gibt':('gives; there is','geben'),'alle':('all','all'),'alles':('everything','all'),
+ 'andere':('other','ander'),'anderen':('other','ander'),'anders':('different','anders'),'gut':('good','gut'),'recht':('right; quite','recht'),
 }}
 
 TEXT={

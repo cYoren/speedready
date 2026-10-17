@@ -10,12 +10,12 @@ if (keystoreFile.exists()) keystoreProps.load(new FileInputStream(keystoreFile))
 
 android {
     namespace 'io.github.cyoren.speedready'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'io.github.cyoren.speedready'
         minSdk 26                 // WebView with DecompressionStream and modern JS
-        targetSdk 35
+        targetSdk 36
         versionCode 7
         versionName '1.0.7'
     }

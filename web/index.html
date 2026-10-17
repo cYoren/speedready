@@ -68,12 +68,12 @@ footer{
   padding:8px 10px calc(8px + env(safe-area-inset-bottom));
 }
 @media (max-width:380px){
-  #speed button{width:34px}
+  #speed button{width:38px}
   #wpm{min-width:44px;font-size:12px}
   .btn{padding:10px}
 }
 #speed{display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
-#speed button{width:40px;height:42px;font-size:20px}
+#speed button{width:44px;height:44px;font-size:20px}
 #wpm{min-width:58px;text-align:center;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
 #play{flex:1;min-width:0;height:46px;padding:10px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:26px;text-align:center}
 
@@ -128,6 +128,7 @@ body.rsvp main{display:none}
   padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.45);
   opacity:0;pointer-events:none;transition:opacity .18s,transform .18s}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))}   /* an open sheet covers the bottom: never over its buttons */
 #splash{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;padding:32px;text-align:center}
 #splash h1{font-size:26px;margin:0}
@@ -159,9 +160,9 @@ body.rsvp main{display:none}
   <button class="btn icon" id="b-back" data-t-aria="back" aria-label="Previous sentence">↺</button>
   <button class="btn primary" id="play" data-t="start">▶ Start</button>
   <div id="speed">
-    <button id="slower" aria-label="Mais devagar">−</button>
+    <button id="slower" data-t-aria="slower" aria-label="Slower">−</button>
     <div id="wpm">120</div>
-    <button id="faster" aria-label="Mais rápido">+</button>
+    <button id="faster" data-t-aria="faster" aria-label="Faster">+</button>
   </div>
 </footer>
 
@@ -244,7 +245,7 @@ body.rsvp main{display:none}
 // The interface language. Written English, translated at runtime; the reader picks on
 // first run, defaulting to whatever the device is set to.
 const UI={
- en:{loading:'Preparing the dictionary…',opening:'Opening the book…',books:'Books',settings:'Settings',back:'Previous sentence',
+ en:{loading:'Preparing the dictionary…',opening:'Opening the book…',books:'Books',settings:'Settings',back:'Previous sentence',slower:'Slower',faster:'Faster',
      start:'▶ Start',resume:'▶ Continue',pause:'❚❚ Pause',listen:'🔊 Listen',read_here:'▶ Read from here',
      know_it:'✓ I know this',dont_know:'↩ I do not know it',dictionary:'Dictionary ↗',chapters:'Chapters',
      open_other:'Open another book',file_label:'An .epub or .txt file',file_hint:'Pick a file from your device',
@@ -272,7 +273,7 @@ const UI={
      mode_rsvp:'One word at a time',version:'Version',license:'Code: MIT',source:'Source code',
      credits:'Dictionary data: Wiktionary (CC BY-SA 4.0) and FrequencyWords (MIT). Starter book from Project Gutenberg. Speech by your device.',
      marked_unknown:'Marked as still learning',hold_hint:'Hold a word to mark it as one you are learning.'},
- pt:{loading:'Preparando o dicionário…',opening:'Abrindo o livro…',books:'Livros',settings:'Ajustes',back:'Frase anterior',
+ pt:{loading:'Preparando o dicionário…',opening:'Abrindo o livro…',books:'Livros',settings:'Ajustes',back:'Frase anterior',slower:'Mais devagar',faster:'Mais rápido',
      start:'▶ Começar',resume:'▶ Continuar',pause:'❚❚ Pausar',listen:'🔊 Ouvir',read_here:'▶ Ler daqui',
      know_it:'✓ Já sei',dont_know:'↩ Ainda não sei',dictionary:'Dicionário ↗',chapters:'Capítulos',
      open_other:'Abrir outro livro',file_label:'Arquivo .epub ou .txt',file_hint:'Escolha um arquivo do seu aparelho',
@@ -332,7 +333,7 @@ const LS={get:(k,d)=>{try{const v=localStorage.getItem('sr:'+k);return v===null?
 const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],pageA:0,pageB:0,
          ui:LS.get('ui',null),mode:'pacer',
          unknown:new Set(LS.get('unknown',[])),vocab:LS.get('vocab',[]),bookmarks:[],
-         wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',true),
+         wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',!matchMedia('(prefers-color-scheme: light)').matches),
          size:LS.get('size',19),tts:LS.get('tts',false),learned:new Set(LS.get('learned',[])),
          voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false,
          genderOn:LS.get('gender',true),genderData:null,bundled:null,native:LS.get('native',null)};
@@ -408,19 +409,19 @@ async function unpack(buf){   // gzip from a static host, or already unpacked by
 }
 const dicts=new Map();
 async function dictFor(src){
-  const tgt=S.native,key=src+'-'+tgt;
+  const tgt=S.native,key=src+'-'+tgt,v=S.bundle.packsVersion||1,stash=v>1?key+'@'+v:key;   // a new packsVersion re-downloads every cached pair once
   if(!src||src===tgt||!S.bundle.languages[src])return null;
   if(dicts.has(key))return dicts.get(key);
   if(S.bundled.src===src&&S.bundled.tgt===tgt){dicts.set(key,S.bundled);return S.bundled}
   let d=null;
   try{
-    const stored=await idb('readonly',s=>s.get(key)).catch(()=>null);
-    if(stored)d=await unpack(stored).catch(()=>{idb('readwrite',s=>s.delete(key)).catch(()=>{});return null});   // a bad copy: drop it, download again
+    const stored=await idb('readonly',s=>s.get(stash)).catch(()=>null);
+    if(stored)d=await unpack(stored).catch(()=>{idb('readwrite',s=>s.delete(stash)).catch(()=>{});return null});   // a bad copy: drop it, download again
     if(!d){
       toast(T('dict_loading').replace('{pair}',pairName(src,tgt)));
-      const r=await fetch(S.bundle.packs+'dict-'+key+'.json.gz');if(!r.ok)throw new Error(r.status);
+      const r=await fetch(S.bundle.packs+'dict-'+key+'.json.gz?v='+v);if(!r.ok)throw new Error(r.status);
       const buf=await r.arrayBuffer();d=await unpack(buf);   // throws on anything that is not a dictionary, before it is kept
-      idb('readwrite',s=>s.put(buf,key)).catch(()=>{});      // private mode etc.: works, just not offline
+      idb('readwrite',s=>{for(let o=1;o<v;o++)s.delete(o>1?key+'@'+o:key);return s.put(buf,stash)}).catch(()=>{});   // private mode etc.: works, just not offline
     }
   }catch(e){toast(T('dict_failed').replace('{pair}',pairName(src,tgt)));return null}   // not cached: back online, the next try downloads it
   dicts.set(key,d);return d;
@@ -760,7 +761,8 @@ async function loadBook(book,startAt){
          document.body.classList.toggle('plain',!S.gloss);$('#t-tts').classList.toggle('on',S.tts);
          $('#voice-box').classList.toggle('hidden',!S.tts);}
   loadMarks();
-  renderPage(S.i); setMode((LS.get(prefsKey(),{}) || {}).mode||'pacer'); buildChapters(); buildMarks(); LS.set('lastBook',book.id==='starter'?'starter':null);
+  renderPage(S.i); setMode((LS.get(prefsKey(),{}) || {}).mode||'pacer'); buildChapters(); buildMarks(); LS.set('lastBook',book.id==='starter'?'starter':book.id);
+  if(book.id!=='starter')idb('readwrite',s=>s.put(book,'book:last')).catch(()=>{});   // the file picker gives no lasting handle: keep the parsed book
   requestAnimationFrame(()=>{const c=S.cells[S.i-S.pageA];if(c)c.scrollIntoView({block:'center'})});
 }
 function buildChapters(){
@@ -882,17 +884,20 @@ async function boot(){
     buildNativeList();
     S.genderData=await genders;
     $('#splash-msg').textContent=T('opening');
-    const book=await fetchJSON(S.bundle.starter); book.id='starter';
+    const last=LS.get('lastBook','starter')!=='starter'&&await idb('readonly',s=>s.get('book:last')).catch(()=>null);   // your own book, where you left it
+    const book=last||Object.assign(await fetchJSON(S.bundle.starter),{id:'starter'});
     await loadBook(book);
     pickVoice();
     $('#splash').classList.add('hidden');
+    openShared();
   }catch(e){
     $('#splash-msg').textContent=T('cannot_open')+e.message;
     $('#pct').textContent='';
   }
 }
 function applyTheme(){document.documentElement.dataset.theme=S.dark?'dark':'light';
-  $('meta[name=theme-color]').setAttribute('content',S.dark?'#101012':'#faf9f7')}
+  $('meta[name=theme-color]').setAttribute('content',S.dark?'#101012':'#faf9f7');
+  window.AndroidShell&&AndroidShell.theme(S.dark?'#101012':'#faf9f7')}
 function applySize(){page.style.setProperty('--size',S.size+'px')}
 
 //////////////////// events ////////////////////
@@ -959,8 +964,13 @@ $('#size-down').onclick=()=>{S.size=Math.max(13,S.size-1);LS.set('size',S.size);
 $('#b-forget').onclick=()=>{if(confirm(T('forget_confirm'))){
   S.learned.clear();LS.set('learned',[]);$('#n-learned').textContent=0;refreshGlosses();S.mode==='rsvp'&&drawRsvp()}};
 $('#b-starter').onclick=async()=>{closeSheets();const b=await fetchJSON(S.bundle.starter);b.id='starter';loadBook(b)};
-$('#file').onchange=async e=>{
-  const f=e.target.files[0]; if(!f)return;
+$('#file').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)await openFile(f)};
+// A book opened from another app ("Open with" on Android): the shell serves it at shared-file until it is taken
+async function openShared(){
+  const r=await fetch('shared-file').catch(()=>null);if(!r||!r.ok)return;
+  await openFile(new File([await r.blob()],decodeURIComponent(r.headers.get('X-Name')||'book.epub')));
+}
+async function openFile(f){
   closeSheets(); pause(); $('#splash-msg').textContent=T('opening'); $('#pct').textContent='';
   $('#splash').classList.remove('hidden');
   try{
@@ -968,8 +978,8 @@ $('#file').onchange=async e=>{
               :textToBook(await f.text(),f.name.replace(/\.[^.]+$/,''),'f:'+f.name+':'+f.size);
     await loadBook(book);
   }catch(err){alert(T('cannot_open')+err.message)}
-  $('#splash').classList.add('hidden'); e.target.value='';
-};
+  $('#splash').classList.add('hidden');
+}
 // keyboard, for when she uses it on a laptop
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
