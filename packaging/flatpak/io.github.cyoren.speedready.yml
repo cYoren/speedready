@@ -26,8 +26,8 @@ modules:
     build-commands:
       - install -Dm755 speedready.py ${FLATPAK_DEST}/bin/speedready
       - install -Dm644 gender.py web/genders-de.json.gz -t ${FLATPAK_DEST}/bin
-      - install -Dm644 coreglosses.py -t ${FLATPAK_DEST}/bin
-      - install -Dm644 core/* -t ${FLATPAK_DEST}/bin/core
+      - test ! -f coreglosses.py || install -Dm644 coreglosses.py -t ${FLATPAK_DEST}/bin   # 1.0.8 and later
+      - test ! -d core || install -Dm644 core/* -t ${FLATPAK_DEST}/bin/core
       - install -Dm644 packaging/io.github.cyoren.speedready.desktop
         ${FLATPAK_DEST}/share/applications/io.github.cyoren.speedready.desktop
       - install -Dm644 packaging/io.github.cyoren.speedready.metainfo.xml
