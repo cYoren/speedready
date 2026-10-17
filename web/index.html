@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <title>Speedready</title>
-<meta name="description" content="Read German at your own pace, with a translation above every word you do not know yet.">
+<meta name="description" content="Speed reading, and reading in 10 languages with a translation above every word you do not know yet.">
 <meta name="theme-color" content="#101012">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -37,6 +37,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .btn:active{background:var(--line)}
 .btn:disabled{opacity:.4}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn:disabled{opacity:.5}
 .icon{width:44px;min-width:44px;padding:0;font-size:19px}
 
 /* ---------- top bar ---------- */
@@ -68,12 +69,12 @@ footer{
   padding:8px 10px calc(8px + env(safe-area-inset-bottom));
 }
 @media (max-width:380px){
-  #speed button{width:34px}
+  #speed button{width:38px}
   #wpm{min-width:44px;font-size:12px}
   .btn{padding:10px}
 }
 #speed{display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
-#speed button{width:40px;height:42px;font-size:20px}
+#speed button{width:44px;height:44px;font-size:20px}
 #wpm{min-width:58px;text-align:center;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
 #play{flex:1;min-width:0;height:46px;padding:10px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:26px;text-align:center}
 
@@ -99,6 +100,16 @@ footer{
 .list button{display:block;width:100%;text-align:left;padding:13px 10px;border-radius:10px;border-bottom:1px solid var(--line)}
 .list button:active{background:var(--line)}
 .list button.on{color:var(--accent);font-weight:600}
+.book{display:flex;align-items:center;border-bottom:1px solid var(--line)}
+.list .book button{border-bottom:0}
+.list .book .rm{width:44px;flex:none;text-align:center;color:var(--dim)}
+.list small{display:block;color:var(--dim);font-size:12px;margin-top:2px;font-weight:400}
+.found{display:flex;align-items:center;gap:12px;padding:12px 10px;border-bottom:1px solid var(--line);min-height:52px}
+.found input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.found span{flex:1;min-width:0;overflow-wrap:anywhere}
+.found.known{opacity:.5}
+#book-lang{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 10px;font:inherit}
+.hint{color:var(--dim);font-size:14px;margin:0 0 8px}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .actions .btn{flex:1 1 44%}
 
@@ -128,6 +139,7 @@ body.rsvp main{display:none}
   padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.45);
   opacity:0;pointer-events:none;transition:opacity .18s,transform .18s}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))}   /* an open sheet covers the bottom: never over its buttons */
 #splash{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;padding:32px;text-align:center}
 #splash h1{font-size:26px;margin:0}
@@ -159,9 +171,9 @@ body.rsvp main{display:none}
   <button class="btn icon" id="b-back" data-t-aria="back" aria-label="Previous sentence">↺</button>
   <button class="btn primary" id="play" data-t="start">▶ Start</button>
   <div id="speed">
-    <button id="slower" aria-label="Mais devagar">−</button>
+    <button id="slower" data-t-aria="slower" aria-label="Slower">−</button>
     <div id="wpm">120</div>
-    <button id="faster" aria-label="Mais rápido">+</button>
+    <button id="faster" data-t-aria="faster" aria-label="Faster">+</button>
   </div>
 </footer>
 
@@ -187,16 +199,29 @@ body.rsvp main{display:none}
 <div class="sheet" id="s-library"><div>
   <div class="grab"></div>
   <h2 data-t="books">Books</h2>
+  <h3 data-t="library">Your library</h3>
+  <div class="list" id="library"></div>
+  <div class="row"><label for="book-lang" data-t="book_lang">Language of this book</label><select id="book-lang"></select></div>
+  <div class="actions">
+    <label class="btn" for="file" data-t="add_books">＋ Add books</label>
+    <button class="btn" id="b-scan" data-t="find_books">Find books on this device</button>
+  </div>
+  <p class="hint hidden" id="scan-hint" data-t="scan_hint_android">Android cannot open the whole Download folder: pick the folder your books are in.</p>
+  <input type="file" id="file" multiple accept=".epub,.txt,application/epub+zip,text/plain" hidden>
+  <input type="file" id="folder" webkitdirectory hidden>
   <h3 data-t="chapters">Chapters</h3>
   <div class="list" id="chapters"></div>
   <h3 data-t="bookmarks">Bookmarks</h3>
   <div class="list" id="marks"></div>
-  <h3 data-t="open_other">Open another book</h3>
-  <div class="row">
-    <label data-t="file_label">An .epub or .txt file<small data-t="file_hint">Pick a file from your device</small></label>
-  </div>
-  <input type="file" id="file" accept=".epub,.txt,application/epub+zip,text/plain" style="width:100%">
-  <div class="actions"><button class="btn" id="b-starter" data-t="back_to_starter">Back to the starter book</button></div>
+</div></div>
+
+<!-- books found on the device: the reader picks which go into the library -->
+<div class="sheet" id="s-found"><div>
+  <div class="grab"></div>
+  <h2 data-t="found_title">Books on this device</h2>
+  <p class="hint" data-t="found_hint">Choose the books to add to your library.</p>
+  <div class="list" id="found"></div>
+  <div class="actions"><button class="btn primary" id="b-add-found"></button></div>
 </div></div>
 
 <!-- settings sheet -->
@@ -229,7 +254,7 @@ body.rsvp main{display:none}
   <h3 data-t="language">Language</h3>
   <div class="list" id="langs"></div>
   <h3 data-t="about">About</h3>
-  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.7</b></div>
+  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.8</b></div>
   <div class="row"><label data-t="license">Code: MIT</label>
     <a class="btn" id="a-src" href="https://github.com/cYoren/speedready" target="_blank" rel="noopener" data-t="source">Source code</a></div>
   <p style="color:var(--dim);font-size:13px;line-height:1.5;margin:0">
@@ -244,11 +269,14 @@ body.rsvp main{display:none}
 // The interface language. Written English, translated at runtime; the reader picks on
 // first run, defaulting to whatever the device is set to.
 const UI={
- en:{loading:'Preparing the dictionary…',opening:'Opening the book…',books:'Books',settings:'Settings',back:'Previous sentence',
+ en:{loading:'Preparing the dictionary…',opening:'Opening the book…',books:'Books',settings:'Settings',back:'Previous sentence',slower:'Slower',faster:'Faster',
      start:'▶ Start',resume:'▶ Continue',pause:'❚❚ Pause',listen:'🔊 Listen',read_here:'▶ Read from here',
      know_it:'✓ I know this',dont_know:'↩ I do not know it',dictionary:'Dictionary ↗',chapters:'Chapters',
-     open_other:'Open another book',file_label:'An .epub or .txt file',file_hint:'Pick a file from your device',
-     back_to_starter:'Back to the starter book',gloss_label:'Translation above the words',
+     library:'Your library',add_books:'＋ Add books',find_books:'Find books',book_lang:'Language of this book',lang_other:'Other',lang_unknown:'Which language is this book in? Choose it in Books ☰',
+     scan_hint_android:'Android cannot open the whole Download folder: pick the folder your books are in.',starter_book:'Starter book',
+     found_title:'Books on this device',found_hint:'Choose the books to add to your library.',add_n:'Add {n} books',add_1:'Add 1 book',
+     in_library:'in your library',none_found:'No .epub or .txt files in that folder',adding:'Adding {i} of {n}…',added_n:'{n} books added',
+     remove_book:'Remove from library',remove_confirm:'Remove “{t}” from your library? Your place and bookmarks in it are forgotten too.',gloss_label:'Translation above the words',
      translate_into:'Translations in',dict_wait:'Translations for this book are still loading.',marks_need_pair:'To mark words, pick a translation language different from the book in Settings.',form_of:'form of',dict_loading:'Downloading the {pair} dictionary…',dict_failed:'No {pair} dictionary right now. Reading without translations.',
      gender_label:'Colors for der, die, das',gender_hint:'German nouns in blue (der), red (die) or green (das)',
      gloss_hint:'Shows your language above every word you have not marked as known',
@@ -272,11 +300,14 @@ const UI={
      mode_rsvp:'One word at a time',version:'Version',license:'Code: MIT',source:'Source code',
      credits:'Dictionary data: Wiktionary (CC BY-SA 4.0) and FrequencyWords (MIT). Starter book from Project Gutenberg. Speech by your device.',
      marked_unknown:'Marked as still learning',hold_hint:'Hold a word to mark it as one you are learning.'},
- pt:{loading:'Preparando o dicionário…',opening:'Abrindo o livro…',books:'Livros',settings:'Ajustes',back:'Frase anterior',
+ pt:{loading:'Preparando o dicionário…',opening:'Abrindo o livro…',books:'Livros',settings:'Ajustes',back:'Frase anterior',slower:'Mais devagar',faster:'Mais rápido',
      start:'▶ Começar',resume:'▶ Continuar',pause:'❚❚ Pausar',listen:'🔊 Ouvir',read_here:'▶ Ler daqui',
      know_it:'✓ Já sei',dont_know:'↩ Ainda não sei',dictionary:'Dicionário ↗',chapters:'Capítulos',
-     open_other:'Abrir outro livro',file_label:'Arquivo .epub ou .txt',file_hint:'Escolha um arquivo do seu aparelho',
-     back_to_starter:'Voltar ao livro de contos',gloss_label:'Tradução acima das palavras',
+     library:'Sua biblioteca',add_books:'＋ Adicionar livros',find_books:'Procurar livros',book_lang:'Idioma deste livro',lang_other:'Outro',lang_unknown:'Em que idioma está este livro? Escolha em Livros ☰',
+     scan_hint_android:'O Android não abre a pasta Download inteira: escolha a pasta onde estão seus livros.',starter_book:'Livro inicial',
+     found_title:'Livros no aparelho',found_hint:'Escolha os livros que entram na sua biblioteca.',add_n:'Adicionar {n} livros',add_1:'Adicionar 1 livro',
+     in_library:'já na biblioteca',none_found:'Nenhum arquivo .epub ou .txt nessa pasta',adding:'Adicionando {i} de {n}…',added_n:'{n} livros adicionados',
+     remove_book:'Remover da biblioteca',remove_confirm:'Remover “{t}” da biblioteca? A posição e os marcadores dele também são esquecidos.',gloss_label:'Tradução acima das palavras',
      translate_into:'Traduções em',dict_wait:'As traduções deste livro ainda estão carregando.',marks_need_pair:'Para marcar palavras, escolha em Ajustes um idioma de tradução diferente do livro.',form_of:'forma de',dict_loading:'Baixando o dicionário {pair}…',dict_failed:'Dicionário {pair} indisponível agora. Lendo sem traduções.',
      gender_label:'Cores para der, die, das',gender_hint:'Substantivos alemães em azul (der), vermelho (die) ou verde (das)',
      gloss_hint:'Mostra seu idioma acima de cada palavra que você ainda não marcou como sabida',
@@ -300,8 +331,256 @@ const UI={
      mode_rsvp:'Uma palavra por vez',version:'Versão',license:'Código: MIT',source:'Código-fonte',
      credits:'Dados do dicionário: Wiktionary (CC BY-SA 4.0) e FrequencyWords (MIT). Livro inicial do Project Gutenberg. Voz do seu aparelho.',
      marked_unknown:'Marcada como em aprendizado',hold_hint:'Segure uma palavra para marcá-la como em aprendizado.'},
+ es:{loading:'Preparando el diccionario…',opening:'Abriendo el libro…',books:'Libros',settings:'Ajustes',back:'Frase anterior',slower:'Más despacio',faster:'Más rápido',
+     start:'▶ Empezar',resume:'▶ Seguir',pause:'❚❚ Pausa',listen:'🔊 Escuchar',read_here:'▶ Leer desde aquí',
+     know_it:'✓ Ya la sé',dont_know:'↩ No la sé',dictionary:'Diccionario ↗',chapters:'Capítulos',
+     library:'Tu biblioteca',add_books:'＋ Añadir libros',find_books:'Buscar libros',book_lang:'Idioma de este libro',lang_other:'Otro',lang_unknown:'¿En qué idioma está este libro? Elígelo en Libros ☰',
+     scan_hint_android:'Android no deja abrir toda la carpeta Descargas: elige la carpeta donde están tus libros.',starter_book:'Libro de inicio',
+     found_title:'Libros en este dispositivo',found_hint:'Elige los libros que quieres añadir a tu biblioteca.',add_n:'Añadir {n} libros',add_1:'Añadir 1 libro',
+     in_library:'ya en tu biblioteca',none_found:'No hay archivos .epub ni .txt en esa carpeta',adding:'Añadiendo {i} de {n}…',added_n:'{n} libros añadidos',
+     remove_book:'Quitar de la biblioteca',remove_confirm:'¿Quitar «{t}» de tu biblioteca? También se olvidan tu posición y tus marcadores.',gloss_label:'Traducción sobre las palabras',
+     translate_into:'Traducciones en',dict_wait:'Las traducciones de este libro aún se están cargando.',marks_need_pair:'Para marcar palabras, elige en Ajustes un idioma de traducción distinto al del libro.',form_of:'forma de',dict_loading:'Descargando el diccionario {pair}…',dict_failed:'Ahora no hay diccionario {pair}. Lees sin traducciones.',
+     gender_label:'Colores para der, die, das',gender_hint:'Sustantivos alemanes en azul (der), rojo (die) o verde (das)',
+     gloss_hint:'Muestra tu idioma sobre cada palabra que aún no marcaste como sabida',
+     dark:'Modo oscuro',text_size:'Tamaño del texto',tts_label:'Leer en voz alta mientras avanza',
+     tts_hint:'La voz del dispositivo lee cada frase y el texto la sigue',
+     voice_speed:'Velocidad de la voz',voice:'Voz',progress:'Tu progreso',words_known:'Palabras que ya sabes',
+     forget_all:'Olvidar todo',about:'Acerca de',language:'Idioma',
+     about_text:'Diccionario sin conexión hecho con Wiktionary. Datos del diccionario: CC BY-SA 4.0. Libro de inicio: Japanische Märchen, dominio público, de Project Gutenberg. Tras la primera carga todo funciona sin conexión.',
+     no_chapters:'Este libro no tiene capítulos.',no_entry:'Esta palabra no está en el diccionario sin conexión. Toca Diccionario para buscarla en línea.',
+     forget_confirm:'¿Olvidar todas las palabras que marcaste como sabidas?',cannot_open:'No se pudo abrir: ',no_text_epub:'No hay texto en este .epub',
+     no_voice_ios:'No hay ninguna voz instalada para este idioma. En el iPhone: Ajustes › Accesibilidad › Contenido leído › Voces.',
+     no_voice_android:'No hay ninguna voz instalada para este idioma. Abre Ajustes › Sistema › Idiomas › Salida de texto a voz para añadir una.',
+     no_voice:'Este dispositivo no tiene ninguna voz para este idioma.',
+     voice_failed:'La voz falló: ',min_left:'min restantes',welcome:'Bienvenido a Speedready',
+     welcome_sub:'Lee en otro idioma sin perder el hilo. Elige el idioma que ya hablas.',
+     continue:'Continuar',dont_know_it:'✗ No la sé',known_again:'↩ Sabida otra vez',
+     unknown_words:'Palabras que estás aprendiendo',bookmarks:'Marcadores',add_bookmark:'☆ Marcar este punto',
+     remove_bookmark:'★ Quitar marcador',no_bookmarks:'Aún no hay marcadores en este libro.',
+     export:'Exportar para Anki',exported:'Archivo guardado. Impórtalo en Anki con Archivo › Importar.',
+     nothing_to_export:'Primero busca algunas palabras.',mode:'Modo de lectura',mode_pacer:'Texto continuo',
+     mode_rsvp:'Una palabra a la vez',version:'Versión',license:'Código: MIT',source:'Código fuente',
+     credits:'Datos del diccionario: Wiktionary (CC BY-SA 4.0) y FrequencyWords (MIT). Libro de inicio de Project Gutenberg. Voz de tu dispositivo.',
+     marked_unknown:'Marcada como en aprendizaje',hold_hint:'Mantén pulsada una palabra para marcarla como una que estás aprendiendo.'},
+ fr:{loading:'Préparation du dictionnaire…',opening:'Ouverture du livre…',books:'Livres',settings:'Réglages',back:'Phrase précédente',slower:'Plus lent',faster:'Plus rapide',
+     start:'▶ Commencer',resume:'▶ Continuer',pause:'❚❚ Pause',listen:'🔊 Écouter',read_here:'▶ Lire à partir d’ici',
+     know_it:'✓ Je le connais',dont_know:'↩ Je ne le connais pas',dictionary:'Dictionnaire ↗',chapters:'Chapitres',
+     library:'Ta bibliothèque',add_books:'＋ Ajouter des livres',find_books:'Trouver des livres',book_lang:'Langue de ce livre',lang_other:'Autre',lang_unknown:'Dans quelle langue est ce livre ? Choisis-la dans Livres ☰',
+     scan_hint_android:'Android n’ouvre pas tout le dossier Téléchargements : choisis le dossier où sont tes livres.',starter_book:'Livre de départ',
+     found_title:'Livres sur cet appareil',found_hint:'Choisis les livres à ajouter à ta bibliothèque.',add_n:'Ajouter {n} livres',add_1:'Ajouter 1 livre',
+     in_library:'déjà dans ta bibliothèque',none_found:'Aucun fichier .epub ou .txt dans ce dossier',adding:'Ajout de {i} sur {n}…',added_n:'{n} livres ajoutés',
+     remove_book:'Retirer de la bibliothèque',remove_confirm:'Retirer « {t} » de ta bibliothèque ? Ta position et tes marque-pages y sont aussi oubliés.',gloss_label:'Traduction au-dessus des mots',
+     translate_into:'Traductions en',dict_wait:'Les traductions de ce livre sont encore en cours de chargement.',marks_need_pair:'Pour marquer des mots, choisis dans Réglages une langue de traduction différente de celle du livre.',form_of:'forme de',dict_loading:'Téléchargement du dictionnaire {pair}…',dict_failed:'Pas de dictionnaire {pair} pour l’instant. Lecture sans traductions.',
+     gender_label:'Couleurs pour der, die, das',gender_hint:'Noms allemands en bleu (der), rouge (die) ou vert (das)',
+     gloss_hint:'Affiche ta langue au-dessus de chaque mot que tu n’as pas marqué comme connu',
+     dark:'Mode sombre',text_size:'Taille du texte',tts_label:'Lire à voix haute pendant l’avancée',
+     tts_hint:'La voix de l’appareil lit chaque phrase et le texte la suit',
+     voice_speed:'Vitesse de la voix',voice:'Voix',progress:'Ta progression',words_known:'Mots que tu connais déjà',
+     forget_all:'Tout oublier',about:'À propos',language:'Langue',
+     about_text:'Dictionnaire hors ligne construit à partir du Wiktionnaire. Données : CC BY-SA 4.0. Livre de départ : Japanische Märchen, domaine public, du Project Gutenberg. Après le premier chargement, tout marche sans connexion.',
+     no_chapters:'Ce livre n’a pas de chapitres.',no_entry:'Ce mot n’est pas dans le dictionnaire hors ligne. Touche Dictionnaire pour le chercher en ligne.',
+     forget_confirm:'Oublier tous les mots marqués comme connus ?',cannot_open:'Impossible d’ouvrir : ',no_text_epub:'Aucun texte dans ce .epub',
+     no_voice_ios:'Aucune voix installée pour cette langue. Sur iPhone : Réglages › Accessibilité › Contenu énoncé › Voix.',
+     no_voice_android:'Aucune voix installée pour cette langue. Ouvre Paramètres › Système › Langues › Synthèse vocale pour en ajouter une.',
+     no_voice:'Aucune voix pour cette langue sur cet appareil.',
+     voice_failed:'La voix a échoué : ',min_left:'min restantes',welcome:'Bienvenue dans Speedready',
+     welcome_sub:'Lis dans une autre langue sans perdre le fil. Choisis la langue que tu parles déjà.',
+     continue:'Continuer',dont_know_it:'✗ Je ne le connais pas',known_again:'↩ De nouveau connu',
+     unknown_words:'Mots que tu apprends',bookmarks:'Marque-pages',add_bookmark:'☆ Marquer cet endroit',
+     remove_bookmark:'★ Retirer le marque-page',no_bookmarks:'Pas encore de marque-pages dans ce livre.',
+     export:'Exporter pour Anki',exported:'Fichier enregistré. Importe-le dans Anki avec Fichier › Importer.',
+     nothing_to_export:'Cherche d’abord quelques mots.',mode:'Mode de lecture',mode_pacer:'Texte continu',
+     mode_rsvp:'Un mot à la fois',version:'Version',license:'Code : MIT',source:'Code source',
+     credits:'Données du dictionnaire : Wiktionnaire (CC BY-SA 4.0) et FrequencyWords (MIT). Livre de départ du Project Gutenberg. Voix de ton appareil.',
+     marked_unknown:'Marqué comme en apprentissage',hold_hint:'Maintiens un mot appuyé pour le marquer comme en apprentissage.'},
+ de:{loading:'Wörterbuch wird vorbereitet…',opening:'Buch wird geöffnet…',books:'Bücher',settings:'Einstellungen',back:'Vorheriger Satz',slower:'Langsamer',faster:'Schneller',
+     start:'▶ Start',resume:'▶ Weiter',pause:'❚❚ Pause',listen:'🔊 Anhören',read_here:'▶ Ab hier lesen',
+     know_it:'✓ Kenne ich',dont_know:'↩ Kenne ich nicht',dictionary:'Wörterbuch ↗',chapters:'Kapitel',
+     library:'Deine Bibliothek',add_books:'＋ Bücher hinzufügen',find_books:'Bücher finden',book_lang:'Sprache dieses Buchs',lang_other:'Andere',lang_unknown:'In welcher Sprache ist dieses Buch? Wähle sie unter Bücher ☰',
+     scan_hint_android:'Android öffnet nicht den ganzen Download-Ordner: Wähle den Ordner, in dem deine Bücher liegen.',starter_book:'Startbuch',
+     found_title:'Bücher auf diesem Gerät',found_hint:'Wähle die Bücher für deine Bibliothek.',add_n:'{n} Bücher hinzufügen',add_1:'1 Buch hinzufügen',
+     in_library:'schon in deiner Bibliothek',none_found:'Keine .epub- oder .txt-Dateien in diesem Ordner',adding:'Füge {i} von {n} hinzu…',added_n:'{n} Bücher hinzugefügt',
+     remove_book:'Aus der Bibliothek entfernen',remove_confirm:'„{t}“ aus deiner Bibliothek entfernen? Deine Stelle und Lesezeichen darin werden auch vergessen.',gloss_label:'Übersetzung über den Wörtern',
+     translate_into:'Übersetzungen auf',dict_wait:'Die Übersetzungen für dieses Buch laden noch.',marks_need_pair:'Um Wörter zu markieren, wähle in den Einstellungen eine andere Übersetzungssprache als die des Buchs.',form_of:'Form von',dict_loading:'Wörterbuch {pair} wird geladen…',dict_failed:'Gerade kein Wörterbuch {pair}. Du liest ohne Übersetzungen.',
+     gender_label:'Farben für der, die, das',gender_hint:'Deutsche Nomen in Blau (der), Rot (die) oder Grün (das)',
+     gloss_hint:'Zeigt deine Sprache über jedem Wort, das du nicht als bekannt markiert hast',
+     dark:'Dunkelmodus',text_size:'Textgröße',tts_label:'Beim Weiterlesen vorlesen',
+     tts_hint:'Die Stimme des Geräts liest jeden Satz, der Text folgt ihr',
+     voice_speed:'Sprechtempo',voice:'Stimme',progress:'Dein Fortschritt',words_known:'Wörter, die du schon kennst',
+     forget_all:'Alles vergessen',about:'Über',language:'Sprache',
+     about_text:'Offline-Wörterbuch aus Wiktionary. Wörterbuchdaten: CC BY-SA 4.0. Startbuch: Japanische Märchen, gemeinfrei, von Project Gutenberg. Nach dem ersten Laden funktioniert alles ohne Verbindung.',
+     no_chapters:'Dieses Buch hat keine Kapitel.',no_entry:'Dieses Wort ist nicht im Offline-Wörterbuch. Tippe auf Wörterbuch, um es online nachzuschlagen.',
+     forget_confirm:'Alle als bekannt markierten Wörter vergessen?',cannot_open:'Konnte nicht öffnen: ',no_text_epub:'Kein Text in dieser .epub',
+     no_voice_ios:'Für diese Sprache ist keine Stimme installiert. Auf dem iPhone: Einstellungen › Bedienungshilfen › Gesprochene Inhalte › Stimmen.',
+     no_voice_android:'Für diese Sprache ist keine Stimme installiert. Öffne Einstellungen › System › Sprachen › Sprachausgabe, um eine hinzuzufügen.',
+     no_voice:'Auf diesem Gerät gibt es keine Stimme für diese Sprache.',
+     voice_failed:'Die Stimme ist fehlgeschlagen: ',min_left:'Min. übrig',welcome:'Willkommen bei Speedready',
+     welcome_sub:'Lies in einer anderen Sprache, ohne den Faden zu verlieren. Wähle die Sprache, die du schon sprichst.',
+     continue:'Weiter',dont_know_it:'✗ Kenne ich nicht',known_again:'↩ Wieder bekannt',
+     unknown_words:'Wörter, die du lernst',bookmarks:'Lesezeichen',add_bookmark:'☆ Diese Stelle merken',
+     remove_bookmark:'★ Lesezeichen entfernen',no_bookmarks:'Noch keine Lesezeichen in diesem Buch.',
+     export:'Für Anki exportieren',exported:'Datei gespeichert. Importiere sie in Anki über Datei › Importieren.',
+     nothing_to_export:'Schlag zuerst ein paar Wörter nach.',mode:'Lesemodus',mode_pacer:'Fließtext',
+     mode_rsvp:'Ein Wort nach dem anderen',version:'Version',license:'Code: MIT',source:'Quellcode',
+     credits:'Wörterbuchdaten: Wiktionary (CC BY-SA 4.0) und FrequencyWords (MIT). Startbuch von Project Gutenberg. Sprache von deinem Gerät.',
+     marked_unknown:'Als „lerne ich“ markiert',hold_hint:'Halte ein Wort gedrückt, um es als Lernwort zu markieren.'},
+ it:{loading:'Preparo il dizionario…',opening:'Apro il libro…',books:'Libri',settings:'Impostazioni',back:'Frase precedente',slower:'Più lento',faster:'Più veloce',
+     start:'▶ Inizia',resume:'▶ Continua',pause:'❚❚ Pausa',listen:'🔊 Ascolta',read_here:'▶ Leggi da qui',
+     know_it:'✓ La conosco',dont_know:'↩ Non la conosco',dictionary:'Dizionario ↗',chapters:'Capitoli',
+     library:'La tua biblioteca',add_books:'＋ Aggiungi libri',find_books:'Trova libri',book_lang:'Lingua di questo libro',lang_other:'Altra',lang_unknown:'In che lingua è questo libro? Sceglila in Libri ☰',
+     scan_hint_android:'Android non apre tutta la cartella Download: scegli la cartella dove tieni i libri.',starter_book:'Libro iniziale',
+     found_title:'Libri su questo dispositivo',found_hint:'Scegli i libri da aggiungere alla tua biblioteca.',add_n:'Aggiungi {n} libri',add_1:'Aggiungi 1 libro',
+     in_library:'già nella biblioteca',none_found:'Nessun file .epub o .txt in quella cartella',adding:'Aggiungo {i} di {n}…',added_n:'{n} libri aggiunti',
+     remove_book:'Togli dalla biblioteca',remove_confirm:'Togliere «{t}» dalla biblioteca? Anche la posizione e i segnalibri vengono dimenticati.',gloss_label:'Traduzione sopra le parole',
+     translate_into:'Traduzioni in',dict_wait:'Le traduzioni di questo libro si stanno ancora caricando.',marks_need_pair:'Per segnare le parole, scegli nelle Impostazioni una lingua di traduzione diversa da quella del libro.',form_of:'forma di',dict_loading:'Scarico il dizionario {pair}…',dict_failed:'Nessun dizionario {pair} al momento. Leggi senza traduzioni.',
+     gender_label:'Colori per der, die, das',gender_hint:'Nomi tedeschi in blu (der), rosso (die) o verde (das)',
+     gloss_hint:'Mostra la tua lingua sopra ogni parola che non hai segnato come conosciuta',
+     dark:'Modalità scura',text_size:'Dimensione del testo',tts_label:'Leggi ad alta voce mentre avanza',
+     tts_hint:'La voce del dispositivo legge ogni frase e il testo la segue',
+     voice_speed:'Velocità della voce',voice:'Voce',progress:'I tuoi progressi',words_known:'Parole che conosci già',
+     forget_all:'Dimentica tutto',about:'Informazioni',language:'Lingua',
+     about_text:'Dizionario offline costruito da Wiktionary. Dati del dizionario: CC BY-SA 4.0. Libro iniziale: Japanische Märchen, pubblico dominio, da Project Gutenberg. Dopo il primo caricamento tutto funziona senza connessione.',
+     no_chapters:'Questo libro non ha capitoli.',no_entry:'Questa parola non è nel dizionario offline. Tocca Dizionario per cercarla online.',
+     forget_confirm:'Dimenticare tutte le parole segnate come conosciute?',cannot_open:'Impossibile aprire: ',no_text_epub:'Nessun testo in questo .epub',
+     no_voice_ios:'Nessuna voce installata per questa lingua. Su iPhone: Impostazioni › Accessibilità › Contenuto letto › Voci.',
+     no_voice_android:'Nessuna voce installata per questa lingua. Apri Impostazioni › Sistema › Lingue › Output sintesi vocale per aggiungerne una.',
+     no_voice:'Nessuna voce per questa lingua su questo dispositivo.',
+     voice_failed:'La voce non ha funzionato: ',min_left:'min rimasti',welcome:'Benvenuto in Speedready',
+     welcome_sub:'Leggi in un’altra lingua senza perdere il filo. Scegli la lingua che parli già.',
+     continue:'Continua',dont_know_it:'✗ Non la conosco',known_again:'↩ Di nuovo conosciuta',
+     unknown_words:'Parole che stai imparando',bookmarks:'Segnalibri',add_bookmark:'☆ Segna questo punto',
+     remove_bookmark:'★ Togli segnalibro',no_bookmarks:'Ancora nessun segnalibro in questo libro.',
+     export:'Esporta per Anki',exported:'File salvato. Importalo in Anki con File › Importa.',
+     nothing_to_export:'Prima cerca qualche parola.',mode:'Modalità di lettura',mode_pacer:'Testo continuo',
+     mode_rsvp:'Una parola alla volta',version:'Versione',license:'Codice: MIT',source:'Codice sorgente',
+     credits:'Dati del dizionario: Wiktionary (CC BY-SA 4.0) e FrequencyWords (MIT). Libro iniziale da Project Gutenberg. Voce del tuo dispositivo.',
+     marked_unknown:'Segnata come da imparare',hold_hint:'Tieni premuta una parola per segnarla come da imparare.'},
+ nl:{loading:'Woordenboek voorbereiden…',opening:'Boek openen…',books:'Boeken',settings:'Instellingen',back:'Vorige zin',slower:'Langzamer',faster:'Sneller',
+     start:'▶ Start',resume:'▶ Verder',pause:'❚❚ Pauze',listen:'🔊 Luister',read_here:'▶ Lees vanaf hier',
+     know_it:'✓ Ken ik',dont_know:'↩ Ken ik niet',dictionary:'Woordenboek ↗',chapters:'Hoofdstukken',
+     library:'Je bibliotheek',add_books:'＋ Boeken toevoegen',find_books:'Boeken zoeken',book_lang:'Taal van dit boek',lang_other:'Andere',lang_unknown:'In welke taal is dit boek? Kies die bij Boeken ☰',
+     scan_hint_android:'Android opent niet de hele map Download: kies de map waar je boeken staan.',starter_book:'Startboek',
+     found_title:'Boeken op dit apparaat',found_hint:'Kies de boeken voor je bibliotheek.',add_n:'{n} boeken toevoegen',add_1:'1 boek toevoegen',
+     in_library:'al in je bibliotheek',none_found:'Geen .epub- of .txt-bestanden in die map',adding:'{i} van {n} toevoegen…',added_n:'{n} boeken toegevoegd',
+     remove_book:'Uit bibliotheek verwijderen',remove_confirm:'“{t}” uit je bibliotheek verwijderen? Je plek en bladwijzers erin worden ook vergeten.',gloss_label:'Vertaling boven de woorden',
+     translate_into:'Vertalingen in',dict_wait:'De vertalingen voor dit boek worden nog geladen.',marks_need_pair:'Kies in Instellingen een andere vertaaltaal dan die van het boek om woorden te markeren.',form_of:'vorm van',dict_loading:'Woordenboek {pair} downloaden…',dict_failed:'Nu geen woordenboek {pair}. Je leest zonder vertalingen.',
+     gender_label:'Kleuren voor der, die, das',gender_hint:'Duitse zelfstandige naamwoorden in blauw (der), rood (die) of groen (das)',
+     gloss_hint:'Toont je taal boven elk woord dat je niet als bekend hebt gemarkeerd',
+     dark:'Donkere modus',text_size:'Tekstgrootte',tts_label:'Voorlezen tijdens het lezen',
+     tts_hint:'De stem van het apparaat leest elke zin en de tekst volgt',
+     voice_speed:'Spreeksnelheid',voice:'Stem',progress:'Je voortgang',words_known:'Woorden die je al kent',
+     forget_all:'Alles vergeten',about:'Over',language:'Taal',
+     about_text:'Offline woordenboek gemaakt van Wiktionary. Woordenboekgegevens: CC BY-SA 4.0. Startboek: Japanische Märchen, publiek domein, van Project Gutenberg. Na de eerste keer laden werkt alles zonder verbinding.',
+     no_chapters:'Dit boek heeft geen hoofdstukken.',no_entry:'Dit woord staat niet in het offline woordenboek. Tik op Woordenboek om het online op te zoeken.',
+     forget_confirm:'Alle als bekend gemarkeerde woorden vergeten?',cannot_open:'Kon niet openen: ',no_text_epub:'Geen tekst in deze .epub',
+     no_voice_ios:'Er is geen stem voor deze taal geïnstalleerd. Op iPhone: Instellingen › Toegankelijkheid › Gesproken materiaal › Stemmen.',
+     no_voice_android:'Er is geen stem voor deze taal geïnstalleerd. Open Instellingen › Systeem › Talen › Tekst-naar-spraak om er een toe te voegen.',
+     no_voice:'Dit apparaat heeft geen stem voor deze taal.',
+     voice_failed:'De stem werkte niet: ',min_left:'min over',welcome:'Welkom bij Speedready',
+     welcome_sub:'Lees in een andere taal zonder de draad kwijt te raken. Kies de taal die je al spreekt.',
+     continue:'Verder',dont_know_it:'✗ Ken ik niet',known_again:'↩ Weer bekend',
+     unknown_words:'Woorden die je leert',bookmarks:'Bladwijzers',add_bookmark:'☆ Deze plek bewaren',
+     remove_bookmark:'★ Bladwijzer verwijderen',no_bookmarks:'Nog geen bladwijzers in dit boek.',
+     export:'Exporteren voor Anki',exported:'Bestand bewaard. Importeer het in Anki via Bestand › Importeren.',
+     nothing_to_export:'Zoek eerst een paar woorden op.',mode:'Leesmodus',mode_pacer:'Doorlopende tekst',
+     mode_rsvp:'Eén woord tegelijk',version:'Versie',license:'Code: MIT',source:'Broncode',
+     credits:'Woordenboekgegevens: Wiktionary (CC BY-SA 4.0) en FrequencyWords (MIT). Startboek van Project Gutenberg. Spraak van je apparaat.',
+     marked_unknown:'Gemarkeerd als leerwoord',hold_hint:'Houd een woord ingedrukt om het als leerwoord te markeren.'},
+ pl:{loading:'Przygotowuję słownik…',opening:'Otwieram książkę…',books:'Książki',settings:'Ustawienia',back:'Poprzednie zdanie',slower:'Wolniej',faster:'Szybciej',
+     start:'▶ Start',resume:'▶ Dalej',pause:'❚❚ Pauza',listen:'🔊 Posłuchaj',read_here:'▶ Czytaj stąd',
+     know_it:'✓ Znam to',dont_know:'↩ Nie znam tego',dictionary:'Słownik ↗',chapters:'Rozdziały',
+     library:'Twoja biblioteka',add_books:'＋ Dodaj książki',find_books:'Znajdź książki',book_lang:'Język tej książki',lang_other:'Inny',lang_unknown:'W jakim języku jest ta książka? Wybierz go w Książkach ☰',
+     scan_hint_android:'Android nie otwiera całego folderu Pobrane: wybierz folder, w którym są twoje książki.',starter_book:'Książka startowa',
+     found_title:'Książki na tym urządzeniu',found_hint:'Wybierz książki do swojej biblioteki.',add_n:'Dodaj książki: {n}',add_1:'Dodaj 1 książkę',
+     in_library:'już w bibliotece',none_found:'W tym folderze nie ma plików .epub ani .txt',adding:'Dodaję {i} z {n}…',added_n:'Dodano książki: {n}',
+     remove_book:'Usuń z biblioteki',remove_confirm:'Usunąć „{t}” z biblioteki? Twoje miejsce i zakładki w niej też zostaną zapomniane.',gloss_label:'Tłumaczenie nad słowami',
+     translate_into:'Tłumaczenia na',dict_wait:'Tłumaczenia tej książki jeszcze się wczytują.',marks_need_pair:'Aby oznaczać słowa, wybierz w Ustawieniach język tłumaczenia inny niż język książki.',form_of:'forma od',dict_loading:'Pobieram słownik {pair}…',dict_failed:'Teraz brak słownika {pair}. Czytasz bez tłumaczeń.',
+     gender_label:'Kolory dla der, die, das',gender_hint:'Niemieckie rzeczowniki na niebiesko (der), czerwono (die) lub zielono (das)',
+     gloss_hint:'Pokazuje twój język nad każdym słowem, którego nie oznaczono jako znane',
+     dark:'Tryb ciemny',text_size:'Rozmiar tekstu',tts_label:'Czytaj na głos podczas przesuwania',
+     tts_hint:'Głos urządzenia czyta każde zdanie, a tekst za nim podąża',
+     voice_speed:'Tempo głosu',voice:'Głos',progress:'Twoje postępy',words_known:'Słowa, które już znasz',
+     forget_all:'Zapomnij wszystko',about:'O aplikacji',language:'Język',
+     about_text:'Słownik offline zbudowany z Wikisłownika. Dane słownika: CC BY-SA 4.0. Książka startowa: Japanische Märchen, domena publiczna, z Project Gutenberg. Po pierwszym wczytaniu wszystko działa bez internetu.',
+     no_chapters:'Ta książka nie ma rozdziałów.',no_entry:'Tego słowa nie ma w słowniku offline. Dotknij Słownik, aby sprawdzić je w sieci.',
+     forget_confirm:'Zapomnieć wszystkie słowa oznaczone jako znane?',cannot_open:'Nie udało się otworzyć: ',no_text_epub:'Brak tekstu w tym pliku .epub',
+     no_voice_ios:'Brak zainstalowanego głosu dla tego języka. Na iPhonie: Ustawienia › Dostępność › Mowa › Głosy.',
+     no_voice_android:'Brak zainstalowanego głosu dla tego języka. Otwórz Ustawienia › System › Języki › Przetwarzanie tekstu na mowę, aby dodać głos.',
+     no_voice:'To urządzenie nie ma głosu dla tego języka.',
+     voice_failed:'Głos zawiódł: ',min_left:'min do końca',welcome:'Witaj w Speedready',
+     welcome_sub:'Czytaj w innym języku bez gubienia wątku. Wybierz język, którym już mówisz.',
+     continue:'Dalej',dont_know_it:'✗ Nie znam tego',known_again:'↩ Znowu znane',
+     unknown_words:'Słowa, których się uczysz',bookmarks:'Zakładki',add_bookmark:'☆ Zaznacz to miejsce',
+     remove_bookmark:'★ Usuń zakładkę',no_bookmarks:'W tej książce nie ma jeszcze zakładek.',
+     export:'Eksportuj do Anki',exported:'Plik zapisany. Zaimportuj go w Anki przez Plik › Importuj.',
+     nothing_to_export:'Najpierw sprawdź kilka słów.',mode:'Tryb czytania',mode_pacer:'Ciągły tekst',
+     mode_rsvp:'Jedno słowo naraz',version:'Wersja',license:'Kod: MIT',source:'Kod źródłowy',
+     credits:'Dane słownika: Wikisłownik (CC BY-SA 4.0) i FrequencyWords (MIT). Książka startowa z Project Gutenberg. Głos z twojego urządzenia.',
+     marked_unknown:'Oznaczone jako do nauki',hold_hint:'Przytrzymaj słowo, aby oznaczyć je jako do nauki.'},
+ ru:{loading:'Готовлю словарь…',opening:'Открываю книгу…',books:'Книги',settings:'Настройки',back:'Предыдущее предложение',slower:'Медленнее',faster:'Быстрее',
+     start:'▶ Начать',resume:'▶ Продолжить',pause:'❚❚ Пауза',listen:'🔊 Слушать',read_here:'▶ Читать отсюда',
+     know_it:'✓ Знаю',dont_know:'↩ Не знаю',dictionary:'Словарь ↗',chapters:'Главы',
+     library:'Твоя библиотека',add_books:'＋ Добавить книги',find_books:'Найти книги',book_lang:'Язык этой книги',lang_other:'Другой',lang_unknown:'На каком языке эта книга? Выбери его в разделе Книги ☰',
+     scan_hint_android:'Android не открывает всю папку Download: выбери папку, где лежат твои книги.',starter_book:'Стартовая книга',
+     found_title:'Книги на этом устройстве',found_hint:'Выбери книги для своей библиотеки.',add_n:'Добавить книги: {n}',add_1:'Добавить 1 книгу',
+     in_library:'уже в библиотеке',none_found:'В этой папке нет файлов .epub или .txt',adding:'Добавляю {i} из {n}…',added_n:'Добавлено книг: {n}',
+     remove_book:'Убрать из библиотеки',remove_confirm:'Убрать «{t}» из библиотеки? Место чтения и закладки в ней тоже забудутся.',gloss_label:'Перевод над словами',
+     translate_into:'Переводы на',dict_wait:'Переводы для этой книги ещё загружаются.',marks_need_pair:'Чтобы отмечать слова, выбери в Настройках язык перевода, отличный от языка книги.',form_of:'форма слова',dict_loading:'Загружаю словарь {pair}…',dict_failed:'Словаря {pair} сейчас нет. Читаешь без переводов.',
+     gender_label:'Цвета для der, die, das',gender_hint:'Немецкие существительные синим (der), красным (die) или зелёным (das)',
+     gloss_hint:'Показывает твой язык над каждым словом, которое ты не отметил как знакомое',
+     dark:'Тёмная тема',text_size:'Размер текста',tts_label:'Читать вслух по ходу',
+     tts_hint:'Голос устройства читает каждое предложение, а текст следует за ним',
+     voice_speed:'Скорость голоса',voice:'Голос',progress:'Твой прогресс',words_known:'Слова, которые ты уже знаешь',
+     forget_all:'Забыть всё',about:'О приложении',language:'Язык',
+     about_text:'Офлайн-словарь на основе Викисловаря. Данные словаря: CC BY-SA 4.0. Стартовая книга: Japanische Märchen, общественное достояние, из Project Gutenberg. После первой загрузки всё работает без интернета.',
+     no_chapters:'В этой книге нет глав.',no_entry:'Этого слова нет в офлайн-словаре. Нажми «Словарь», чтобы найти его в сети.',
+     forget_confirm:'Забыть все слова, отмеченные как знакомые?',cannot_open:'Не удалось открыть: ',no_text_epub:'В этом .epub нет текста',
+     no_voice_ios:'Для этого языка не установлен голос. На iPhone: Настройки › Универсальный доступ › Устный контент › Голоса.',
+     no_voice_android:'Для этого языка не установлен голос. Открой Настройки › Система › Языки › Синтез речи, чтобы добавить его.',
+     no_voice:'На этом устройстве нет голоса для этого языка.',
+     voice_failed:'Голос не сработал: ',min_left:'мин осталось',welcome:'Добро пожаловать в Speedready',
+     welcome_sub:'Читай на другом языке, не теряя нить. Выбери язык, на котором уже говоришь.',
+     continue:'Продолжить',dont_know_it:'✗ Не знаю',known_again:'↩ Снова знакомо',
+     unknown_words:'Слова, которые ты учишь',bookmarks:'Закладки',add_bookmark:'☆ Отметить это место',
+     remove_bookmark:'★ Убрать закладку',no_bookmarks:'В этой книге пока нет закладок.',
+     export:'Экспорт в Anki',exported:'Файл сохранён. Импортируй его в Anki через Файл › Импорт.',
+     nothing_to_export:'Сначала найди несколько слов.',mode:'Режим чтения',mode_pacer:'Сплошной текст',
+     mode_rsvp:'По одному слову',version:'Версия',license:'Код: MIT',source:'Исходный код',
+     credits:'Данные словаря: Викисловарь (CC BY-SA 4.0) и FrequencyWords (MIT). Стартовая книга из Project Gutenberg. Голос твоего устройства.',
+     marked_unknown:'Отмечено как изучаемое',hold_hint:'Удерживай слово, чтобы отметить его как изучаемое.'},
+ sv:{loading:'Förbereder ordboken…',opening:'Öppnar boken…',books:'Böcker',settings:'Inställningar',back:'Föregående mening',slower:'Långsammare',faster:'Snabbare',
+     start:'▶ Starta',resume:'▶ Fortsätt',pause:'❚❚ Paus',listen:'🔊 Lyssna',read_here:'▶ Läs härifrån',
+     know_it:'✓ Jag kan det',dont_know:'↩ Jag kan det inte',dictionary:'Ordbok ↗',chapters:'Kapitel',
+     library:'Ditt bibliotek',add_books:'＋ Lägg till böcker',find_books:'Hitta böcker',book_lang:'Bokens språk',lang_other:'Annat',lang_unknown:'Vilket språk är boken på? Välj det under Böcker ☰',
+     scan_hint_android:'Android kan inte öppna hela Download-mappen: välj mappen där dina böcker ligger.',starter_book:'Startbok',
+     found_title:'Böcker på den här enheten',found_hint:'Välj vilka böcker som ska in i ditt bibliotek.',add_n:'Lägg till {n} böcker',add_1:'Lägg till 1 bok',
+     in_library:'redan i biblioteket',none_found:'Inga .epub- eller .txt-filer i den mappen',adding:'Lägger till {i} av {n}…',added_n:'{n} böcker tillagda',
+     remove_book:'Ta bort från biblioteket',remove_confirm:'Ta bort ”{t}” från biblioteket? Din plats och dina bokmärken i den glöms också.',gloss_label:'Översättning ovanför orden',
+     translate_into:'Översättningar på',dict_wait:'Översättningarna för boken laddas fortfarande.',marks_need_pair:'För att markera ord, välj i Inställningar ett annat översättningsspråk än bokens.',form_of:'form av',dict_loading:'Laddar ner ordboken {pair}…',dict_failed:'Ingen ordbok {pair} just nu. Du läser utan översättningar.',
+     gender_label:'Färger för der, die, das',gender_hint:'Tyska substantiv i blått (der), rött (die) eller grönt (das)',
+     gloss_hint:'Visar ditt språk ovanför varje ord du inte har markerat som känt',
+     dark:'Mörkt läge',text_size:'Textstorlek',tts_label:'Läs högt medan den går framåt',
+     tts_hint:'Enhetens röst läser varje mening och texten följer med',
+     voice_speed:'Rösthastighet',voice:'Röst',progress:'Dina framsteg',words_known:'Ord du redan kan',
+     forget_all:'Glöm allt',about:'Om',language:'Språk',
+     about_text:'Offlineordbok byggd från Wiktionary. Ordboksdata: CC BY-SA 4.0. Startbok: Japanische Märchen, allmän egendom, från Project Gutenberg. Efter första laddningen fungerar allt utan uppkoppling.',
+     no_chapters:'Den här boken har inga kapitel.',no_entry:'Ordet finns inte i offlineordboken. Tryck på Ordbok för att slå upp det på nätet.',
+     forget_confirm:'Glömma alla ord du markerat som kända?',cannot_open:'Kunde inte öppna: ',no_text_epub:'Ingen text i den här .epub',
+     no_voice_ios:'Ingen röst installerad för det här språket. På iPhone: Inställningar › Hjälpmedel › Uppläst innehåll › Röster.',
+     no_voice_android:'Ingen röst installerad för det här språket. Öppna Inställningar › System › Språk › Text till tal för att lägga till en.',
+     no_voice:'Enheten har ingen röst för det här språket.',
+     voice_failed:'Rösten misslyckades: ',min_left:'min kvar',welcome:'Välkommen till Speedready',
+     welcome_sub:'Läs på ett annat språk utan att tappa tråden. Välj språket du redan talar.',
+     continue:'Fortsätt',dont_know_it:'✗ Jag kan det inte',known_again:'↩ Känt igen',
+     unknown_words:'Ord du lär dig',bookmarks:'Bokmärken',add_bookmark:'☆ Bokmärk det här stället',
+     remove_bookmark:'★ Ta bort bokmärke',no_bookmarks:'Inga bokmärken i boken än.',
+     export:'Exportera till Anki',exported:'Filen är sparad. Importera den i Anki via Arkiv › Importera.',
+     nothing_to_export:'Slå upp några ord först.',mode:'Läsläge',mode_pacer:'Löpande text',
+     mode_rsvp:'Ett ord i taget',version:'Version',license:'Kod: MIT',source:'Källkod',
+     credits:'Ordboksdata: Wiktionary (CC BY-SA 4.0) och FrequencyWords (MIT). Startbok från Project Gutenberg. Tal från din enhet.',
+     marked_unknown:'Markerat som ett ord du lär dig',hold_hint:'Håll in ett ord för att markera det som ett du lär dig.'},
 };
-const LANGS=[['en','English'],['pt','Português (Brasil)']];   // grows as the gloss packs do
+const LANGS=Object.keys(UI).map(c=>{const n=new Intl.DisplayNames([c],{type:'language'}).of(c);return [c,n[0].toUpperCase()+n.slice(1)]});   // every interface language, named in itself
 // Which language this build reads and glosses into comes from bundle.json and the dictionary's own
 // src/tgt fields, so swapping the shipped pair is a rebuild of the assets, not an edit to this file.
 const srcLang=()=>S.book?.lang||S.dict?.src||'en';
@@ -332,7 +611,7 @@ const LS={get:(k,d)=>{try{const v=localStorage.getItem('sr:'+k);return v===null?
 const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],pageA:0,pageB:0,
          ui:LS.get('ui',null),mode:'pacer',
          unknown:new Set(LS.get('unknown',[])),vocab:LS.get('vocab',[]),bookmarks:[],
-         wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',true),
+         wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',!matchMedia('(prefers-color-scheme: light)').matches),
          size:LS.get('size',19),tts:LS.get('tts',false),learned:new Set(LS.get('learned',[])),
          voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false,
          genderOn:LS.get('gender',true),genderData:null,bundled:null,native:LS.get('native',null)};
@@ -408,19 +687,19 @@ async function unpack(buf){   // gzip from a static host, or already unpacked by
 }
 const dicts=new Map();
 async function dictFor(src){
-  const tgt=S.native,key=src+'-'+tgt;
+  const tgt=S.native,key=src+'-'+tgt,v=S.bundle.packsVersion||1,stash=v>1?key+'@'+v:key;   // a new packsVersion re-downloads every cached pair once
   if(!src||src===tgt||!S.bundle.languages[src])return null;
   if(dicts.has(key))return dicts.get(key);
   if(S.bundled.src===src&&S.bundled.tgt===tgt){dicts.set(key,S.bundled);return S.bundled}
   let d=null;
   try{
-    const stored=await idb('readonly',s=>s.get(key)).catch(()=>null);
-    if(stored)d=await unpack(stored).catch(()=>{idb('readwrite',s=>s.delete(key)).catch(()=>{});return null});   // a bad copy: drop it, download again
+    const stored=await idb('readonly',s=>s.get(stash)).catch(()=>null);
+    if(stored)d=await unpack(stored).catch(()=>{idb('readwrite',s=>s.delete(stash)).catch(()=>{});return null});   // a bad copy: drop it, download again
     if(!d){
       toast(T('dict_loading').replace('{pair}',pairName(src,tgt)));
-      const r=await fetch(S.bundle.packs+'dict-'+key+'.json.gz');if(!r.ok)throw new Error(r.status);
+      const r=await fetch(S.bundle.packs+'dict-'+key+'.json.gz?v='+v);if(!r.ok)throw new Error(r.status);
       const buf=await r.arrayBuffer();d=await unpack(buf);   // throws on anything that is not a dictionary, before it is kept
-      idb('readwrite',s=>s.put(buf,key)).catch(()=>{});      // private mode etc.: works, just not offline
+      idb('readwrite',s=>{for(let o=1;o<v;o++)s.delete(o>1?key+'@'+o:key);return s.put(buf,stash)}).catch(()=>{});   // private mode etc.: works, just not offline
     }
   }catch(e){toast(T('dict_failed').replace('{pair}',pairName(src,tgt)));return null}   // not cached: back online, the next try downloads it
   dicts.set(key,d);return d;
@@ -760,7 +1039,7 @@ async function loadBook(book,startAt){
          document.body.classList.toggle('plain',!S.gloss);$('#t-tts').classList.toggle('on',S.tts);
          $('#voice-box').classList.toggle('hidden',!S.tts);}
   loadMarks();
-  renderPage(S.i); setMode((LS.get(prefsKey(),{}) || {}).mode||'pacer'); buildChapters(); buildMarks(); LS.set('lastBook',book.id==='starter'?'starter':null);
+  renderPage(S.i); setMode((LS.get(prefsKey(),{}) || {}).mode||'pacer'); buildChapters(); buildMarks(); buildLibrary(); LS.set('lastBook',book.id);
   requestAnimationFrame(()=>{const c=S.cells[S.i-S.pageA];if(c)c.scrollIntoView({block:'center'})});
 }
 function buildChapters(){
@@ -779,7 +1058,7 @@ function textToBook(text,title,id){
     const ws=p.split(/\s+/).filter(Boolean);
     if(ws.length){para.push(words.length);words.push(...ws)}
   }
-  return {id,title,lang:TextClean.detectLang(words)||S.bundled.src,...TextClean.clean(words,para,[],title)};
+  return {id,title,lang:TextClean.detectLang(words)||'',...TextClean.clean(words,para,[],title)};
 }
 // --- epub via the browser's own zip inflater (no library) ---
 async function epubToBook(file){
@@ -849,7 +1128,7 @@ async function epubToBook(file){
   c.chapters=TextClean.resolveMissing(c.words,c.para,c.chapters).filter(([t,i])=>t&&i!==null&&i<c.words.length);
   const tagged=TextClean.langCode((opf.match(/<dc:language[^>]*>([^<]*)</)||[])[1]||'');
   const real=tagged&&!['un','mu','zx'].includes(tagged);   // und, mul, zxx: calibre's 'undetermined' and friends
-  const lang=S.bundle.languages[tagged]?tagged:TextClean.detectLang(c.words)||(real?tagged:S.bundled.src);
+  const lang=S.bundle.languages[tagged]?tagged:TextClean.detectLang(c.words)||(real?tagged:'');
   return {id:'f:'+file.name+':'+file.size,title,lang,...c};
 }
 
@@ -882,17 +1161,19 @@ async function boot(){
     buildNativeList();
     S.genderData=await genders;
     $('#splash-msg').textContent=T('opening');
-    const book=await fetchJSON(S.bundle.starter); book.id='starter';
-    await loadBook(book);
+    const last=LS.get('lastBook','starter');   // your own book, where you left it
+    await loadBook(last&&last!=='starter'&&await libraryBook(last)||await starterBook());
     pickVoice();
     $('#splash').classList.add('hidden');
+    openShared();
   }catch(e){
     $('#splash-msg').textContent=T('cannot_open')+e.message;
     $('#pct').textContent='';
   }
 }
 function applyTheme(){document.documentElement.dataset.theme=S.dark?'dark':'light';
-  $('meta[name=theme-color]').setAttribute('content',S.dark?'#101012':'#faf9f7')}
+  $('meta[name=theme-color]').setAttribute('content',S.dark?'#101012':'#faf9f7');
+  window.AndroidShell&&AndroidShell.theme(S.dark?'#101012':'#faf9f7')}
 function applySize(){page.style.setProperty('--size',S.size+'px')}
 
 //////////////////// events ////////////////////
@@ -927,7 +1208,7 @@ page.addEventListener('click',e=>{
 $('#w-here').onclick=()=>{closeSheets();play()};
 $('#w-learned').onclick=markLearned;
 $('#w-speak').onclick=()=>{warmUpSpeech();sheetWord&&speakText(sheetWord.word)};
-$('#w-web').onclick=()=>sheetWord&&open('https://'+(S.book?.lang||S.bundled.src)+'.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
+$('#w-web').onclick=()=>sheetWord&&open('https://'+(S.book?.lang||'en')+'.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
 $('#w-unknown').onclick=()=>{
   if(!sheetWord||!hasPair())return;
   setUnknown(sheetWord.word,!S.unknown.has(lk(sheetWord.lemma)));
@@ -958,18 +1239,102 @@ $('#size-up').onclick=()=>{S.size=Math.min(30,S.size+1);LS.set('size',S.size);ap
 $('#size-down').onclick=()=>{S.size=Math.max(13,S.size-1);LS.set('size',S.size);applySize()};
 $('#b-forget').onclick=()=>{if(confirm(T('forget_confirm'))){
   S.learned.clear();LS.set('learned',[]);$('#n-learned').textContent=0;refreshGlosses();S.mode==='rsvp'&&drawRsvp()}};
-$('#b-starter').onclick=async()=>{closeSheets();const b=await fetchJSON(S.bundle.starter);b.id='starter';loadBook(b)};
-$('#file').onchange=async e=>{
-  const f=e.target.files[0]; if(!f)return;
-  closeSheets(); pause(); $('#splash-msg').textContent=T('opening'); $('#pct').textContent='';
-  $('#splash').classList.remove('hidden');
-  try{
-    const book=f.name.toLowerCase().endsWith('.epub')?await epubToBook(f)
-              :textToBook(await f.text(),f.name.replace(/\.[^.]+$/,''),'f:'+f.name+':'+f.size);
-    await loadBook(book);
-  }catch(err){alert(T('cannot_open')+err.message)}
-  $('#splash').classList.add('hidden'); e.target.value='';
+$('#file').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)await addBooks(fs)};
+$('#folder').onchange=e=>{const fs=[...e.target.files].filter(isBookFile);e.target.value='';booksFound(fs.map(f=>({name:f.name,size:f.size,file:f})))};
+$('#book-lang').onchange=async e=>{   // detection guessed wrong, or found nothing: the reader knows better
+  S.book.lang=e.target.value;delete S.book.genders;if(S.book.id!=='starter')await saveBook(S.book).catch(()=>{});
+  await loadBook(S.book,S.i);
 };
+$('#b-scan').onclick=()=>window.AndroidShell?AndroidShell.scanFolder():window.webkit?.messageHandlers?.scanFolder?webkit.messageHandlers.scanFolder.postMessage(''):$('#folder').click();
+$('#b-add-found').onclick=async()=>{
+  const picked=[...document.querySelectorAll('#found input:checked:not(:disabled)')].map(c=>S.found[c.value]);closeSheets();
+  const files=[];
+  for(const e of picked){
+    if(e.file){files.push(e.file);continue}
+    const r=await fetch('device-file?u='+encodeURIComponent(e.uri)).catch(()=>null);   // the native shell reads what its folder scan found
+    if(r&&r.ok)files.push(new File([await r.blob()],e.name));
+  }
+  if(files.length)await addBooks(files);
+};
+//////////////////// library ////////////////////
+// Imported books are parsed once and kept in IndexedDB ('book:'+id): the file pickers give no lasting handle to the
+// file, and parsing a big epub again on every launch would be slow. LS 'library' is the list, newest first.
+const isBookFile=f=>/\.(epub|txt)$/i.test(f.name);
+const lib=()=>LS.get('library',[]);
+const starterBook=async()=>Object.assign(await fetchJSON(S.bundle.starter),{id:'starter'});
+const libraryBook=id=>idb('readonly',s=>s.get('book:'+id)).catch(()=>null);
+async function saveBook(book){
+  await idb('readwrite',s=>s.put(book,'book:'+book.id));
+  LS.set('library',[{id:book.id,title:book.title,lang:book.lang,n:book.words.length},...lib().filter(b=>b.id!==book.id)]);
+}
+function buildLibrary(){
+  $('#scan-hint').classList.toggle('hidden',!window.AndroidShell);
+  $('#gender-row').classList.toggle('hidden',S.book?.lang!==Gender.LANG);   // der/die/das only means something in German
+  const sel=$('#book-lang');sel.replaceChildren(new Option(T('lang_other'),''),...Object.entries(S.bundle?.languages||{}).map(([c,n])=>new Option(n,c)));
+  sel.value=S.book?.lang||'';
+  const box=$('#library');box.replaceChildren();
+  for(const b of [{id:'starter',title:T('starter_book'),lang:S.bundled?.src},...lib()]){
+    const row=document.createElement('div');row.className='book';
+    const open=document.createElement('button'),info=document.createElement('small');
+    const pos=LS.get('pos:'+b.id,0),pct=b.n?Math.round(100*pos/b.n):null;
+    open.textContent=b.title;open.classList.toggle('on',S.book?.id===b.id);
+    info.textContent=[S.bundle?.languages[b.lang],pct===null?'':pct+'%'].filter(Boolean).join(' · ');open.appendChild(info);
+    open.onclick=async()=>{closeSheets();pause();
+      const book=b.id==='starter'?await starterBook():await libraryBook(b.id);
+      if(book)loadBook(book);else{LS.set('library',lib().filter(x=>x.id!==b.id));toast(T('cannot_open')+b.title)}};
+    row.appendChild(open);
+    if(b.id!=='starter'){
+      const rm=document.createElement('button');rm.className='rm';rm.textContent='✕';rm.setAttribute('aria-label',T('remove_book'));
+      rm.onclick=async()=>{
+        if(!confirm(T('remove_confirm').replace('{t}',b.title)))return;
+        idb('readwrite',s=>s.delete('book:'+b.id)).catch(()=>{});
+        ['pos:','prefs:','marks:','clean:'].forEach(k=>localStorage.removeItem('sr:'+k+b.id));
+        LS.set('library',lib().filter(x=>x.id!==b.id));
+        if(S.book?.id===b.id)await loadBook(await starterBook());else buildLibrary();
+      };
+      row.appendChild(rm);
+    }
+    box.appendChild(row);
+  }
+}
+// The list a folder scan found ([{name,size,uri|file}]): the reader ticks what goes into the library
+window.booksFound=function(list){
+  if(!list.length){toast(T('none_found'));return}
+  const have=new Set(lib().map(b=>b.id)),box=$('#found');box.replaceChildren();
+  S.found=list.sort((a,b)=>a.name.localeCompare(b.name));
+  const count=()=>{const n=box.querySelectorAll('input:checked:not(:disabled)').length;
+    $('#b-add-found').textContent=n===1?T('add_1'):T('add_n').replace('{n}',n);$('#b-add-found').disabled=!n};
+  list.forEach((e,i)=>{
+    const known=have.has('f:'+e.name+':'+e.size),row=document.createElement('label');row.className='found'+(known?' known':'');
+    const c=document.createElement('input');c.type='checkbox';c.value=i;c.checked=!known;c.disabled=known;c.onchange=count;
+    const t=document.createElement('span');t.textContent=e.name.replace(/\.(epub|txt)$/i,'');
+    const sm=document.createElement('small');sm.textContent=known?T('in_library'):e.size<1e6?Math.ceil(e.size/1e3)+' KB':(e.size/1e6).toFixed(1)+' MB';t.appendChild(sm);
+    row.append(c,t);box.appendChild(row);
+  });
+  count();openSheet('#s-found');
+};
+async function addBooks(files){
+  closeSheets();pause();$('#pct').textContent='';$('#splash').classList.remove('hidden');
+  let first=null,added=0;
+  for(const[i,f]of files.entries()){
+    $('#splash-msg').textContent=files.length>1?T('adding').replace('{i}',i+1).replace('{n}',files.length):T('opening');
+    try{
+      const book=f.name.toLowerCase().endsWith('.epub')?await epubToBook(f)
+                :textToBook(await f.text(),f.name.replace(/\.[^.]+$/,''),'f:'+f.name+':'+f.size);
+      await saveBook(book).catch(()=>{});   // private mode: still readable now, just not kept
+      first=first||book;added++;
+    }catch(err){toast(T('cannot_open')+f.name)}
+  }
+  if(first)await loadBook(first);
+  $('#splash').classList.add('hidden');
+  if(first&&!first.lang)toast(T('lang_unknown'));
+  if(added>1)toast(T('added_n').replace('{n}',added));
+}
+// A book opened from another app ("Open with" on Android): the shell serves it at shared-file until it is taken
+async function openShared(){
+  const r=await fetch('shared-file').catch(()=>null);if(!r||!r.ok)return;
+  await addBooks([new File([await r.blob()],decodeURIComponent(r.headers.get('X-Name')||'book.epub'))]);
+}
 // keyboard, for when she uses it on a laptop
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;

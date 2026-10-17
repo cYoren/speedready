@@ -3,13 +3,19 @@ package io.github.cyoren.speedready;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Color;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.DocumentsContract;
+import android.provider.OpenableColumns;
 import android.util.Log;
-import android.view.View;
 import android.webkit.ConsoleMessage;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -19,16 +25,24 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.window.OnBackInvokedDispatcher;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 import java.util.Map;
 
 /**
  * The reader is the same HTML, JavaScript and dictionary that the website serves; it is
  * copied into assets at build time and loaded from there. Nothing is fetched over the
- * network, and the app asks for no permissions.
+ * network except a language pair's dictionary, downloaded once.
  *
  * The assets are served under a normal https origin rather than file://, because a
  * file:// page cannot fetch() its own data files and gets unreliable local storage - and
@@ -40,9 +54,14 @@ public class MainActivity extends Activity {
     private static final String ORIGIN = "https://speedready.invalid/";
 
     private WebView web;
+    private FrameLayout root;
     private AndroidTTS speech;
     private ValueCallback<Uri[]> filePicker;
-    private static final int PICK_FILE = 1;
+    /** A book handed over by another app ("Open with"), served once at ORIGIN + "shared-file". */
+    private volatile Uri shared;
+    private static final int PICK_FILE = 1, PICK_FOLDER = 2;
+    /** Documents the last folder scan found: the only ones device-file will serve. */
+    private final Set<String> found = java.util.Collections.synchronizedSet(new HashSet<>());
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -100,6 +119,8 @@ public class MainActivity extends Activity {
                 String path = url.substring(ORIGIN.length());
                 int cut = path.indexOf('?');
                 if (cut >= 0) path = path.substring(0, cut);
+                if (path.equals("shared-file")) return sharedFile();
+                if (path.equals("device-file")) return deviceFile(req.getUrl().getQueryParameter("u"));
                 if (path.isEmpty()) path = "index.html";
                 try {
                     InputStream in = getAssets().open(path);
@@ -120,11 +141,134 @@ public class MainActivity extends Activity {
         speech = new AndroidTTS(this, web);
         web.addJavascriptInterface(speech, "AndroidTTS");   // only our own assets are ever loaded
 
-        setContentView(web);
-        hideSystemBarsOnFullscreen();
+        web.addJavascriptInterface(this, "AndroidShell");
 
+        // Android 15+ draws apps edge to edge, and older WebViews report no env(safe-area-inset-*), so the
+        // header would sit under the status bar and Start under the gesture bar: pad natively instead.
+        root = new FrameLayout(this);
+        root.setBackgroundColor(Color.rgb(0x10, 0x10, 0x12));
+        root.addView(web);
+        root.setOnApplyWindowInsetsListener((v, in) -> {
+            if (Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets i = in.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                v.setPadding(i.left, i.top, i.right, i.bottom);
+                return WindowInsets.CONSUMED;
+            }
+            return in;
+        });
+        setContentView(root);
+
+        // Android 16 no longer calls onBackPressed() for apps targeting it (predictive back)
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::back);
+        }
+
+        takeShared(getIntent());
         if (state != null) web.restoreState(state);
         else web.loadUrl(ORIGIN + "index.html");
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (takeShared(intent)) web.evaluateJavascript("window.openShared&&openShared()", null);
+    }
+
+    private boolean takeShared(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || intent.getData() == null) return false;
+        shared = intent.getData();
+        return true;
+    }
+
+    private WebResourceResponse sharedFile() {
+        Uri u = shared;
+        shared = null;
+        Map<String, String> headers = new HashMap<>();
+        try {
+            if (u == null) throw new IOException("nothing shared");
+            String name = "book.epub";
+            try (Cursor c = getContentResolver().query(u, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+                if (c != null && c.moveToFirst() && c.getString(0) != null) name = c.getString(0);
+            } catch (Exception ignored) { }
+            if ("text/plain".equals(getContentResolver().getType(u)) && !name.toLowerCase().endsWith(".txt")) name += ".txt";
+            headers.put("X-Name", Uri.encode(name));
+            return new WebResourceResponse("application/octet-stream", null, 200, "OK", headers,
+                    getContentResolver().openInputStream(u));
+        } catch (Exception e) {
+            return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", headers, null);
+        }
+    }
+
+    /** "Find books": the reader picks a folder (Android asks; the app holds no storage permission), we list its books. */
+    @JavascriptInterface
+    public void scanFolder() {
+        runOnUiThread(() -> {
+            try {
+                startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), PICK_FOLDER);
+            } catch (Exception e) {
+                web.evaluateJavascript("booksFound([])", null);
+            }
+        });
+    }
+
+    private void listBooks(Uri tree) {
+        new Thread(() -> {
+            JSONArray out = new JSONArray();
+            ArrayDeque<String[]> todo = new ArrayDeque<>();   // {document id, depth}
+            todo.add(new String[]{DocumentsContract.getTreeDocumentId(tree), "0"});
+            String[] cols = {DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.COLUMN_SIZE};
+            found.clear();
+            while (!todo.isEmpty() && out.length() < 500) {   // ponytail: 500 books, 6 folders deep is plenty for a scan
+                String[] dir = todo.poll();
+                Uri kids = DocumentsContract.buildChildDocumentsUriUsingTree(tree, dir[0]);
+                try (Cursor c = getContentResolver().query(kids, cols, null, null, null)) {
+                    while (c != null && c.moveToNext()) {
+                        String id = c.getString(0), name = c.getString(1), mime = c.getString(2);
+                        if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+                            int depth = Integer.parseInt(dir[1]);
+                            if (depth < 6) todo.add(new String[]{id, String.valueOf(depth + 1)});
+                        } else if (name != null && name.toLowerCase().matches(".*\\.(epub|txt)$")) {
+                            String uri = DocumentsContract.buildDocumentUriUsingTree(tree, id).toString();
+                            found.add(uri);
+                            out.put(new JSONObject().put("name", name).put("size", c.getLong(3)).put("uri", uri));
+                        }
+                    }
+                } catch (Exception ignored) { }
+            }
+            String js = "booksFound(" + out + ")";
+            runOnUiThread(() -> { if (web != null) web.evaluateJavascript(js, null); });
+        }).start();
+    }
+
+    private WebResourceResponse deviceFile(String uri) {
+        try {
+            if (uri == null || !found.contains(uri)) throw new IOException("not from the scan");
+            return new WebResourceResponse("application/octet-stream", null, 200, "OK", new HashMap<>(),
+                    getContentResolver().openInputStream(Uri.parse(uri)));
+        } catch (Exception e) {
+            return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", new HashMap<>(), null);
+        }
+    }
+
+    /** The page's light/dark setting: colors the bars' background and their icons to match. */
+    @JavascriptInterface
+    public void theme(String hex) {
+        runOnUiThread(() -> {
+            int c;
+            try { c = Color.parseColor(hex); } catch (Exception e) { return; }
+            if (root != null) root.setBackgroundColor(c);
+            boolean light = Color.luminance(c) > 0.5f;
+            if (Build.VERSION.SDK_INT >= 30) {
+                int flags = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                getWindow().getInsetsController().setSystemBarsAppearance(light ? flags : 0, flags);
+            }
+            if (Build.VERSION.SDK_INT < 35) {
+                getWindow().setStatusBarColor(c);
+                getWindow().setNavigationBarColor(c);
+            }
+        });
     }
 
     private static String mimeOf(String path) {
@@ -137,14 +281,12 @@ public class MainActivity extends Activity {
         return guess != null ? guess : "application/octet-stream";
     }
 
-    private void hideSystemBarsOnFullscreen() {
-        View decor = getWindow().getDecorView();
-        decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-    }
-
     @Override
     protected void onActivityResult(int req, int result, Intent data) {
+        if (req == PICK_FOLDER) {
+            if (result == RESULT_OK && data != null && data.getData() != null) listBooks(data.getData());
+            return;
+        }
         if (req == PICK_FILE && filePicker != null) {
             filePicker.onReceiveValue(FileChooserParamsCompat.parse(result, data));
             filePicker = null;
@@ -156,8 +298,13 @@ public class MainActivity extends Activity {
     /** Turns the picker result into the array the WebView expects. */
     static final class FileChooserParamsCompat {
         static Uri[] parse(int result, Intent data) {
-            if (result != RESULT_OK || data == null || data.getData() == null) return null;
-            return new Uri[]{data.getData()};
+            if (result != RESULT_OK || data == null) return null;
+            if (data.getClipData() != null) {   // "Add books" lets the reader pick several
+                Uri[] all = new Uri[data.getClipData().getItemCount()];
+                for (int i = 0; i < all.length; i++) all[i] = data.getClipData().getItemAt(i).getUri();
+                return all;
+            }
+            return data.getData() == null ? null : new Uri[]{data.getData()};
         }
     }
 
@@ -168,7 +315,9 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    public void onBackPressed() {
+    public void onBackPressed() { back(); }   // Android 12 and older
+
+    private void back() {
         // let the page close its own sheets first
         web.evaluateJavascript(
                 "(function(){var s=document.querySelector('.sheet.on');if(s){s.classList.remove('on');return 'handled'}return 'exit'})()",

@@ -10,16 +10,22 @@ What the web needs is two maps, which gzip to under 2 MB:
     {"g": {lemma: "gloss"}, "f": {form: lemma}, "o": {word: ["gloss","lemma"]}}
 "o" is the curated override table, applied before everything else, same as the desktop app.
 """
-import argparse,json,re,sqlite3,sys
+import gzip,argparse,json,re,sqlite3,sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
 from speedready import GLOSS_OVERRIDES,Gloss
+from coreglosses import core
+
+def overrides(src,tgt,forms,glosses):
+    """word -> [gloss, lemma]: the core vocabulary (every pair), then the hand-curated pair on top. '' = no gloss."""
+    lemma=lambda w:next((x for x in (w,w.capitalize()) if x in glosses),None) or forms.get(w) or forms.get(w.capitalize()) or w   # 'mann' is Mann, not a form of 'Männin'
+    return {**{w:[g,lemma(w)] for w,g in core(src,tgt).items()},**{w:list(v) for w,v in GLOSS_OVERRIDES.get((src,tgt),{}).items()}}
 
 def export(src,tgt,pack,out,starter=None):
     db=sqlite3.connect(pack);best={}   # prio 1-2: Wiktionary translations; 9: English definitions, the gloss itself when tgt is en. 3 was MUSE (CC BY-NC), still in packs built before 1.0.4
     for w,t in db.execute("SELECT word,tgt FROM gloss WHERE prio IN (1,2) OR (prio=9 AND ?='en') ORDER BY prio DESC,rowid DESC",(tgt,)):best[w]=Gloss.short(t)
     forms={f:l for f,l in db.execute('SELECT form,lemma FROM forms') if l in best}
-    over={w:list(v) for w,v in GLOSS_OVERRIDES.get((src,tgt),{}).items()}
+    over=overrides(src,tgt,forms,best)
     freq={w:r for w,r in db.execute('SELECT word,rank FROM freq WHERE rank<=2000')}
     data={'src':src,'tgt':tgt,'g':best,'f':forms,'o':over,'r':freq}
     out.parent.mkdir(parents=True,exist_ok=True)
@@ -34,6 +40,18 @@ def export(src,tgt,pack,out,starter=None):
     if not (out.parent/starter).exists():
         print(f'  WARNING: {starter} is not in {out.parent}; the reader will fail to open its starter book',file=sys.stderr)
 
+def patch(path):
+    """Rewrite only the overrides of an exported dictionary (.json or .json.gz), keeping its glosses as they are."""
+    path=Path(path);gz=path.suffix=='.gz'
+    d=json.loads((gzip.decompress(path.read_bytes()) if gz else path.read_bytes()).decode('utf-8'))
+    d['o']=overrides(d['src'],d['tgt'],d['f'],d['g'])
+    raw=json.dumps(d,ensure_ascii=False,separators=(',',':')).encode('utf-8')
+    path.write_bytes(gzip.compress(raw,9,mtime=0) if gz else raw)
+    return len(d['o'])
+
+if __name__=='__main__' and sys.argv[1:2]==['--patch']:
+    for f in sys.argv[2:]:print(f,patch(f))
+    sys.exit()
 if __name__=='__main__':
     a=argparse.ArgumentParser();a.add_argument('src');a.add_argument('tgt')
     a.add_argument('--pack',default=None);a.add_argument('--out',default=None)
