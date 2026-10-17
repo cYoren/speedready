@@ -1264,8 +1264,10 @@ const lib=()=>LS.get('library',[]);
 const starterBook=async()=>Object.assign(await fetchJSON(S.bundle.starter),{id:'starter'});
 const libraryBook=id=>idb('readonly',s=>s.get('book:'+id)).catch(()=>null);
 async function saveBook(book){
+  const fp=book.words.slice(0,40).join(' '),same=lib().find(b=>b.id===book.id);   // same file name and size, different book: keep both
+  if(same&&same.fp!==fp)book.id+=':'+[...fp].reduce((h,c)=>Math.imul(h,31)+c.charCodeAt(0)|0,0).toString(36);
   await idb('readwrite',s=>s.put(book,'book:'+book.id));
-  LS.set('library',[{id:book.id,title:book.title,lang:book.lang,n:book.words.length},...lib().filter(b=>b.id!==book.id)]);
+  LS.set('library',[{id:book.id,title:book.title,lang:book.lang,n:book.words.length,fp:book.words.slice(0,40).join(' ')},...lib().filter(b=>b.id!==book.id)]);
 }
 function buildLibrary(){
   $('#scan-hint').classList.toggle('hidden',!window.AndroidShell);
