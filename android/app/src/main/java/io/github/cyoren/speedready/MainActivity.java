@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
@@ -29,7 +30,13 @@ import android.window.OnBackInvokedDispatcher;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 import java.util.Map;
 
 /**
@@ -52,7 +59,9 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> filePicker;
     /** A book handed over by another app ("Open with"), served once at ORIGIN + "shared-file". */
     private volatile Uri shared;
-    private static final int PICK_FILE = 1;
+    private static final int PICK_FILE = 1, PICK_FOLDER = 2;
+    /** Documents the last folder scan found: the only ones device-file will serve. */
+    private final Set<String> found = java.util.Collections.synchronizedSet(new HashSet<>());
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -111,6 +120,7 @@ public class MainActivity extends Activity {
                 int cut = path.indexOf('?');
                 if (cut >= 0) path = path.substring(0, cut);
                 if (path.equals("shared-file")) return sharedFile();
+                if (path.equals("device-file")) return deviceFile(req.getUrl().getQueryParameter("u"));
                 if (path.isEmpty()) path = "index.html";
                 try {
                     InputStream in = getAssets().open(path);
@@ -190,6 +200,58 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** "Find books": the reader picks a folder (Android asks; the app holds no storage permission), we list its books. */
+    @JavascriptInterface
+    public void scanFolder() {
+        runOnUiThread(() -> {
+            try {
+                startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), PICK_FOLDER);
+            } catch (Exception e) {
+                web.evaluateJavascript("booksFound([])", null);
+            }
+        });
+    }
+
+    private void listBooks(Uri tree) {
+        new Thread(() -> {
+            JSONArray out = new JSONArray();
+            ArrayDeque<String[]> todo = new ArrayDeque<>();   // {document id, depth}
+            todo.add(new String[]{DocumentsContract.getTreeDocumentId(tree), "0"});
+            String[] cols = {DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.COLUMN_SIZE};
+            found.clear();
+            while (!todo.isEmpty() && out.length() < 500) {   // ponytail: 500 books, 6 folders deep is plenty for a scan
+                String[] dir = todo.poll();
+                Uri kids = DocumentsContract.buildChildDocumentsUriUsingTree(tree, dir[0]);
+                try (Cursor c = getContentResolver().query(kids, cols, null, null, null)) {
+                    while (c != null && c.moveToNext()) {
+                        String id = c.getString(0), name = c.getString(1), mime = c.getString(2);
+                        if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+                            int depth = Integer.parseInt(dir[1]);
+                            if (depth < 6) todo.add(new String[]{id, String.valueOf(depth + 1)});
+                        } else if (name != null && name.toLowerCase().matches(".*\\.(epub|txt)$")) {
+                            String uri = DocumentsContract.buildDocumentUriUsingTree(tree, id).toString();
+                            found.add(uri);
+                            out.put(new JSONObject().put("name", name).put("size", c.getLong(3)).put("uri", uri));
+                        }
+                    }
+                } catch (Exception ignored) { }
+            }
+            String js = "booksFound(" + out + ")";
+            runOnUiThread(() -> { if (web != null) web.evaluateJavascript(js, null); });
+        }).start();
+    }
+
+    private WebResourceResponse deviceFile(String uri) {
+        try {
+            if (uri == null || !found.contains(uri)) throw new IOException("not from the scan");
+            return new WebResourceResponse("application/octet-stream", null, 200, "OK", new HashMap<>(),
+                    getContentResolver().openInputStream(Uri.parse(uri)));
+        } catch (Exception e) {
+            return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", new HashMap<>(), null);
+        }
+    }
+
     /** The page's light/dark setting: colors the bars' background and their icons to match. */
     @JavascriptInterface
     public void theme(String hex) {
@@ -221,6 +283,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int req, int result, Intent data) {
+        if (req == PICK_FOLDER) {
+            if (result == RESULT_OK && data != null && data.getData() != null) listBooks(data.getData());
+            return;
+        }
         if (req == PICK_FILE && filePicker != null) {
             filePicker.onReceiveValue(FileChooserParamsCompat.parse(result, data));
             filePicker = null;
@@ -232,8 +298,13 @@ public class MainActivity extends Activity {
     /** Turns the picker result into the array the WebView expects. */
     static final class FileChooserParamsCompat {
         static Uri[] parse(int result, Intent data) {
-            if (result != RESULT_OK || data == null || data.getData() == null) return null;
-            return new Uri[]{data.getData()};
+            if (result != RESULT_OK || data == null) return null;
+            if (data.getClipData() != null) {   // "Add books" lets the reader pick several
+                Uri[] all = new Uri[data.getClipData().getItemCount()];
+                for (int i = 0; i < all.length; i++) all[i] = data.getClipData().getItemAt(i).getUri();
+                return all;
+            }
+            return data.getData() == null ? null : new Uri[]{data.getData()};
         }
     }
 

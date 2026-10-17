@@ -1,7 +1,7 @@
 {
   "name": "Speedready",
   "short_name": "Speedready",
-  "description": "Read German at your own pace, with a translation above every word you do not know yet.",
+  "description": "Speed reading, and reading in 10 languages with a translation above every word you do not know yet.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
