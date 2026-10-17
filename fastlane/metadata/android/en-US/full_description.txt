@@ -21,6 +21,12 @@ Read faster, and read in the language you are learning. Speedready is a speed re
 
 Open any EPUB or text file; the app recognizes its language. Page numbers and headers left over from print are removed, sentences broken by a page are joined again, and every book opens at chapter one. A German storybook is built in so you can start right away.
 
+<b>Your library</b>
+
+* Add several books at once, or let Speedready find the EPUB and text files in a folder you choose, then tick the ones you want
+* Every book reopens right where you left it
+* The app speaks your language too: English, Portuguese, Spanish, French, German, Italian, Dutch, Polish, Russian or Swedish
+
 <b>Private</b>
 
 No account, no tracking, no ads. A language pair's dictionary downloads once (about 2 MB) and then works offline. Your books and your progress never leave your device.
