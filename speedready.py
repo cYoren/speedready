@@ -16,7 +16,8 @@ import gi;gi.require_version('Gtk','4.0');gi.require_version('Adw','1');gi.requi
 from gi.repository import Gtk,Adw,Gdk,Gio,GLib,Pango,PangoCairo
 try:import simplemma
 except ImportError:simplemma=None
-from coreglosses import core   # hand-checked glosses for each language's commonest words
+try:from coreglosses import core   # hand-checked glosses for each language's commonest words
+except ImportError:core=lambda src,tgt:{}
 try:import gender   # German noun genders; lives next to this file, and so does its data
 except ImportError:gender=None
 
