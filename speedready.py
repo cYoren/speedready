@@ -16,6 +16,7 @@ import gi;gi.require_version('Gtk','4.0');gi.require_version('Adw','1');gi.requi
 from gi.repository import Gtk,Adw,Gdk,Gio,GLib,Pango,PangoCairo
 try:import simplemma
 except ImportError:simplemma=None
+from coreglosses import core   # hand-checked glosses for each language's commonest words
 try:import gender   # German noun genders; lives next to this file, and so does its data
 except ImportError:gender=None
 
@@ -513,6 +514,7 @@ class Gloss:
         if not w or not s.db:return None,w
         if w not in s.cache:
             override=GLOSS_OVERRIDES.get((s.src,s.tgt),{}).get(w.lower())
+            if not override and (c:=core(s.src,s.tgt).get(w.lower())) is not None:override=(c or None,s.lemma(w))   # core vocabulary, every pair
             if override:s.cache[w]=override;return override
             l=s.lemma(w);rows=s.db.execute('SELECT word,pos,tgt,prio FROM gloss WHERE word IN (?,?,?)',(l,w,w.lower())).fetchall()
             if s.tgt!='en':rows=[r for r in rows if r[3]<9]

@@ -1,0 +1,3 @@
+Your own library: add several books at once, or let the app find the books in a folder and choose which to keep. Your last book reopens where you left it.
+Better translations for the most common words in all 10 languages, and the app now speaks all 10 too.
+Fits Android 15 and 16 screens, and opens books shared from other apps.

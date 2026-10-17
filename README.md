@@ -88,11 +88,19 @@ python gender.py   # self-check
 
 ## Web version (any phone or browser)
 
-`web/` is a self-contained reader for learners: the German text with a Portuguese
-translation above every word you have not marked as known yet. Tap a translation to
-mark the word learned and it disappears everywhere; tap a word for its dictionary entry.
-It ships with a public-domain German book, speaks through the device's own voice, and
-works offline once loaded (installable to the home screen).
+`web/` is a self-contained reader for learners, and it is also what the Android and iOS
+apps load: a book in any of 10 languages with a translation in your own language above
+every word you have not marked as known yet. Tap a translation to mark the word learned
+and it disappears everywhere; tap a word for its dictionary entry. Books you add stay in
+a library (the apps can also scan a folder for books and let you pick which to add). The
+interface is in all 10 languages. It ships with a public-domain German book, speaks
+through the device's own voice, and works offline once loaded (installable to the home
+screen). It is a separate implementation from the desktop reader; they share the data
+pipeline (`tools/export_web.py`, `coreglosses.py`), not the reading code.
+
+`core/` holds hand-checked glosses for each language's ~300 most frequent words, which a
+context-free dictionary gets wrong most often. `python tools/export_web.py --patch <dict files>`
+writes them into exported dictionaries; pairs without English go through English.
 
 Read-along drives the highlight from its own estimated clock rather than from
 `onboundary`, which iOS reports unreliably, and re-syncs whenever a boundary event does

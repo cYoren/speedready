@@ -97,8 +97,9 @@
   function detectLang(words){
     const score={};for(const l in SETS)score[l]=0;
     for(const w of words.slice(0,1000)){const t=strip(w).toLowerCase();for(const l in SETS)if(SETS[l].has(t))score[l]++}
-    const best=Object.entries(score).sort((a,b)=>b[1]-a[1])[0];
-    return best&&best[1]>=5?best[0]:null;
+    const [best,next]=Object.entries(score).sort((a,b)=>b[1]-a[1]);
+    const need=Math.max(2,Math.min(5,Math.ceil(Math.min(words.length,1000)/10)));   // a short text has few function words to go on
+    return best&&best[1]>=need&&best[1]>next[1]?best[0]:null;   // a tie ('en' is Swedish and Spanish): the reader picks
   }
   // an epub's <dc:language> as a two-letter code: 'DE', 'de-DE', 'ger' and 'deu' are all 'de' (same as lang_code in speedready.py)
   const ISO3={ger:'de',deu:'de',eng:'en',spa:'es',fre:'fr',fra:'fr',ita:'it',dut:'nl',nld:'nl',pol:'pl',por:'pt',rus:'ru',swe:'sv'};
