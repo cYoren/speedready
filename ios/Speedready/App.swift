@@ -4,6 +4,7 @@
 // the silent switch on.
 import AVFoundation
 import UIKit
+import UniformTypeIdentifiers
 import WebKit
 
 @main
@@ -25,7 +26,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 }
 
-final class ReaderViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
+final class ReaderViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandler, UIDocumentPickerDelegate {
     private static let start = URL(string: "speedready://app/index.html")!
     private var web: WKWebView!
     private var themeObservation: NSKeyValueObservation?
@@ -37,6 +38,7 @@ final class ReaderViewController: UIViewController, WKNavigationDelegate, WKUIDe
         config.setURLSchemeHandler(BundleSchemeHandler(), forURLScheme: "speedready")
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        config.userContentController.add(self, name: "scanFolder")   // "Find books" in the library
         web = WKWebView(frame: .zero, configuration: config)
         web.isOpaque = false
         web.backgroundColor = UIColor(red: 0x10 / 255, green: 0x10 / 255, blue: 0x12 / 255, alpha: 1)
@@ -64,6 +66,32 @@ final class ReaderViewController: UIViewController, WKNavigationDelegate, WKUIDe
     }
 
     override var preferredStatusBarStyle: UIStatusBarStyle { lightPage ? .darkContent : .lightContent }
+
+    // MARK: "Find books": the reader picks a folder, we list its books, the page lets them choose which to add
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let folder = urls.first else { return }
+        BundleSchemeHandler.found.removeAll()
+        _ = folder.startAccessingSecurityScopedResource()   // kept open: the page reads the chosen books right after
+        var list: [[String: Any]] = []
+        let keys: [URLResourceKey] = [.fileSizeKey, .isRegularFileKey]
+        let walk = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles, .skipsPackageDescendants])
+        while let url = walk?.nextObject() as? URL, list.count < 500 {
+            guard ["epub", "txt"].contains(url.pathExtension.lowercased()),
+                  let v = try? url.resourceValues(forKeys: Set(keys)), v.isRegularFile == true else { continue }
+            let id = String(list.count)
+            BundleSchemeHandler.found[id] = url
+            list.append(["name": url.lastPathComponent, "size": v.fileSize ?? 0, "uri": id])
+        }
+        let json = (try? JSONSerialization.data(withJSONObject: list)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        web.evaluateJavaScript("booksFound(\(json))")
+    }
 
     // MARK: navigation: our pages stay, dictionary and source links go to Safari, <a download> becomes a download
 
@@ -127,9 +155,22 @@ final class ReaderViewController: UIViewController, WKNavigationDelegate, WKUIDe
 /// (file:// URLs cannot be fetched). Nothing outside web/ is reachable.
 final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
     private let root = Bundle.main.resourceURL!.appendingPathComponent("web").standardizedFileURL
+    /** What the last folder scan found, by the id the page was given: the only outside files ever served. */
+    static var found: [String: URL] = [:]
 
     func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
         guard let url = task.request.url else { return }
+        if url.path == "/device-file" {
+            let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "u" }?.value
+            if let id, let file = Self.found[id], let data = try? Data(contentsOf: file) {
+                task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/octet-stream", "Content-Length": String(data.count)])!)
+                task.didReceive(data)
+            } else {
+                task.didReceive(HTTPURLResponse(url: url, statusCode: 404, httpVersion: "HTTP/1.1", headerFields: [:])!)
+            }
+            task.didFinish()
+            return
+        }
         let path = url.path.isEmpty || url.path == "/" ? "index.html" : String(url.path.dropFirst())
         let file = root.appendingPathComponent(path).standardizedFileURL
         guard file.path.hasPrefix(root.path + "/"), let data = try? Data(contentsOf: file) else {
