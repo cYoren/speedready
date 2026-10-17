@@ -254,7 +254,7 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
   <h3 data-t="language">Language</h3>
   <div class="list" id="langs"></div>
   <h3 data-t="about">About</h3>
-  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.7</b></div>
+  <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.8</b></div>
   <div class="row"><label data-t="license">Code: MIT</label>
     <a class="btn" id="a-src" href="https://github.com/cYoren/speedready" target="_blank" rel="noopener" data-t="source">Source code</a></div>
   <p style="color:var(--dim);font-size:13px;line-height:1.5;margin:0">
@@ -1242,7 +1242,7 @@ $('#b-forget').onclick=()=>{if(confirm(T('forget_confirm'))){
 $('#file').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)await addBooks(fs)};
 $('#folder').onchange=e=>{const fs=[...e.target.files].filter(isBookFile);e.target.value='';booksFound(fs.map(f=>({name:f.name,size:f.size,file:f})))};
 $('#book-lang').onchange=async e=>{   // detection guessed wrong, or found nothing: the reader knows better
-  S.book.lang=e.target.value;if(S.book.id!=='starter')await saveBook(S.book).catch(()=>{});
+  S.book.lang=e.target.value;delete S.book.genders;if(S.book.id!=='starter')await saveBook(S.book).catch(()=>{});
   await loadBook(S.book,S.i);
 };
 $('#b-scan').onclick=()=>window.AndroidShell?AndroidShell.scanFolder():window.webkit?.messageHandlers?.scanFolder?webkit.messageHandlers.scanFolder.postMessage(''):$('#folder').click();
@@ -1269,6 +1269,7 @@ async function saveBook(book){
 }
 function buildLibrary(){
   $('#scan-hint').classList.toggle('hidden',!window.AndroidShell);
+  $('#gender-row').classList.toggle('hidden',S.book?.lang!==Gender.LANG);   // der/die/das only means something in German
   const sel=$('#book-lang');sel.replaceChildren(new Option(T('lang_other'),''),...Object.entries(S.bundle?.languages||{}).map(([c,n])=>new Option(n,c)));
   sel.value=S.book?.lang||'';
   const box=$('#library');box.replaceChildren();
