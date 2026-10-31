@@ -55,7 +55,7 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;p
 .c{display:flex;flex-direction:column;align-items:center;padding:1px 3px;border-radius:7px;line-height:1.2}
 .c .g{font-size:.56em;color:var(--gloss);line-height:1.4;min-height:1.4em;white-space:nowrap}
 .c.cur{background:var(--hl)}
-.c.g-m .w,#rsvp-word.g-m{color:var(--masc)}.c.g-f .w,#rsvp-word.g-f{color:var(--fem)}.c.g-n .w,#rsvp-word.g-n{color:var(--neut)}
+.c.g-m .w,#rsvp-word.g-m{color:var(--masc)}.c.g-f .w,#rsvp-word.g-f{color:var(--fem)}.c.g-n .w,#rsvp-word.g-n{color:var(--neut)}.c.g-c .w,#rsvp-word.g-c{color:var(--masc)}
 .c.read .w{color:var(--dim)}
 .c.unk .w{text-decoration:underline;text-decoration-color:var(--unk);text-underline-offset:3px}
 body.plain .c .g{display:none}
@@ -281,7 +281,7 @@ const UI={
      in_library:'in your library',none_found:'No .epub or .txt files in that folder',adding:'Adding {i} of {n}…',added_n:'{n} books added',
      remove_book:'Remove from library',remove_confirm:'Remove “{t}” from your library? Your place and bookmarks in it are forgotten too.',gloss_label:'Translation above the words',
      translate_into:'Translations in',dict_wait:'Translations for this book are still loading.',marks_need_pair:'To mark words, pick a translation language different from the book in Settings.',form_of:'form of',dict_loading:'Downloading the {pair} dictionary…',dict_failed:'No {pair} dictionary right now. Reading without translations.',
-     gender_label:'Colors for der, die, das',gender_hint:'German nouns in blue (der), red (die) or green (das)',
+     gender_label:'Colors for {key}',gender_hint:'Nouns in {list}',gender_colors:'blue|red|green',
      gloss_hint:'Shows your language above every word you have not marked as known',
      dark:'Dark mode',text_size:'Text size',tts_label:'Read aloud while it advances',
      tts_hint:'The device voice reads each sentence and the text follows it',
@@ -312,7 +312,7 @@ const UI={
      in_library:'já na biblioteca',none_found:'Nenhum arquivo .epub ou .txt nessa pasta',adding:'Adicionando {i} de {n}…',added_n:'{n} livros adicionados',
      remove_book:'Remover da biblioteca',remove_confirm:'Remover “{t}” da biblioteca? A posição e os marcadores dele também são esquecidos.',gloss_label:'Tradução acima das palavras',
      translate_into:'Traduções em',dict_wait:'As traduções deste livro ainda estão carregando.',marks_need_pair:'Para marcar palavras, escolha em Ajustes um idioma de tradução diferente do livro.',form_of:'forma de',dict_loading:'Baixando o dicionário {pair}…',dict_failed:'Dicionário {pair} indisponível agora. Lendo sem traduções.',
-     gender_label:'Cores para der, die, das',gender_hint:'Substantivos alemães em azul (der), vermelho (die) ou verde (das)',
+     gender_label:'Cores para {key}',gender_hint:'Substantivos em {list}',gender_colors:'azul|vermelho|verde',
      gloss_hint:'Mostra seu idioma acima de cada palavra que você ainda não marcou como sabida',
      dark:'Modo escuro',text_size:'Tamanho do texto',tts_label:'Ler em voz alta ao avançar',
      tts_hint:'A voz do aparelho lê cada frase e o texto acompanha',
@@ -343,7 +343,7 @@ const UI={
      in_library:'ya en tu biblioteca',none_found:'No hay archivos .epub ni .txt en esa carpeta',adding:'Añadiendo {i} de {n}…',added_n:'{n} libros añadidos',
      remove_book:'Quitar de la biblioteca',remove_confirm:'¿Quitar «{t}» de tu biblioteca? También se olvidan tu posición y tus marcadores.',gloss_label:'Traducción sobre las palabras',
      translate_into:'Traducciones en',dict_wait:'Las traducciones de este libro aún se están cargando.',marks_need_pair:'Para marcar palabras, elige en Ajustes un idioma de traducción distinto al del libro.',form_of:'forma de',dict_loading:'Descargando el diccionario {pair}…',dict_failed:'Ahora no hay diccionario {pair}. Lees sin traducciones.',
-     gender_label:'Colores para der, die, das',gender_hint:'Sustantivos alemanes en azul (der), rojo (die) o verde (das)',
+     gender_label:'Colores para {key}',gender_hint:'Sustantivos en {list}',gender_colors:'azul|rojo|verde',
      gloss_hint:'Muestra tu idioma sobre cada palabra que aún no marcaste como sabida',
      dark:'Modo oscuro',text_size:'Tamaño del texto',tts_label:'Leer en voz alta mientras avanza',
      tts_hint:'La voz del dispositivo lee cada frase y el texto la sigue',
@@ -374,7 +374,7 @@ const UI={
      in_library:'déjà dans ta bibliothèque',none_found:'Aucun fichier .epub ou .txt dans ce dossier',adding:'Ajout de {i} sur {n}…',added_n:'{n} livres ajoutés',
      remove_book:'Retirer de la bibliothèque',remove_confirm:'Retirer « {t} » de ta bibliothèque ? Ta position et tes marque-pages y sont aussi oubliés.',gloss_label:'Traduction au-dessus des mots',
      translate_into:'Traductions en',dict_wait:'Les traductions de ce livre sont encore en cours de chargement.',marks_need_pair:'Pour marquer des mots, choisis dans Réglages une langue de traduction différente de celle du livre.',form_of:'forme de',dict_loading:'Téléchargement du dictionnaire {pair}…',dict_failed:'Pas de dictionnaire {pair} pour l’instant. Lecture sans traductions.',
-     gender_label:'Couleurs pour der, die, das',gender_hint:'Noms allemands en bleu (der), rouge (die) ou vert (das)',
+     gender_label:'Couleurs pour {key}',gender_hint:'Noms en {list}',gender_colors:'bleu|rouge|vert',
      gloss_hint:'Affiche ta langue au-dessus de chaque mot que tu n’as pas marqué comme connu',
      dark:'Mode sombre',text_size:'Taille du texte',tts_label:'Lire à voix haute pendant l’avancée',
      tts_hint:'La voix de l’appareil lit chaque phrase et le texte la suit',
@@ -405,7 +405,7 @@ const UI={
      in_library:'schon in deiner Bibliothek',none_found:'Keine .epub- oder .txt-Dateien in diesem Ordner',adding:'Füge {i} von {n} hinzu…',added_n:'{n} Bücher hinzugefügt',
      remove_book:'Aus der Bibliothek entfernen',remove_confirm:'„{t}“ aus deiner Bibliothek entfernen? Deine Stelle und Lesezeichen darin werden auch vergessen.',gloss_label:'Übersetzung über den Wörtern',
      translate_into:'Übersetzungen auf',dict_wait:'Die Übersetzungen für dieses Buch laden noch.',marks_need_pair:'Um Wörter zu markieren, wähle in den Einstellungen eine andere Übersetzungssprache als die des Buchs.',form_of:'Form von',dict_loading:'Wörterbuch {pair} wird geladen…',dict_failed:'Gerade kein Wörterbuch {pair}. Du liest ohne Übersetzungen.',
-     gender_label:'Farben für der, die, das',gender_hint:'Deutsche Nomen in Blau (der), Rot (die) oder Grün (das)',
+     gender_label:'Farben für {key}',gender_hint:'Nomen in {list}',gender_colors:'Blau|Rot|Grün',
      gloss_hint:'Zeigt deine Sprache über jedem Wort, das du nicht als bekannt markiert hast',
      dark:'Dunkelmodus',text_size:'Textgröße',tts_label:'Beim Weiterlesen vorlesen',
      tts_hint:'Die Stimme des Geräts liest jeden Satz, der Text folgt ihr',
@@ -436,7 +436,7 @@ const UI={
      in_library:'già nella biblioteca',none_found:'Nessun file .epub o .txt in quella cartella',adding:'Aggiungo {i} di {n}…',added_n:'{n} libri aggiunti',
      remove_book:'Togli dalla biblioteca',remove_confirm:'Togliere «{t}» dalla biblioteca? Anche la posizione e i segnalibri vengono dimenticati.',gloss_label:'Traduzione sopra le parole',
      translate_into:'Traduzioni in',dict_wait:'Le traduzioni di questo libro si stanno ancora caricando.',marks_need_pair:'Per segnare le parole, scegli nelle Impostazioni una lingua di traduzione diversa da quella del libro.',form_of:'forma di',dict_loading:'Scarico il dizionario {pair}…',dict_failed:'Nessun dizionario {pair} al momento. Leggi senza traduzioni.',
-     gender_label:'Colori per der, die, das',gender_hint:'Nomi tedeschi in blu (der), rosso (die) o verde (das)',
+     gender_label:'Colori per {key}',gender_hint:'Nomi in {list}',gender_colors:'blu|rosso|verde',
      gloss_hint:'Mostra la tua lingua sopra ogni parola che non hai segnato come conosciuta',
      dark:'Modalità scura',text_size:'Dimensione del testo',tts_label:'Leggi ad alta voce mentre avanza',
      tts_hint:'La voce del dispositivo legge ogni frase e il testo la segue',
@@ -467,7 +467,7 @@ const UI={
      in_library:'al in je bibliotheek',none_found:'Geen .epub- of .txt-bestanden in die map',adding:'{i} van {n} toevoegen…',added_n:'{n} boeken toegevoegd',
      remove_book:'Uit bibliotheek verwijderen',remove_confirm:'“{t}” uit je bibliotheek verwijderen? Je plek en bladwijzers erin worden ook vergeten.',gloss_label:'Vertaling boven de woorden',
      translate_into:'Vertalingen in',dict_wait:'De vertalingen voor dit boek worden nog geladen.',marks_need_pair:'Kies in Instellingen een andere vertaaltaal dan die van het boek om woorden te markeren.',form_of:'vorm van',dict_loading:'Woordenboek {pair} downloaden…',dict_failed:'Nu geen woordenboek {pair}. Je leest zonder vertalingen.',
-     gender_label:'Kleuren voor der, die, das',gender_hint:'Duitse zelfstandige naamwoorden in blauw (der), rood (die) of groen (das)',
+     gender_label:'Kleuren voor {key}',gender_hint:'Zelfstandige naamwoorden in {list}',gender_colors:'blauw|rood|groen',
      gloss_hint:'Toont je taal boven elk woord dat je niet als bekend hebt gemarkeerd',
      dark:'Donkere modus',text_size:'Tekstgrootte',tts_label:'Voorlezen tijdens het lezen',
      tts_hint:'De stem van het apparaat leest elke zin en de tekst volgt',
@@ -498,7 +498,7 @@ const UI={
      in_library:'już w bibliotece',none_found:'W tym folderze nie ma plików .epub ani .txt',adding:'Dodaję {i} z {n}…',added_n:'Dodano książki: {n}',
      remove_book:'Usuń z biblioteki',remove_confirm:'Usunąć „{t}” z biblioteki? Twoje miejsce i zakładki w niej też zostaną zapomniane.',gloss_label:'Tłumaczenie nad słowami',
      translate_into:'Tłumaczenia na',dict_wait:'Tłumaczenia tej książki jeszcze się wczytują.',marks_need_pair:'Aby oznaczać słowa, wybierz w Ustawieniach język tłumaczenia inny niż język książki.',form_of:'forma od',dict_loading:'Pobieram słownik {pair}…',dict_failed:'Teraz brak słownika {pair}. Czytasz bez tłumaczeń.',
-     gender_label:'Kolory dla der, die, das',gender_hint:'Niemieckie rzeczowniki na niebiesko (der), czerwono (die) lub zielono (das)',
+     gender_label:'Kolory dla {key}',gender_hint:'Rzeczowniki na {list}',gender_colors:'niebiesko|czerwono|zielono',
      gloss_hint:'Pokazuje twój język nad każdym słowem, którego nie oznaczono jako znane',
      dark:'Tryb ciemny',text_size:'Rozmiar tekstu',tts_label:'Czytaj na głos podczas przesuwania',
      tts_hint:'Głos urządzenia czyta każde zdanie, a tekst za nim podąża',
@@ -529,7 +529,7 @@ const UI={
      in_library:'уже в библиотеке',none_found:'В этой папке нет файлов .epub или .txt',adding:'Добавляю {i} из {n}…',added_n:'Добавлено книг: {n}',
      remove_book:'Убрать из библиотеки',remove_confirm:'Убрать «{t}» из библиотеки? Место чтения и закладки в ней тоже забудутся.',gloss_label:'Перевод над словами',
      translate_into:'Переводы на',dict_wait:'Переводы для этой книги ещё загружаются.',marks_need_pair:'Чтобы отмечать слова, выбери в Настройках язык перевода, отличный от языка книги.',form_of:'форма слова',dict_loading:'Загружаю словарь {pair}…',dict_failed:'Словаря {pair} сейчас нет. Читаешь без переводов.',
-     gender_label:'Цвета для der, die, das',gender_hint:'Немецкие существительные синим (der), красным (die) или зелёным (das)',
+     gender_label:'Цвета для {key}',gender_hint:'Существительные {list}',gender_colors:'синим|красным|зелёным',
      gloss_hint:'Показывает твой язык над каждым словом, которое ты не отметил как знакомое',
      dark:'Тёмная тема',text_size:'Размер текста',tts_label:'Читать вслух по ходу',
      tts_hint:'Голос устройства читает каждое предложение, а текст следует за ним',
@@ -560,7 +560,7 @@ const UI={
      in_library:'redan i biblioteket',none_found:'Inga .epub- eller .txt-filer i den mappen',adding:'Lägger till {i} av {n}…',added_n:'{n} böcker tillagda',
      remove_book:'Ta bort från biblioteket',remove_confirm:'Ta bort ”{t}” från biblioteket? Din plats och dina bokmärken i den glöms också.',gloss_label:'Översättning ovanför orden',
      translate_into:'Översättningar på',dict_wait:'Översättningarna för boken laddas fortfarande.',marks_need_pair:'För att markera ord, välj i Inställningar ett annat översättningsspråk än bokens.',form_of:'form av',dict_loading:'Laddar ner ordboken {pair}…',dict_failed:'Ingen ordbok {pair} just nu. Du läser utan översättningar.',
-     gender_label:'Färger för der, die, das',gender_hint:'Tyska substantiv i blått (der), rött (die) eller grönt (das)',
+     gender_label:'Färger för {key}',gender_hint:'Substantiv i {list}',gender_colors:'blått|rött|grönt',
      gloss_hint:'Visar ditt språk ovanför varje ord du inte har markerat som känt',
      dark:'Mörkt läge',text_size:'Textstorlek',tts_label:'Läs högt medan den går framåt',
      tts_hint:'Enhetens röst läser varje mening och texten följer med',
@@ -605,7 +605,7 @@ function applyLang(){
   });
   document.querySelectorAll('[data-t-aria]').forEach(el=>el.setAttribute('aria-label',T(el.dataset.tAria)));
   $('#play').textContent=S.playing?T('pause'):(S.i>0?T('resume'):T('start'));
-  buildVoiceList();buildLangList();
+  buildVoiceList();buildLangList();genderLabels();
 }
 
 //////////////////// state ////////////////////
@@ -617,7 +617,7 @@ const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],p
          wpm:LS.get('wpm',120),gloss:LS.get('gloss',true),dark:LS.get('dark',!matchMedia('(prefers-color-scheme: light)').matches),
          size:LS.get('size',19),tts:LS.get('tts',false),learned:new Set(LS.get('learned',[])),
          voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false,
-         genderOn:LS.get('gender',true),genderData:null,bundled:null,native:LS.get('native',null)};
+         genderOn:LS.get('gender',true),bundled:null,native:LS.get('native',null)};
 const $=s=>document.querySelector(s), page=$('#page');
 let toastTimer=null;
 function toast(msg){
@@ -751,11 +751,24 @@ function renderPage(i){
   }
   page.replaceChildren(frag);
 }
-// German noun genders, computed once per book (gender.js); off for other languages or when switched off
+// Noun genders, computed once per book (gender.js) for the languages it knows; each language's data is
+// fetched the first time a book in it opens. Off for other languages or when switched off.
 function genderAt(i){return S.genderOn&&S.book.genders?S.book.genders[i]:null}
+const genderData={};
 function computeGenders(){
-  const b=S.book; if(!b||b.genders||b.lang!==Gender.LANG||!S.genderData)return;
-  b.genders=Gender.genders(b.words,S.genderData,b.para);
+  const b=S.book; if(!b||b.genders||!Gender.LANGS.includes(b.lang))return;
+  const lang=b.lang;
+  (genderData[lang]??=Gender.load('genders-'+lang+'.json.gz').catch(()=>{delete genderData[lang];return null})).then(d=>{
+    if(!d||S.book!==b||b.genders)return;
+    b.genders=Gender.tag(b.words,d,lang,b.para);
+    if(S.genderOn){renderPage(S.i);show(false)}
+  });
+}
+function genderLabels(){   // 'Colors for el, la' / 'Nouns in blue (el), red (la)' for the open book's language
+  const key=Gender.KEY[S.book?.lang];if(!key)return;
+  const color=T('gender_colors').split('|'),slot={m:0,c:0,f:1,n:2};
+  const label=$('#gender-row label');label.firstChild.textContent=T('gender_label').replace('{key}',Object.values(key).join(', '));
+  label.querySelector('small').textContent=T('gender_hint').replace('{list}',Object.entries(key).map(([g,a])=>`${color[slot[g]]} (${a})`).join(', '));
 }
 function refreshGlosses(){
   if(!S.cells.length)return;
@@ -1196,7 +1209,6 @@ async function boot(){
   document.body.classList.toggle('plain',!S.gloss);
   try{
     S.bundle=await fetchJSON('bundle.json');
-    const genders=Gender.load('genders-de.json.gz').catch(()=>null);
     S.dict=S.bundled=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%');
     for(const[set,key]of[[S.learned,'learned'],[S.unknown,'unknown']]){   // words saved before 1.0.6 were all learned in the bundled language
       const old=[...set].filter(x=>!x.includes(':'));if(!old.length)continue;
@@ -1204,7 +1216,6 @@ async function boot(){
     }
     if(!S.native||!S.bundle.languages[S.native])S.native=S.bundle.languages[S.ui]?S.ui:S.bundled.tgt;   // first run: the interface language
     buildNativeList();
-    S.genderData=await genders;
     $('#splash-msg').textContent=T('opening');
     const last=LS.get('lastBook','starter');   // your own book, where you left it
     await loadBook(last&&last!=='starter'&&await libraryBook(last)||await starterBook());
@@ -1316,7 +1327,7 @@ async function saveBook(book){
 }
 function buildLibrary(){
   $('#scan-hint').classList.toggle('hidden',!window.AndroidShell);
-  $('#gender-row').classList.toggle('hidden',S.book?.lang!==Gender.LANG);   // der/die/das only means something in German
+  $('#gender-row').classList.toggle('hidden',!Gender.LANGS.includes(S.book?.lang));genderLabels();
   const sel=$('#book-lang');sel.replaceChildren(new Option(T('lang_other'),''),...Object.entries(S.bundle?.languages||{}).map(([c,n])=>new Option(n,c)));
   sel.value=S.book?.lang||'';
   const box=$('#library');box.replaceChildren();
