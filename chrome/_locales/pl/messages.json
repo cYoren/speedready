@@ -1,0 +1,41 @@
+{
+ "extName": {
+  "message": "Speedready: szybkie czytanie stron, PDF i nauka języków"
+ },
+ "extDescription": {
+  "message": "Czytaj strony i PDF szybciej, ze wskaźnikiem albo słowo po słowie. Tłumaczenie nad słowami pomaga w nauce języka."
+ },
+ "readPage": {
+  "message": "Szybko przeczytaj tę stronę"
+ },
+ "readSelection": {
+  "message": "Szybko przeczytaj zaznaczenie"
+ },
+ "openLibrary": {
+  "message": "Otwórz moją bibliotekę"
+ },
+ "readToday": {
+  "message": "Słowa dziś"
+ },
+ "streak": {
+  "message": "Dni z rzędu"
+ },
+ "shortcutHint": {
+  "message": "{key} na każdej stronie"
+ },
+ "selectionTip": {
+  "message": "Kliknij prawym zaznaczony tekst, by przeczytać tylko ten fragment"
+ },
+ "phoneApp": {
+  "message": "Speedready na telefonie i komputerze"
+ },
+ "datalyst": {
+  "message": "Datalyst: śledź nawyki i zobacz, co wpływa na skupienie"
+ },
+ "close": {
+  "message": "Zamknij"
+ },
+ "pdfBlocked": {
+  "message": "Chrome nie udostępnił tego PDF rozszerzeniu. Pobierz go i dodaj w Książki ☰."
+ }
+}
