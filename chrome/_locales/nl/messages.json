@@ -1,0 +1,41 @@
+{
+ "extName": {
+  "message": "Speedready: snellezen voor pagina’s, pdf’s en talen"
+ },
+ "extDescription": {
+  "message": "Lees webpagina’s en pdf’s sneller, met een meelopende markering of woord voor woord. Vertalingen boven de woorden helpen bij talen."
+ },
+ "readPage": {
+  "message": "Deze pagina snellezen"
+ },
+ "readSelection": {
+  "message": "Selectie snellezen"
+ },
+ "openLibrary": {
+  "message": "Mijn bibliotheek openen"
+ },
+ "readToday": {
+  "message": "Woorden vandaag"
+ },
+ "streak": {
+  "message": "Dagen op rij"
+ },
+ "shortcutHint": {
+  "message": "{key} op elke pagina"
+ },
+ "selectionTip": {
+  "message": "Klik met rechts op geselecteerde tekst om alleen dat deel te lezen"
+ },
+ "phoneApp": {
+  "message": "Speedready op je telefoon en computer"
+ },
+ "datalyst": {
+  "message": "Datalyst: volg gewoontes en zie wat je focus beïnvloedt"
+ },
+ "close": {
+  "message": "Sluiten"
+ },
+ "pdfBlocked": {
+  "message": "Chrome geeft deze pdf niet vrij voor de extensie. Download hem en voeg hem toe bij Boeken ☰."
+ }
+}

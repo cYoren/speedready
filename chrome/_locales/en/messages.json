@@ -1,0 +1,41 @@
+{
+ "extName": {
+  "message": "Speedready: Speed Reader for Pages, PDFs and Languages"
+ },
+ "extDescription": {
+  "message": "Read web pages and PDFs faster, with a moving pacer or one word at a time. Translations over each word help you learn a language."
+ },
+ "readPage": {
+  "message": "Speed read this page"
+ },
+ "readSelection": {
+  "message": "Speed read the selection"
+ },
+ "openLibrary": {
+  "message": "Open my library"
+ },
+ "readToday": {
+  "message": "Words today"
+ },
+ "streak": {
+  "message": "Days in a row"
+ },
+ "shortcutHint": {
+  "message": "{key} on any page"
+ },
+ "selectionTip": {
+  "message": "Right-click selected text to read just that part"
+ },
+ "phoneApp": {
+  "message": "Speedready on your phone and computer"
+ },
+ "datalyst": {
+  "message": "Datalyst: track habits and see what affects your focus"
+ },
+ "close": {
+  "message": "Close"
+ },
+ "pdfBlocked": {
+  "message": "Chrome kept this PDF from the extension. Download it and add it in Books ☰."
+ }
+}

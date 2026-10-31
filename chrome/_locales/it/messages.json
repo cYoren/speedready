@@ -1,0 +1,41 @@
+{
+ "extName": {
+  "message": "Speedready: lettura veloce di pagine, PDF e lingue"
+ },
+ "extDescription": {
+  "message": "Leggi pagine web e PDF più in fretta, con una guida che scorre o una parola alla volta. La traduzione sopra le parole aiuta."
+ },
+ "readPage": {
+  "message": "Lettura veloce di questa pagina"
+ },
+ "readSelection": {
+  "message": "Lettura veloce della selezione"
+ },
+ "openLibrary": {
+  "message": "Apri la mia biblioteca"
+ },
+ "readToday": {
+  "message": "Parole oggi"
+ },
+ "streak": {
+  "message": "Giorni di fila"
+ },
+ "shortcutHint": {
+  "message": "{key} su qualsiasi pagina"
+ },
+ "selectionTip": {
+  "message": "Clic destro su un testo selezionato per leggere solo quella parte"
+ },
+ "phoneApp": {
+  "message": "Speedready su telefono e computer"
+ },
+ "datalyst": {
+  "message": "Datalyst: segui le abitudini e scopri cosa influisce sulla concentrazione"
+ },
+ "close": {
+  "message": "Chiudi"
+ },
+ "pdfBlocked": {
+  "message": "Chrome non ha dato questo PDF all’estensione. Scaricalo e aggiungilo in Libri ☰."
+ }
+}

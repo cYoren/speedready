@@ -19,3 +19,6 @@ android/app/build/
 local.properties
 android/local.properties
 .asc/
+
+# Chrome extension build output (python3 tools/build_chrome.py)
+dist/
