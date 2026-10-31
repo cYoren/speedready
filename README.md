@@ -86,6 +86,16 @@ python tools/build_genders.py ~/.cache/speedready/build/en-German.jsonl.gz
 python gender.py   # self-check
 ```
 
+The web reader and the Chrome extension also color nouns in Spanish, French, Italian, Portuguese, Russian,
+Polish, Dutch (de/het) and Swedish (en/ett): `Gender.tag()` in `web/gender.js`. There a word is a noun when the
+Wiktionary data says so; a spelling that is also a common other word (`est`, `parte`) is only colored after an
+article, which also picks between two genders. Each language's data, `web/genders-<lang>.json.gz` (0.2 to 0.8 MB),
+loads the first time a book in that language opens. `tests/test_gender_languages.py` checks one sentence each.
+
+```
+python tools/build_genders_more.py   # all eight, from the same kaikki.org extracts
+```
+
 ## Web version (any phone or browser)
 
 `web/` is a self-contained reader for learners, and it is also what the Android and iOS

@@ -21,6 +21,7 @@ LEARN A LANGUAGE WHILE YOU READ
 • Read pages in German, English, Spanish, French, Italian, Dutch, Polish, Portuguese, Russian or Swedish
 • A short translation sits over each word, in your own language, so you never stop to look things up
 • Mark words as known or still learning and export them to Anki
+• See the gender of every noun in color: der, die, das in German, el and la in Spanish, le and la in French, and the same in Italian, Portuguese, Russian, Polish, Dutch and Swedish
 • Read aloud with the voices already on your computer
 
 BUILD A READING HABIT
@@ -51,6 +52,7 @@ APRENDA UM IDIOMA ENQUANTO LÊ
 • Leia páginas em alemão, inglês, espanhol, francês, italiano, holandês, polonês, português, russo ou sueco
 • Uma tradução curta fica sobre cada palavra, no seu idioma, para você não parar para procurar
 • Marque palavras como conhecidas ou em aprendizado e exporte para o Anki
+• Veja o gênero de cada substantivo em cores: der, die, das no alemão, el e la no espanhol, le e la no francês, e o mesmo em italiano, português, russo, polonês, holandês e sueco
 • Leitura em voz alta com as vozes que já estão no seu computador
 
 CRIE O HÁBITO DE LER
