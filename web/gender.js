@@ -1,4 +1,5 @@
-// German noun genders for a list of words: 'm', 'f', 'n' or null per word.
+// Noun genders for a list of words: 'm', 'f', 'n', 'c' (common: Dutch de, Swedish en) or null per word.
+// German, below, has its own rules; tag() covers the other languages.
 // Line-for-line port of gender.py (read its docstring for the why); tests/test_web_parity.py runs both
 // over a whole book and fails on any difference, so change them together.
 // Works as a page script (window.Gender), a browser-extension content script, or a Node module.
@@ -69,6 +70,59 @@
     }
     return out;
   }
-  const Gender={LANG:'de',load,genders,readings};   // German only: the one language whose nouns carry a gender this data knows
+
+  // Other languages (genders-<lang>.json.gz from tools/build_genders_more.py): nouns are lowercase, so a word
+  // is a noun when the data says so; one marked * is also a common other word and is only colored after an
+  // article. The article also picks between two genders ('el/la parte'). Allowed readings per article:
+  // m f n c singular, M F N C plural; '' = an article that says nothing about gender (l', les).
+  const ROM={   // [masc sing, fem sing, masc pl, fem pl] word lists
+    es:[['el','un','del','al','este','ese','aquel','otro','mucho','nuestro','vuestro','todo','ningún','algún','cierto'],['la','una','esta','esa','aquella','otra','mucha','nuestra','vuestra','toda','ninguna','alguna','cierta'],
+        ['los','unos','estos','esos','aquellos','otros','muchos','nuestros','vuestros','todos','algunos'],['las','unas','estas','esas','aquellas','otras','muchas','nuestras','vuestras','todas','algunas']],
+    fr:[['le','un','du','au','ce','cet','mon','ton','son','quel','aucun','nul'],['la','une','cette','ma','ta','sa','quelle','aucune','nulle'],[],[]],
+    it:[['il','lo','un','uno','del','dello','al','allo','nel','nello','sul','sullo','dal','dallo','questo','quel','quello','mio','tuo','suo','nostro','vostro'],['la','una','della','alla','nella','sulla','dalla','questa','quella','mia','tua','sua','nostra','vostra'],
+        ['i','gli','dei','degli','ai','agli','nei','negli','sui','sugli','dai','dagli','questi','quei','quegli','miei','tuoi','suoi','nostri','vostri'],['le','delle','alle','nelle','sulle','dalle','queste','quelle','mie','tue','sue','nostre','vostre']],
+    pt:[['o','um','do','no','ao','pelo','dum','num','este','esse','aquele','deste','desse','neste','nesse','meu','teu','seu','nosso','vosso'],['a','uma','da','na','à','pela','duma','numa','esta','essa','aquela','desta','dessa','nesta','nessa','minha','tua','sua','nossa','vossa'],
+        ['os','uns','dos','nos','aos','pelos','estes','esses','aqueles','meus','teus','seus','nossos'],['as','umas','das','nas','às','pelas','estas','essas','aquelas','minhas','tuas','suas','nossas']]};
+  const ART={};
+  for(const[lang,[m,f,M,F]]of Object.entries(ROM)){const a=ART[lang]={};
+    m.forEach(w=>a[w]='m');f.forEach(w=>a[w]='f');M.forEach(w=>a[w]='M');F.forEach(w=>a[w]='F')}
+  for(const w of['les','des','aux','ces','mes','tes','ses','nos','vos','leurs'])ART.fr[w]='MF';
+  for(const w of["l'","l’"])ART.fr[w]=ART.it[w]='';
+  for(const[w,r]of[["un'",'f'],["dell'",''],["all'",''],["nell'",''],["sull'",''],["dall'",''],["quell'",'']]){ART.it[w]=r;ART.it[w.replace("'",'’')]=r}
+  ART.nl={de:'cC',het:'n',een:'cn',deze:'cC',dit:'n',die:'cC',dat:'n',elk:'n',elke:'c',geen:'',mijn:'',zijn:'',haar:'',ons:'n',onze:'cC'};
+  ART.sv={en:'c',ett:'n',den:'c',det:'n',min:'c',mitt:'n',din:'c',ditt:'n',sin:'c',sitt:'n',vår:'c',vårt:'n',någon:'c',något:'n',ingen:'c',inget:'n',denna:'c',detta:'n',de:'CN',dessa:'CN'};
+  ART.ru=ART.pl={};   // no articles: only words that are always nouns get a color
+  const ELIDE=/^(.*?['’])(\p{L}.*)$/u;
+  function article(words,i,lang,data){   // the article in front, over up to two words that are not nouns ('la vieja casa')
+    for(let j=i-1;j>=Math.max(0,i-3);j--){
+      const w=words[j];if(END.test(w)||/[,;]$/.test(w))return null;
+      const t=bare(w).toLowerCase();
+      if(Object.hasOwn(ART[lang],t))return ART[lang][t];
+      const r=Object.hasOwn(data,t)?data[t]:'';if(r&&!r.endsWith('*'))return null;
+    }
+    return null;
+  }
+  function tag(words,data,lang,paraStart=[]){
+    if(lang==='de')return genders(words,data,paraStart);
+    const starts=new Set(paraStart),out=[];
+    for(let i=0;i<words.length;i++){
+      let w=bare(words[i]),art=null;
+      const el=ELIDE.exec(w);if(el&&Object.hasOwn(ART[lang],el[1].toLowerCase())){art=ART[lang][el[1].toLowerCase()];w=el[2]}   // l'eau, dell'anno
+      if(w.length<2||allUpper(w)){out.push(null);continue}
+      const first=i===0||starts.has(i)||END.test(words[i-1])||OPEN.test(words[i]);
+      if(isUpper(w[0])&&!first){out.push(null);continue}   // a name, mid-sentence
+      const lw=w.toLowerCase(),r=Object.hasOwn(data,lw)?data[lw]:'';
+      if(art===null)art=article(words,i,lang,data);
+      if(!r||r.endsWith('*')&&art===null){out.push(null);continue}
+      const rs=r.replace(/\*$/,''),ok=art?[...rs].filter(x=>art.includes(x)):[];
+      const x=(ok.length?ok:[...rs])[0];   // an article that fits no reading ('el agua') leaves the dictionary's
+      out.push(x==='P'?null:x.toLowerCase());
+    }
+    return out;
+  }
+  // Shown in Settings: what each color means in that language.
+  const KEY={de:{m:'der',f:'die',n:'das'},es:{m:'el',f:'la'},fr:{m:'le',f:'la'},it:{m:'il',f:'la'},pt:{m:'o',f:'a'},
+    ru:{m:'он',f:'она',n:'оно'},pl:{m:'ten',f:'ta',n:'to'},nl:{c:'de',n:'het'},sv:{c:'en',n:'ett'}};
+  const Gender={LANG:'de',LANGS:Object.keys(KEY),KEY,load,genders,readings,tag};
   if(typeof module!=='undefined'&&module.exports)module.exports=Gender;else root.Gender=Gender;
 })(typeof self!=='undefined'?self:this);
