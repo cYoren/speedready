@@ -1,0 +1,41 @@
+{
+ "extName": {
+  "message": "Speedready : lecture rapide de pages, PDF et langues"
+ },
+ "extDescription": {
+  "message": "Lis pages web et PDF plus vite, avec un guide qui avance ou un mot à la fois. La traduction au-dessus des mots aide à apprendre."
+ },
+ "readPage": {
+  "message": "Lecture rapide de cette page"
+ },
+ "readSelection": {
+  "message": "Lecture rapide de la sélection"
+ },
+ "openLibrary": {
+  "message": "Ouvrir ma bibliothèque"
+ },
+ "readToday": {
+  "message": "Mots aujourd’hui"
+ },
+ "streak": {
+  "message": "Jours d’affilée"
+ },
+ "shortcutHint": {
+  "message": "{key} sur n’importe quelle page"
+ },
+ "selectionTip": {
+  "message": "Clic droit sur un texte sélectionné pour ne lire que ce passage"
+ },
+ "phoneApp": {
+  "message": "Speedready sur ton téléphone et ton ordinateur"
+ },
+ "datalyst": {
+  "message": "Datalyst : suis tes habitudes et vois ce qui joue sur ta concentration"
+ },
+ "close": {
+  "message": "Fermer"
+ },
+ "pdfBlocked": {
+  "message": "Chrome a bloqué ce PDF pour l’extension. Télécharge-le et ajoute-le dans Livres ☰."
+ }
+}

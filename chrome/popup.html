@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="popup.css">
+<script src="popup.js" type="module"></script>
+
+<header>
+  <img src="icons/48.png" alt="" width="28" height="28">
+  <b>Speedready</b>
+</header>
+
+<section class="today" aria-live="polite">
+  <div class="row"><span data-i18n="readToday"></span><b id="today"></b></div>
+  <div class="bar"><div id="fill"></div></div>
+  <div class="row"><span data-i18n="streak"></span><b id="streak"></b></div>
+</section>
+
+<button id="read" class="primary" type="button" data-i18n="readPage"></button>
+<button id="library" type="button" data-i18n="openLibrary"></button>
+<p class="hint"><span id="shortcut"></span><span data-i18n="selectionTip"></span></p>
+
+<footer>
+  <a id="phone" href="https://speedready.vercel.app/?utm_source=chrome&amp;utm_medium=popup" target="_blank" rel="noopener" data-i18n="phoneApp"></a>
+  <a id="datalyst" href="https://www.datalyst.one/?utm_source=speedready-chrome&amp;utm_medium=popup" target="_blank" rel="noopener" data-i18n="datalyst"></a>
+</footer>
+</html>

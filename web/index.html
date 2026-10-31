@@ -207,7 +207,7 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
     <button class="btn" id="b-scan" data-t="find_books">Find books on this device</button>
   </div>
   <p class="hint hidden" id="scan-hint" data-t="scan_hint_android">Android cannot open the whole Download folder: pick the folder your books are in.</p>
-  <input type="file" id="file" multiple accept=".epub,.txt,application/epub+zip,text/plain" hidden>
+  <input type="file" id="file" multiple accept=".epub,.pdf,.txt,application/epub+zip,application/pdf,text/plain" hidden>
   <input type="file" id="folder" webkitdirectory hidden>
   <h3 data-t="chapters">Chapters</h3>
   <div class="list" id="chapters"></div>
@@ -245,6 +245,9 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
   <h3 data-t="progress">Your progress</h3>
   <div class="row"><label data-t="words_known">Words you already know</label><b id="n-learned">0</b></div>
   <div class="row"><label data-t="unknown_words">Words you are learning</label><b id="n-unknown">0</b></div>
+  <div class="row"><label data-t="read_today">Read today</label><b id="n-today">0</b></div>
+  <div class="row"><label data-t="streak">Days in a row</label><b id="n-streak">0</b></div>
+  <div class="row"><label for="goal" data-t="daily_goal">Daily goal (words)</label><select id="goal"></select></div>
   <div class="actions">
     <button class="btn" id="b-export" data-t="export">Export for Anki</button>
     <button class="btn" id="b-forget" data-t="forget_all">Forget all</button>
@@ -282,7 +285,7 @@ const UI={
      gloss_hint:'Shows your language above every word you have not marked as known',
      dark:'Dark mode',text_size:'Text size',tts_label:'Read aloud while it advances',
      tts_hint:'The device voice reads each sentence and the text follows it',
-     voice_speed:'Voice speed',voice:'Voice',progress:'Your progress',words_known:'Words you already know',
+     voice_speed:'Voice speed',voice:'Voice',progress:'Your progress',words_known:'Words you already know',read_today:'Read today',streak:'Days in a row',daily_goal:'Daily goal (words)',goal_done:'Daily goal reached. Days in a row: {n}',no_text_pdf:'No text found in this PDF',
      forget_all:'Forget all',about:'About',language:'Language',
      about_text:'Offline dictionary built from Wiktionary. Dictionary data: CC BY-SA 4.0. Starter book: Japanische Märchen, public domain, from Project Gutenberg. Everything works without a connection after the first load.',
      no_chapters:'This book has no chapters.',no_entry:'This word is not in the offline dictionary. Tap Dictionary to look it up online.',
@@ -313,7 +316,7 @@ const UI={
      gloss_hint:'Mostra seu idioma acima de cada palavra que você ainda não marcou como sabida',
      dark:'Modo escuro',text_size:'Tamanho do texto',tts_label:'Ler em voz alta ao avançar',
      tts_hint:'A voz do aparelho lê cada frase e o texto acompanha',
-     voice_speed:'Velocidade da voz',voice:'Voz',progress:'Seu progresso',words_known:'Palavras que você já sabe',
+     voice_speed:'Velocidade da voz',voice:'Voz',progress:'Seu progresso',words_known:'Palavras que você já sabe',read_today:'Lido hoje',streak:'Dias seguidos',daily_goal:'Meta diária (palavras)',goal_done:'Meta do dia cumprida. Dias seguidos: {n}',no_text_pdf:'Nenhum texto encontrado neste PDF',
      forget_all:'Esquecer todas',about:'Sobre',language:'Idioma',
      about_text:'Dicionário offline feito a partir do Wiktionary. Dados do dicionário: CC BY-SA 4.0. Livro inicial: Japanische Märchen, domínio público, do Project Gutenberg. Tudo funciona sem conexão depois da primeira abertura.',
      no_chapters:'Este livro não tem capítulos.',no_entry:'Esta palavra não está no dicionário offline. Toque em Dicionário para ver na internet.',
@@ -344,7 +347,7 @@ const UI={
      gloss_hint:'Muestra tu idioma sobre cada palabra que aún no marcaste como sabida',
      dark:'Modo oscuro',text_size:'Tamaño del texto',tts_label:'Leer en voz alta mientras avanza',
      tts_hint:'La voz del dispositivo lee cada frase y el texto la sigue',
-     voice_speed:'Velocidad de la voz',voice:'Voz',progress:'Tu progreso',words_known:'Palabras que ya sabes',
+     voice_speed:'Velocidad de la voz',voice:'Voz',progress:'Tu progreso',words_known:'Palabras que ya sabes',read_today:'Leído hoy',streak:'Días seguidos',daily_goal:'Meta diaria (palabras)',goal_done:'Meta del día cumplida. Días seguidos: {n}',no_text_pdf:'No hay texto en este PDF',
      forget_all:'Olvidar todo',about:'Acerca de',language:'Idioma',
      about_text:'Diccionario sin conexión hecho con Wiktionary. Datos del diccionario: CC BY-SA 4.0. Libro de inicio: Japanische Märchen, dominio público, de Project Gutenberg. Tras la primera carga todo funciona sin conexión.',
      no_chapters:'Este libro no tiene capítulos.',no_entry:'Esta palabra no está en el diccionario sin conexión. Toca Diccionario para buscarla en línea.',
@@ -375,7 +378,7 @@ const UI={
      gloss_hint:'Affiche ta langue au-dessus de chaque mot que tu n’as pas marqué comme connu',
      dark:'Mode sombre',text_size:'Taille du texte',tts_label:'Lire à voix haute pendant l’avancée',
      tts_hint:'La voix de l’appareil lit chaque phrase et le texte la suit',
-     voice_speed:'Vitesse de la voix',voice:'Voix',progress:'Ta progression',words_known:'Mots que tu connais déjà',
+     voice_speed:'Vitesse de la voix',voice:'Voix',progress:'Ta progression',words_known:'Mots que tu connais déjà',read_today:'Lu aujourd’hui',streak:'Jours d’affilée',daily_goal:'Objectif du jour (mots)',goal_done:'Objectif du jour atteint. Jours d’affilée : {n}',no_text_pdf:'Aucun texte dans ce PDF',
      forget_all:'Tout oublier',about:'À propos',language:'Langue',
      about_text:'Dictionnaire hors ligne construit à partir du Wiktionnaire. Données : CC BY-SA 4.0. Livre de départ : Japanische Märchen, domaine public, du Project Gutenberg. Après le premier chargement, tout marche sans connexion.',
      no_chapters:'Ce livre n’a pas de chapitres.',no_entry:'Ce mot n’est pas dans le dictionnaire hors ligne. Touche Dictionnaire pour le chercher en ligne.',
@@ -406,7 +409,7 @@ const UI={
      gloss_hint:'Zeigt deine Sprache über jedem Wort, das du nicht als bekannt markiert hast',
      dark:'Dunkelmodus',text_size:'Textgröße',tts_label:'Beim Weiterlesen vorlesen',
      tts_hint:'Die Stimme des Geräts liest jeden Satz, der Text folgt ihr',
-     voice_speed:'Sprechtempo',voice:'Stimme',progress:'Dein Fortschritt',words_known:'Wörter, die du schon kennst',
+     voice_speed:'Sprechtempo',voice:'Stimme',progress:'Dein Fortschritt',words_known:'Wörter, die du schon kennst',read_today:'Heute gelesen',streak:'Tage in Folge',daily_goal:'Tagesziel (Wörter)',goal_done:'Tagesziel erreicht. Tage in Folge: {n}',no_text_pdf:'Kein Text in diesem PDF',
      forget_all:'Alles vergessen',about:'Über',language:'Sprache',
      about_text:'Offline-Wörterbuch aus Wiktionary. Wörterbuchdaten: CC BY-SA 4.0. Startbuch: Japanische Märchen, gemeinfrei, von Project Gutenberg. Nach dem ersten Laden funktioniert alles ohne Verbindung.',
      no_chapters:'Dieses Buch hat keine Kapitel.',no_entry:'Dieses Wort ist nicht im Offline-Wörterbuch. Tippe auf Wörterbuch, um es online nachzuschlagen.',
@@ -437,7 +440,7 @@ const UI={
      gloss_hint:'Mostra la tua lingua sopra ogni parola che non hai segnato come conosciuta',
      dark:'Modalità scura',text_size:'Dimensione del testo',tts_label:'Leggi ad alta voce mentre avanza',
      tts_hint:'La voce del dispositivo legge ogni frase e il testo la segue',
-     voice_speed:'Velocità della voce',voice:'Voce',progress:'I tuoi progressi',words_known:'Parole che conosci già',
+     voice_speed:'Velocità della voce',voice:'Voce',progress:'I tuoi progressi',words_known:'Parole che conosci già',read_today:'Letto oggi',streak:'Giorni di fila',daily_goal:'Obiettivo giornaliero (parole)',goal_done:'Obiettivo di oggi raggiunto. Giorni di fila: {n}',no_text_pdf:'Nessun testo in questo PDF',
      forget_all:'Dimentica tutto',about:'Informazioni',language:'Lingua',
      about_text:'Dizionario offline costruito da Wiktionary. Dati del dizionario: CC BY-SA 4.0. Libro iniziale: Japanische Märchen, pubblico dominio, da Project Gutenberg. Dopo il primo caricamento tutto funziona senza connessione.',
      no_chapters:'Questo libro non ha capitoli.',no_entry:'Questa parola non è nel dizionario offline. Tocca Dizionario per cercarla online.',
@@ -468,7 +471,7 @@ const UI={
      gloss_hint:'Toont je taal boven elk woord dat je niet als bekend hebt gemarkeerd',
      dark:'Donkere modus',text_size:'Tekstgrootte',tts_label:'Voorlezen tijdens het lezen',
      tts_hint:'De stem van het apparaat leest elke zin en de tekst volgt',
-     voice_speed:'Spreeksnelheid',voice:'Stem',progress:'Je voortgang',words_known:'Woorden die je al kent',
+     voice_speed:'Spreeksnelheid',voice:'Stem',progress:'Je voortgang',words_known:'Woorden die je al kent',read_today:'Vandaag gelezen',streak:'Dagen op rij',daily_goal:'Dagdoel (woorden)',goal_done:'Dagdoel gehaald. Dagen op rij: {n}',no_text_pdf:'Geen tekst in deze PDF',
      forget_all:'Alles vergeten',about:'Over',language:'Taal',
      about_text:'Offline woordenboek gemaakt van Wiktionary. Woordenboekgegevens: CC BY-SA 4.0. Startboek: Japanische Märchen, publiek domein, van Project Gutenberg. Na de eerste keer laden werkt alles zonder verbinding.',
      no_chapters:'Dit boek heeft geen hoofdstukken.',no_entry:'Dit woord staat niet in het offline woordenboek. Tik op Woordenboek om het online op te zoeken.',
@@ -499,7 +502,7 @@ const UI={
      gloss_hint:'Pokazuje twój język nad każdym słowem, którego nie oznaczono jako znane',
      dark:'Tryb ciemny',text_size:'Rozmiar tekstu',tts_label:'Czytaj na głos podczas przesuwania',
      tts_hint:'Głos urządzenia czyta każde zdanie, a tekst za nim podąża',
-     voice_speed:'Tempo głosu',voice:'Głos',progress:'Twoje postępy',words_known:'Słowa, które już znasz',
+     voice_speed:'Tempo głosu',voice:'Głos',progress:'Twoje postępy',words_known:'Słowa, które już znasz',read_today:'Przeczytane dziś',streak:'Dni z rzędu',daily_goal:'Cel dzienny (słowa)',goal_done:'Cel dnia osiągnięty. Dni z rzędu: {n}',no_text_pdf:'Brak tekstu w tym pliku PDF',
      forget_all:'Zapomnij wszystko',about:'O aplikacji',language:'Język',
      about_text:'Słownik offline zbudowany z Wikisłownika. Dane słownika: CC BY-SA 4.0. Książka startowa: Japanische Märchen, domena publiczna, z Project Gutenberg. Po pierwszym wczytaniu wszystko działa bez internetu.',
      no_chapters:'Ta książka nie ma rozdziałów.',no_entry:'Tego słowa nie ma w słowniku offline. Dotknij Słownik, aby sprawdzić je w sieci.',
@@ -530,7 +533,7 @@ const UI={
      gloss_hint:'Показывает твой язык над каждым словом, которое ты не отметил как знакомое',
      dark:'Тёмная тема',text_size:'Размер текста',tts_label:'Читать вслух по ходу',
      tts_hint:'Голос устройства читает каждое предложение, а текст следует за ним',
-     voice_speed:'Скорость голоса',voice:'Голос',progress:'Твой прогресс',words_known:'Слова, которые ты уже знаешь',
+     voice_speed:'Скорость голоса',voice:'Голос',progress:'Твой прогресс',words_known:'Слова, которые ты уже знаешь',read_today:'Прочитано сегодня',streak:'Дней подряд',daily_goal:'Цель на день (слова)',goal_done:'Цель дня выполнена. Дней подряд: {n}',no_text_pdf:'В этом PDF нет текста',
      forget_all:'Забыть всё',about:'О приложении',language:'Язык',
      about_text:'Офлайн-словарь на основе Викисловаря. Данные словаря: CC BY-SA 4.0. Стартовая книга: Japanische Märchen, общественное достояние, из Project Gutenberg. После первой загрузки всё работает без интернета.',
      no_chapters:'В этой книге нет глав.',no_entry:'Этого слова нет в офлайн-словаре. Нажми «Словарь», чтобы найти его в сети.',
@@ -561,7 +564,7 @@ const UI={
      gloss_hint:'Visar ditt språk ovanför varje ord du inte har markerat som känt',
      dark:'Mörkt läge',text_size:'Textstorlek',tts_label:'Läs högt medan den går framåt',
      tts_hint:'Enhetens röst läser varje mening och texten följer med',
-     voice_speed:'Rösthastighet',voice:'Röst',progress:'Dina framsteg',words_known:'Ord du redan kan',
+     voice_speed:'Rösthastighet',voice:'Röst',progress:'Dina framsteg',words_known:'Ord du redan kan',read_today:'Läst i dag',streak:'Dagar i rad',daily_goal:'Dagsmål (ord)',goal_done:'Dagens mål nått. Dagar i rad: {n}',no_text_pdf:'Ingen text i den här PDF:en',
      forget_all:'Glöm allt',about:'Om',language:'Språk',
      about_text:'Offlineordbok byggd från Wiktionary. Ordboksdata: CC BY-SA 4.0. Startbok: Japanische Märchen, allmän egendom, från Project Gutenberg. Efter första laddningen fungerar allt utan uppkoppling.',
      no_chapters:'Den här boken har inga kapitel.',no_entry:'Ordet finns inte i offlineordboken. Tryck på Ordbok för att slå upp det på nätet.',
@@ -777,7 +780,10 @@ function updateHeader(){
   $('#chapter span').textContent=`${fmt(S.i+1)} / ${fmt(S.book.words.length)} · ${left} ${T('min_left')}`;
   $('#fill').style.width=(100*S.i/S.book.words.length)+'%';
 }
-function show(scroll=true){if(S.mode==='rsvp')drawRsvp();else highlight(S.i,scroll);updateHeader();updateStar();saveSoon()}
+function show(scroll=true){
+  if(S.playing&&S.i>S.shown&&S.i-S.shown<50)S.readNow=(S.readNow||0)+S.i-S.shown;   // only words read while it runs, not jumps
+  S.shown=S.i;
+  if(S.mode==='rsvp')drawRsvp();else highlight(S.i,scroll);updateHeader();updateStar();saveSoon()}
 
 //////////////////// rsvp ////////////////////
 function pivot(w){const p=Math.min(Math.floor((w.length-1)/3),4);
@@ -1018,7 +1024,25 @@ let saveTimer=null;
 const bookKey=()=>'pos:'+(S.book?.id||'starter');
 const prefsKey=()=>'prefs:'+(S.book?.id||'starter');
 function saveBookPrefs(){if(S.book)LS.set(prefsKey(),{wpm:S.wpm,mode:S.mode,gloss:S.gloss,tts:S.tts})}
-function save(){if(S.book){LS.set(bookKey(),S.i);saveBookPrefs()}}
+function save(){if(S.book){LS.set(bookKey(),S.i);saveBookPrefs()}countRead()}
+// Reading habit: LS 'days' = {YYYY-MM-DD: words read}, a day counts toward the streak once it reaches the goal
+const dayKey=(d=new Date())=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const goal=()=>LS.get('goal',1000);
+function streak(){
+  const d=LS.get('days',{}),day=new Date();let n=0;
+  if((d[dayKey(day)]||0)<goal())day.setDate(day.getDate()-1);   // today still open: the streak runs through yesterday
+  while((d[dayKey(day)]||0)>=goal()){n++;day.setDate(day.getDate()-1)}
+  return n;
+}
+function countRead(){
+  if(S.readNow){
+    const d=LS.get('days',{}),k=dayKey(),before=d[k]||0;d[k]=before+S.readNow;S.readNow=0;LS.set('days',d);
+    if(before<goal()&&d[k]>=goal())toast(T('goal_done').replace('{n}',streak()));
+  }
+  const fmt=n=>n.toLocaleString(S.ui);
+  $('#n-today').textContent=fmt(LS.get('days',{})[dayKey()]||0)+' / '+fmt(goal());
+  $('#n-streak').textContent=fmt(streak());
+}
 function saveSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(save,700)}
 addEventListener('pagehide',save); addEventListener('blur',save);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();save()}});
@@ -1133,6 +1157,24 @@ async function epubToBook(file){
 }
 
 //////////////////// boot ////////////////////
+// --- pdf via pdf.js, loaded only when a PDF is opened. Each printed line goes in as its own paragraph:
+// TextClean already rejoins PDF-style one-line paragraphs and drops page numbers and running headers.
+async function pdfToBook(file){
+  const pdfjs=await import('./vendor/pdfjs/pdf.min.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc=new URL('vendor/pdfjs/pdf.worker.min.mjs',location.href).href;
+  const doc=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}).promise;
+  const lines=[];
+  for(let n=1;n<=doc.numPages;n++){
+    const {items}=await (await doc.getPage(n)).getTextContent();
+    let line='';
+    for(const it of items){line+=it.str??'';if(it.hasEOL){lines.push(line);line=''}}
+    lines.push(line);
+  }
+  const info=(await doc.getMetadata().catch(()=>null))?.info,title=info?.Title?.trim()||file.name.replace(/\.pdf$/i,'');
+  const book=textToBook(lines.filter(l=>l.trim()).join('\n\n'),title,'f:'+file.name+':'+file.size);
+  if(!book.words.length)throw new Error(T('no_text_pdf'));
+  return book;
+}
 async function fetchJSON(url,onProgress){
   const res=await fetch(url); if(!res.ok)throw new Error(url+' '+res.status);
   const total=+res.headers.get('content-length')||0;
@@ -1148,6 +1190,9 @@ async function boot(){
   $('#t-gloss').classList.toggle('on',S.gloss); $('#t-dark').classList.toggle('on',S.dark); $('#t-gender').classList.toggle('on',S.genderOn);
   $('#t-tts').classList.toggle('on',S.tts); $('#n-learned').textContent=S.learned.size; $('#n-unknown').textContent=S.unknown.size;
   setRate(S.rate); $('#voice-box').classList.toggle('hidden',!S.tts);
+  $('#goal').replaceChildren(...[500,1000,2500,5000].map(n=>new Option(n.toLocaleString(S.ui),n)));
+  $('#goal').value=goal(); $('#goal').onchange=e=>{LS.set('goal',+e.target.value);countRead()};
+  countRead();
   document.body.classList.toggle('plain',!S.gloss);
   try{
     S.bundle=await fetchJSON('bundle.json');
@@ -1259,7 +1304,7 @@ $('#b-add-found').onclick=async()=>{
 //////////////////// library ////////////////////
 // Imported books are parsed once and kept in IndexedDB ('book:'+id): the file pickers give no lasting handle to the
 // file, and parsing a big epub again on every launch would be slow. LS 'library' is the list, newest first.
-const isBookFile=f=>/\.(epub|txt)$/i.test(f.name);
+const isBookFile=f=>/\.(epub|pdf|txt)$/i.test(f.name);
 const lib=()=>LS.get('library',[]);
 const starterBook=async()=>Object.assign(await fetchJSON(S.bundle.starter),{id:'starter'});
 const libraryBook=id=>idb('readonly',s=>s.get('book:'+id)).catch(()=>null);
@@ -1309,7 +1354,7 @@ window.booksFound=function(list){
   list.forEach((e,i)=>{
     const known=have.has('f:'+e.name+':'+e.size),row=document.createElement('label');row.className='found'+(known?' known':'');
     const c=document.createElement('input');c.type='checkbox';c.value=i;c.checked=!known;c.disabled=known;c.onchange=count;
-    const t=document.createElement('span');t.textContent=e.name.replace(/\.(epub|txt)$/i,'');
+    const t=document.createElement('span');t.textContent=e.name.replace(/\.(epub|pdf|txt)$/i,'');
     const sm=document.createElement('small');sm.textContent=known?T('in_library'):e.size<1e6?Math.ceil(e.size/1e3)+' KB':(e.size/1e6).toFixed(1)+' MB';t.appendChild(sm);
     row.append(c,t);box.appendChild(row);
   });
@@ -1322,6 +1367,7 @@ async function addBooks(files){
     $('#splash-msg').textContent=files.length>1?T('adding').replace('{i}',i+1).replace('{n}',files.length):T('opening');
     try{
       const book=f.name.toLowerCase().endsWith('.epub')?await epubToBook(f)
+                :f.name.toLowerCase().endsWith('.pdf')?await pdfToBook(f)
                 :textToBook(await f.text(),f.name.replace(/\.[^.]+$/,''),'f:'+f.name+':'+f.size);
       await saveBook(book).catch(()=>{});   // private mode: still readable now, just not kept
       first=first||book;added++;

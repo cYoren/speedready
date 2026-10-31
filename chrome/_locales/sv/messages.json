@@ -1,0 +1,41 @@
+{
+ "extName": {
+  "message": "Speedready: snabbläsning av sidor, PDF:er och språk"
+ },
+ "extDescription": {
+  "message": "Läs webbsidor och PDF:er snabbare, med en markering som går framåt eller ett ord i taget. Översättningar hjälper dig med språk."
+ },
+ "readPage": {
+  "message": "Snabbläs den här sidan"
+ },
+ "readSelection": {
+  "message": "Snabbläs markeringen"
+ },
+ "openLibrary": {
+  "message": "Öppna mitt bibliotek"
+ },
+ "readToday": {
+  "message": "Ord i dag"
+ },
+ "streak": {
+  "message": "Dagar i rad"
+ },
+ "shortcutHint": {
+  "message": "{key} på alla sidor"
+ },
+ "selectionTip": {
+  "message": "Högerklicka på markerad text för att bara läsa den delen"
+ },
+ "phoneApp": {
+  "message": "Speedready i mobilen och datorn"
+ },
+ "datalyst": {
+  "message": "Datalyst: följ vanor och se vad som påverkar ditt fokus"
+ },
+ "close": {
+  "message": "Stäng"
+ },
+ "pdfBlocked": {
+  "message": "Chrome lät inte tillägget öppna den här PDF:en. Ladda ner den och lägg till den under Böcker ☰."
+ }
+}

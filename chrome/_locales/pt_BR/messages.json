@@ -1,0 +1,41 @@
+{
+ "extName": {
+  "message": "Speedready: Leitura Dinâmica de Páginas, PDFs e Idiomas"
+ },
+ "extDescription": {
+  "message": "Leia páginas e PDFs mais rápido, com um guia que avança ou uma palavra por vez. A tradução sobre as palavras ajuda com idiomas."
+ },
+ "readPage": {
+  "message": "Leitura dinâmica desta página"
+ },
+ "readSelection": {
+  "message": "Leitura dinâmica do trecho selecionado"
+ },
+ "openLibrary": {
+  "message": "Abrir minha biblioteca"
+ },
+ "readToday": {
+  "message": "Palavras hoje"
+ },
+ "streak": {
+  "message": "Dias seguidos"
+ },
+ "shortcutHint": {
+  "message": "{key} em qualquer página"
+ },
+ "selectionTip": {
+  "message": "Botão direito num trecho selecionado para ler só ele"
+ },
+ "phoneApp": {
+  "message": "Speedready no celular e no computador"
+ },
+ "datalyst": {
+  "message": "Datalyst: acompanhe hábitos e veja o que afeta seu foco"
+ },
+ "close": {
+  "message": "Fechar"
+ },
+ "pdfBlocked": {
+  "message": "O Chrome não liberou este PDF para a extensão. Baixe e adicione em Livros ☰."
+ }
+}
