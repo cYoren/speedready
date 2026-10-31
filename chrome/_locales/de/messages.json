@@ -1,0 +1,41 @@
+{
+ "extName": {
+  "message": "Speedready: Schnelllesen für Webseiten, PDFs und Sprachen"
+ },
+ "extDescription": {
+  "message": "Lies Webseiten und PDFs schneller, mit Leitstrich oder Wort für Wort. Übersetzungen über den Wörtern helfen beim Sprachenlernen."
+ },
+ "readPage": {
+  "message": "Diese Seite schnell lesen"
+ },
+ "readSelection": {
+  "message": "Auswahl schnell lesen"
+ },
+ "openLibrary": {
+  "message": "Meine Bibliothek öffnen"
+ },
+ "readToday": {
+  "message": "Wörter heute"
+ },
+ "streak": {
+  "message": "Tage in Folge"
+ },
+ "shortcutHint": {
+  "message": "{key} auf jeder Seite"
+ },
+ "selectionTip": {
+  "message": "Rechtsklick auf markierten Text liest nur diesen Teil"
+ },
+ "phoneApp": {
+  "message": "Speedready auf Handy und Computer"
+ },
+ "datalyst": {
+  "message": "Datalyst: Gewohnheiten verfolgen und sehen, was deinen Fokus beeinflusst"
+ },
+ "close": {
+  "message": "Schließen"
+ },
+ "pdfBlocked": {
+  "message": "Chrome gibt dieses PDF nicht für die Erweiterung frei. Lade es herunter und füge es unter Bücher ☰ hinzu."
+ }
+}
