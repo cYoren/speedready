@@ -39,7 +39,9 @@ const pdf = (() => {
   out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + at.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('');
   return Buffer.from(out + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R /Info 6 0 R >>\nstartxref\n${xref}\n%%EOF\n`, 'latin1');
 })();
+const spanish = `<!doctype html><meta charset="utf-8"><title>La casa</title><article><h1>La casa</h1>${'<p>La casa de mi abuela tiene una ventana grande y un jardín con flores. El agua de la fuente es fría y la puerta de la cocina está abierta todo el día.</p>'.repeat(4)}</article>`;
 const server = createServer((req, res) => {
+  if (req.url === '/es.html') { res.setHeader('Content-Type', 'text/html'); return res.end(spanish); }
   if (req.url === '/doc.pdf') { res.setHeader('Content-Type', 'application/pdf'); return res.end(pdf); }
   res.setHeader('Content-Type', 'text/html'); res.end(article);
 });
@@ -111,8 +113,22 @@ try {
   const sel = await reader(selFrame);
   if (!sel.text.startsWith('Paragraph 3') || sel.words > 80) throw Error('Selection: ' + JSON.stringify({...sel, text: sel.text.slice(0, 120)}));
 
+  // 5. A Spanish page: noun genders in color (casa red, jardín blue), loaded for that language only.
+  await evaluate(selFrame, "document.getElementById('sr-close').click()");
+  await evaluate(page, `location.href = '${base}/es.html'`);
+  await until('spanish page', () => evaluate(page, "location.pathname === '/es.html' && document.readyState === 'complete'"));
+  await evaluate(worker, `(async () => { const t = (await chrome.tabs.query({})).find(t => t.url?.endsWith('/es.html')); await read(t); return true; })()`);
+  const esFrame = await attach((await target('iframe', `chrome-extension://${id}/app/index.html`)).targetId);
+  const es = await until('spanish genders', () => evaluate(esFrame, "S.book?.lang === 'es' && S.book.genders && [...document.querySelectorAll('.c')].map(c => [c.querySelector('.w')?.textContent, (c.className.match(/g-(\\w)/) || [])[1] || null])"));
+  const color = w => (es.find(([t]) => t === w) || [])[1];
+  if (color('casa') !== 'f' || color('jardín') !== 'm' || color('agua') !== 'f' || color('grande') != null) throw Error('Spanish genders: ' + JSON.stringify(es.slice(0, 30)));
+  const label = await evaluate(esFrame, "buildLibrary(); document.getElementById('gender-row').classList.contains('hidden') ? '' : document.querySelector('#gender-row label').textContent");
+  if (!label.startsWith('Colors for el, la') || !label.includes('red (la)')) throw Error('Gender setting label: ' + label);
+  await call('Emulation.setDeviceMetricsOverride', {width: 1280, height: 800, deviceScaleFactor: 1, mobile: false}, page);
+  await sleep(300); await shot(page, 'spanish-genders');
+
   if (errors.length) throw Error('Page errors: ' + errors.join('\n'));
-  console.log('speedready chrome ok:', JSON.stringify({page: book.words, today, pdf: pdfBook.words, pdfTitle: pdfBook.title, selection: sel.words}));
+  console.log('speedready chrome ok:', JSON.stringify({page: book.words, today, pdf: pdfBook.words, pdfTitle: pdfBook.title, selection: sel.words, spanish: es.filter(([, g]) => g).length}));
 } finally {
   ws?.close(); browser.kill(); server.close(); await sleep(300); await rm(work, {recursive: true, force: true});
 }
