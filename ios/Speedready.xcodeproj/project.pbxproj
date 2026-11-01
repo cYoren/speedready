@@ -196,7 +196,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nsrc=\"$SRCROOT/../dist/chrome\"\n[ -f \"$src/manifest.json\" ] || { echo \"error: run python3 tools/build_chrome.py first\"; exit 1; }\nrsync -a \"$src/\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n";
+			shellScript = "set -e\nsrc=\"$SRCROOT/../dist/safari\"\n[ -f \"$src/manifest.json\" ] || { echo \"error: run python3 tools/build_chrome.py first\"; exit 1; }\nrsync -a \"$src/\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
