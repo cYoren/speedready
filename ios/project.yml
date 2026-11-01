@@ -1,0 +1,67 @@
+# xcodegen spec (run `xcodegen generate` in ios/ on the Mac). Speedready.xcodeproj is generated from this.
+name: Speedready
+options:
+  bundleIdPrefix: io.github.cyoren
+  deploymentTarget:
+    iOS: '16.4'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    MARKETING_VERSION: '1.0.8'
+    CURRENT_PROJECT_VERSION: '8'
+    DEVELOPMENT_TEAM: 2LPNFM9A89
+    CODE_SIGN_STYLE: Automatic
+targets:
+  Speedready:
+    type: application
+    platform: iOS
+    sources:
+      - Speedready
+      - path: ../web
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - target: SpeedreadySafari
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.cyoren.speedready
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleDisplayName: Speedready
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        SWIFT_EMIT_LOC_STRINGS: YES
+        TARGETED_DEVICE_FAMILY: '1,2'
+  # Safari extension: the same one as Chrome/Firefox. Run `python3 tools/build_chrome.py` first (dist/chrome).
+  SpeedreadySafari:
+    type: app-extension
+    platform: iOS
+    sources:
+      - SafariExtension
+    info:
+      path: SafariExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Speedready
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.Safari.web-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariWebExtensionHandler
+    postCompileScripts:
+      - name: Copy web extension
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          src="$SRCROOT/../dist/chrome"
+          [ -f "$src/manifest.json" ] || { echo "error: run python3 tools/build_chrome.py first"; exit 1; }
+          rsync -a "$src/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.cyoren.speedready.safari
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: '1,2'
