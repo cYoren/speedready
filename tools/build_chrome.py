@@ -60,7 +60,31 @@ shutil.copytree(OUT, FIREFOX)
     'browser_specific_settings': {'gecko': {'id': 'speedready@cyoren.github.io', 'strict_min_version': '140.0',
                                             'data_collection_permissions': {'required': ['none']}}, 'gecko_android': {'strict_min_version': '142.0'}}}, indent=2) + '\n')
 
-for name, folder in (('chrome', OUT), ('firefox', FIREFOX)):
+# Safari (embedded in the iOS app, ios/project.yml): Apple caps the name at 40 and the description at 112 characters.
+SAFARI_TEXT = {
+    'en': ('Speedready: Speed Reader', 'Read web pages faster with a moving pacer or one word at a time, with translations over each word.'),
+    'de': ('Speedready: Schnell lesen', 'Lies Webseiten schneller, mit Leitstrich oder Wort für Wort, mit Übersetzungen über den Wörtern.'),
+    'es': ('Speedready: Lectura rápida', 'Lee páginas web más rápido, con una guía o palabra por palabra, y la traducción sobre cada palabra.'),
+    'fr': ('Speedready: Lecture rapide', 'Lis les pages web plus vite, avec un guide ou un mot à la fois, et la traduction au-dessus des mots.'),
+    'it': ('Speedready: Lettura veloce', 'Leggi le pagine web più in fretta, con una guida o una parola alla volta, e la traduzione sopra.'),
+    'nl': ('Speedready: Snellezen', 'Lees webpagina’s sneller, met een markering of woord voor woord, en vertalingen boven de woorden.'),
+    'pl': ('Speedready: Szybkie czytanie', 'Czytaj strony szybciej, ze wskaźnikiem albo słowo po słowie, z tłumaczeniem nad słowami.'),
+    'pt_BR': ('Speedready: Leitura dinâmica', 'Leia páginas mais rápido, com um guia ou uma palavra por vez, e a tradução sobre as palavras.'),
+    'ru': ('Speedready: Быстрое чтение', 'Читайте веб-страницы быстрее: с подсветкой или по одному слову, с переводом над словами.'),
+    'sv': ('Speedready: Snabbläsning', 'Läs webbsidor snabbare, med en markering eller ett ord i taget, och översättningar ovanför orden.'),
+}
+SAFARI = ROOT / 'dist' / 'safari'
+shutil.rmtree(SAFARI, ignore_errors=True)
+shutil.copytree(OUT, SAFARI)
+for messages in (SAFARI / '_locales').glob('*/messages.json'):
+    name, desc = SAFARI_TEXT[messages.parent.name]
+    assert len(name) <= 40 and len(desc) <= 112, messages
+    m = json.loads(messages.read_text())
+    m['safariName'], m['safariDescription'] = {'message': name}, {'message': desc}
+    messages.write_text(json.dumps(m, ensure_ascii=False, indent=1) + '\n')
+(SAFARI / 'manifest.json').write_text(json.dumps({**manifest, 'name': '__MSG_safariName__', 'description': '__MSG_safariDescription__'}, indent=2) + '\n')
+
+for name, folder in (('chrome', OUT), ('firefox', FIREFOX), ('safari', SAFARI)):
     archive = ROOT / 'dist' / f'speedready-{name}-{version}.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
         for f in sorted(folder.rglob('*')):

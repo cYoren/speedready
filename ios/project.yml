@@ -35,7 +35,7 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         SWIFT_EMIT_LOC_STRINGS: YES
         TARGETED_DEVICE_FAMILY: '1,2'
-  # Safari extension: the same one as Chrome/Firefox. Run `python3 tools/build_chrome.py` first (dist/chrome).
+  # Safari extension: the same one as Chrome/Firefox. Run `python3 tools/build_chrome.py` first (dist/safari).
   SpeedreadySafari:
     type: app-extension
     platform: iOS
@@ -55,7 +55,7 @@ targets:
         basedOnDependencyAnalysis: false
         script: |
           set -e
-          src="$SRCROOT/../dist/chrome"
+          src="$SRCROOT/../dist/safari"
           [ -f "$src/manifest.json" ] || { echo "error: run python3 tools/build_chrome.py first"; exit 1; }
           rsync -a "$src/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/"
     settings:
