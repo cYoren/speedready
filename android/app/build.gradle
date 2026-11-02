@@ -16,8 +16,8 @@ android {
         applicationId 'io.github.cyoren.speedready'
         minSdk 26                 // WebView with DecompressionStream and modern JS
         targetSdk 36
-        versionCode 8
-        versionName '1.0.8'
+        versionCode 9
+        versionName '1.0.9'
     }
 
     signingConfigs {
@@ -33,11 +33,10 @@ android {
 
     buildTypes {
         release {
-            // R8 shrinking is on at F-Droid's request (fdroiddata MR !49884). It does not
-            // break reproducible builds: the same source and toolchain still produce the
-            // same bytes. shrinkResources stays off, because the reader is loaded from
-            // assets at runtime and the resource shrinker cannot see it.
+            // AGP 9 integrates resource and code shrinking. The web reader lives in
+            // assets/, which Android resource shrinking does not remove.
             minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig keystoreFile.exists() ? signingConfigs.release : null
         }
@@ -58,4 +57,6 @@ android {
     }
 }
 
-dependencies { }
+dependencies {
+    implementation 'androidx.core:core:1.17.0'
+}
