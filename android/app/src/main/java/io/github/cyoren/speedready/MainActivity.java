@@ -12,8 +12,6 @@ import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -27,6 +25,11 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.window.OnBackInvokedDispatcher;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -67,6 +70,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         web = new WebView(this);
         WebSettings s = web.getSettings();
@@ -148,15 +152,14 @@ public class MainActivity extends Activity {
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.rgb(0x10, 0x10, 0x12));
         root.addView(web);
-        root.setOnApplyWindowInsetsListener((v, in) -> {
-            if (Build.VERSION.SDK_INT >= 30) {
-                android.graphics.Insets i = in.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
-                v.setPadding(i.left, i.top, i.right, i.bottom);
-                return WindowInsets.CONSUMED;
-            }
-            return in;
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars()
+                    | WindowInsetsCompat.Type.displayCutout() | WindowInsetsCompat.Type.ime());
+            v.setPadding(safe.left, safe.top, safe.right, safe.bottom);
+            return WindowInsetsCompat.CONSUMED;
         });
         setContentView(root);
+        ViewCompat.requestApplyInsets(root);
 
         // Android 16 no longer calls onBackPressed() for apps targeting it (predictive back)
         if (Build.VERSION.SDK_INT >= 33) {
@@ -260,14 +263,10 @@ public class MainActivity extends Activity {
             try { c = Color.parseColor(hex); } catch (Exception e) { return; }
             if (root != null) root.setBackgroundColor(c);
             boolean light = Color.luminance(c) > 0.5f;
-            if (Build.VERSION.SDK_INT >= 30) {
-                int flags = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-                getWindow().getInsetsController().setSystemBarsAppearance(light ? flags : 0, flags);
-            }
-            if (Build.VERSION.SDK_INT < 35) {
-                getWindow().setStatusBarColor(c);
-                getWindow().setNavigationBarColor(c);
-            }
+            WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(
+                    getWindow(), getWindow().getDecorView());
+            controller.setAppearanceLightStatusBars(light);
+            controller.setAppearanceLightNavigationBars(light);
         });
     }
 
