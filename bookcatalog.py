@@ -1,17 +1,23 @@
 """Local search of Gutenberg's official catalog and bounded, user-selected downloads."""
-import gzip,json,urllib.parse,urllib.request,unicodedata
+import gzip,json,urllib.parse,urllib.request,unicodedata,threading
 from pathlib import Path
 from reading import asset,lang_code,LANGUAGES
 LANGUAGE_NAMES=LANGUAGES['names']
 _books=None
+_index=None
+_load_lock=threading.Lock()
 def books():
-    global _books
-    if _books is None:_books=json.loads(gzip.decompress(asset('catalog.json.gz').read_bytes()))['books']
+    global _books,_index
+    with _load_lock:
+        if _books is None:
+            rows=json.loads(gzip.decompress(asset('catalog.json.gz').read_bytes()))['books']
+            _index=[normalize(b[1]+' '+b[2]) for b in rows]
+            _books=rows
     return _books
 def normalize(text):return ''.join(c for c in unicodedata.normalize('NFKD',text).casefold() if not unicodedata.combining(c))
 def search(query='',language=''):
-    terms=normalize(query).split()
-    return [b for b in books() if (not language or language in b[3]) and all(t in normalize(b[1]+' '+b[2]) for t in terms)]
+    rows=books();terms=normalize(query).split()
+    return [b for b,text in zip(rows,_index) if (not language or language in b[3]) and all(t in text for t in terms)]
 LIMIT=30*1024*1024
 HOSTS={'www.gutenberg.org','gutenberg.org','standardebooks.org','www.openbookpublishers.com','openbookpublishers.com','books.openbookpublishers.com','cdn.openbookpublishers.com'}
 def validate(url):
@@ -36,5 +42,9 @@ def download(book_id=None,url=None,directory=None):
         if len(data)>LIMIT:raise ValueError('Book exceeds 30 MB')
         ext='epub' if data.startswith(b'PK') else 'txt' if (r.headers.get('content-type') or '').startswith('text/plain') else None
         if not ext:raise ValueError('Use a direct EPUB or text download link')
+        if ext=='txt':
+            from reading import decode_text
+            encoding=r.headers.get_content_charset()
+            data=(data.decode(encoding,errors='replace') if encoding else decode_text(data)).encode('utf-8')
     path=directory/(name+'.'+ext);tmp=path.with_suffix('.part');tmp.write_bytes(data);tmp.replace(path)
     return path

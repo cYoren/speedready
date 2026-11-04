@@ -1,5 +1,7 @@
 const assert=require('node:assert/strict'),R=require('../web/reading.js'),api=require('../api/book.js');
 assert.equal(R.langCode('fil'),'fil');assert.equal(R.langCode('jpn'),'ja');assert.equal(R.langCode('pt_BR'),'pt');
+assert.equal(R.decodeText(Buffer.from('\ufeff日本語','utf16le')),'日本語');
+assert.equal(R.decodeText(Buffer.from([0x63,0x61,0x66,0xe9]),'text/plain; charset=iso-8859-1'),'café');
 assert.equal(R.rtl('ar'),true);assert.equal(R.rtl('en'),false);
 for(const [lang,text] of [['zh','我喜欢读书。你呢？'],['ja','私は本を読みます。'],['th','ฉันชอบอ่านหนังสือ']]){
   const words=R.tokenize(text,lang);assert(words.length>1);assert.equal(words.join(''),text);

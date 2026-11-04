@@ -25,6 +25,12 @@
   function languageName(code,ui='en'){
     try{return new Intl.DisplayNames([ui],{type:'language'}).of(code)||code}catch{return code}
   }
-  const Reading={langCode,rtl,tokenize,languageName,setAliases:value=>{aliases={...ISO3,...value}}};
+  function decodeText(bytes,contentType=''){
+    let encoding=(contentType.match(/charset\s*=\s*["']?([^;\s"']+)/i)||[])[1]||'utf-8';
+    if(bytes[0]===0xff&&bytes[1]===0xfe)encoding='utf-16le';
+    else if(bytes[0]===0xfe&&bytes[1]===0xff)encoding='utf-16be';
+    return new TextDecoder(encoding).decode(bytes);
+  }
+  const Reading={langCode,rtl,tokenize,languageName,decodeText,setAliases:value=>{aliases={...ISO3,...value}}};
   if(typeof module!=='undefined'&&module.exports)module.exports=Reading;else root.Reading=Reading;
 })(typeof self!=='undefined'?self:this);
