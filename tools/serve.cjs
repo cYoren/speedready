@@ -10,4 +10,4 @@ http.createServer(async(req,res)=>{
   if(!file.startsWith(root+path.sep)){res.statusCode=403;return res.end()}
   try{const data=await fs.promises.readFile(file);res.setHeader('Content-Type',mime[path.extname(file)]||'application/octet-stream');res.end(data)}
   catch{res.statusCode=404;res.end('Not found')}
-}).listen(8765,'127.0.0.1',()=>console.log('Speedready: http://127.0.0.1:8765'));
+}).listen(Number(process.env.PORT||8765),'127.0.0.1',()=>console.log('Speedready: http://127.0.0.1:'+(process.env.PORT||8765)));
