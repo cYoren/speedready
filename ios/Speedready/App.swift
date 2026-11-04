@@ -83,7 +83,7 @@ final class ReaderViewController: UIViewController, WKNavigationDelegate, WKUIDe
         let keys: [URLResourceKey] = [.fileSizeKey, .isRegularFileKey]
         let walk = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles, .skipsPackageDescendants])
         while let url = walk?.nextObject() as? URL, list.count < 500 {
-            guard ["epub", "txt"].contains(url.pathExtension.lowercased()),
+            guard ["epub", "pdf", "txt"].contains(url.pathExtension.lowercased()),
                   let v = try? url.resourceValues(forKeys: Set(keys)), v.isRegularFile == true else { continue }
             let id = String(list.count)
             BundleSchemeHandler.found[id] = url

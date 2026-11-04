@@ -12,7 +12,7 @@ import bisect,html,json,locale,os,re,shutil,sqlite3,subprocess,sys,threading,tim
 from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree as ET
-from reading import lang_code,tokenize,rtl
+from reading import lang_code,tokenize,rtl,decode_text
 import bookcatalog
 import gi;gi.require_version('Gtk','4.0');gi.require_version('Adw','1');gi.require_version('PangoCairo','1.0')
 from gi.repository import Gtk,Adw,Gdk,Gio,GLib,Pango,PangoCairo
@@ -253,16 +253,25 @@ class Html(HTMLParser):
         s.out.append(d)
 
 class NavHtml(HTMLParser):
-    """Links of the first <nav> in an EPUB3 nav document -> [(title, href)]."""
-    def __init__(s):super().__init__();s.links=[];s.nav=0;s.href=None;s.text=[]
+    """Prefer the EPUB navigation marked as toc over landmarks or page lists."""
+    def __init__(s):super().__init__();s.groups=[];s.nav=0;s.current=None;s.href=None;s.text=[]
+    @property
+    def links(s):
+        if not s.groups:return []
+        return next((links for toc,links in s.groups if toc),s.groups[0][1])
     def handle_starttag(s,t,a):
-        a=dict(a)
-        if t=='nav' and not s.links:s.nav+=1
-        if t=='a' and s.nav and a.get('href'):s.href=a['href'];s.text=[]
+        attrs=dict(a)
+        if t=='nav':
+            if not s.nav:
+                s.current=[];s.groups.append(('toc' in attrs.get('epub:type','').split(),s.current))
+            s.nav+=1
+        if t=='a' and s.nav:s.href=attrs.get('href');s.text=[]
     def handle_endtag(s,t):
-        if t=='a' and s.href:s.links.append((' '.join(''.join(s.text).split()),s.href));s.href=None
-        if t=='nav':s.nav=max(0,s.nav-1);s.nav or setattr(s,'done',True)
-    def handle_data(s,d):s.href and s.text.append(d)
+        if t=='a' and s.href:
+            s.current.append((' '.join(''.join(s.text).split()),s.href));s.href=None
+        if t=='nav':s.nav=max(0,s.nav-1)
+    def handle_data(s,d):
+        if s.href:s.text.append(d)
 
 def book_title(path):
     """The name a reader would recognise, for the library list. Reads only container.xml and the OPF,
@@ -278,19 +287,24 @@ def book_title(path):
 
 def read_epub(path):
     """-> [(text, [(title, word_offset_in_text)])] per spine file, lang"""
-    z=zipfile.ZipFile(path);names=set(z.namelist())
-    opf_path=ET.fromstring(z.read('META-INF/container.xml')).find('.//{*}rootfile').get('full-path')
-    opf=ET.fromstring(z.read(opf_path));d=posixpath.dirname(opf_path);d=d+'/' if d else ''
+    z=zipfile.ZipFile(path);names=set(z.namelist());inflated=0
+    def read(name):
+        nonlocal inflated
+        info=z.getinfo(name);inflated+=info.file_size
+        if info.file_size>40*1024*1024 or inflated>120*1024*1024:raise ValueError('EPUB text is too large')
+        return z.read(name)
+    opf_path=ET.fromstring(read('META-INF/container.xml')).find('.//{*}rootfile').get('full-path')
+    opf=ET.fromstring(read(opf_path));d=posixpath.dirname(opf_path);d=d+'/' if d else ''
     lang=lang_code(opf.findtext('.//{*}language') or '');authors=' '.join(x.text or '' for x in opf.iterfind('.//{*}creator'));items={i.get('id'):i for i in opf.iterfind('.//{*}item')}
     def resolve(base,href):
         f,_,anchor=urllib.parse.unquote(href).partition('#');return posixpath.normpath(posixpath.join(posixpath.dirname(base),f)) if f else base,anchor
     toc=[]  # (title, file, anchor)
     nav=next((i for i in items.values() if 'nav' in (i.get('properties') or '').split()),None)
     if nav is not None:
-        np=posixpath.normpath(d+urllib.parse.unquote(nav.get('href')));p=NavHtml();p.feed(z.read(np).decode('utf-8','replace'))
+        np=posixpath.normpath(d+urllib.parse.unquote(nav.get('href')));p=NavHtml();p.feed(read(np).decode('utf-8','replace'))
         toc=[(t,*resolve(np,h)) for t,h in p.links]
     elif (ncx:=items.get(opf.find('.//{*}spine').get('toc') or '')) is not None:
-        np=posixpath.normpath(d+urllib.parse.unquote(ncx.get('href')));x=ET.fromstring(z.read(np))
+        np=posixpath.normpath(d+urllib.parse.unquote(ncx.get('href')));x=ET.fromstring(read(np))
         toc=[(' '.join((n.findtext('.//{*}text') or '').split()),*resolve(np,n.find('.//{*}content').get('src'))) for n in x.iterfind('.//{*}navPoint')]
     out=[]
     for r in opf.iterfind('.//{*}itemref'):  # spine order
@@ -298,7 +312,7 @@ def read_epub(path):
         if item is None:continue
         name=posixpath.normpath(d+urllib.parse.unquote(item.get('href')))
         if name not in names:continue
-        mine=[(t,a) for t,f,a in toc if f==name];p=Html((a for t,a in mine if a),lang);p.feed(z.read(name).decode('utf-8','replace'))
+        mine=[(t,a) for t,f,a in toc if f==name];p=Html((a for t,a in mine if a),lang);p.feed(read(name).decode('utf-8','replace'))
         out.append((''.join(p.out),[(t,p.found.get(a) if a else 0) for t,a in mine]))  # None = anchor missing (broken epub), Book searches the title text
     return out,lang,authors
 
@@ -311,7 +325,7 @@ class Book:
                 base=len(s.words);s.add(text);s.chapters+=[(t,base+off if off is not None else None) for t,off in toc]
             s.clean(s.title+' '+authors);s.resolve_missing()
         else:  # hard-wrapped txt (Gutenberg): blank lines separate paragraphs, single newlines are just wrapping
-            s.lang=txt_lang;text=Path(path).read_text(errors='replace')
+            s.lang=txt_lang;text=decode_text(Path(path).read_bytes())
             if re.search(r'\n[ \t]*\n',text):text=re.sub(r'(?<!\n)\n(?![ \t]*\n)',' ',text)
             s.add(text);s.clean(s.title)
         s.n=len(s.words);s.chapters=[(t,i) for t,i in s.chapters if t and i<s.n];s.chapter_idx=[i for t,i in s.chapters]
@@ -598,11 +612,11 @@ class WordView(Gtk.TextView):
     def span(s,i):
         b=s.buf;st=b.get_iter_at_offset(s.offs[i-s.a]);return st,b.get_iter_at_offset(s.offs[i-s.a]+len(s.win.book.words[i]))
     def mark_unknown(s,only=None):
-        bk,unk=s.win.book,s.win.unknown
+        bk=s.win.book
         for i in range(s.a,s.b):
             l=bk.lemmas[i]
             if only is not None and l!=only:continue
-            if l:(s.buf.apply_tag if l in unk else s.buf.remove_tag)(s.unk,*s.span(i))
+            if l:(s.buf.apply_tag if s.win.is_unknown(l) else s.buf.remove_tag)(s.unk,*s.span(i))
     def word_at(s,x,y):
         if not s.offs:return None
         bx,by=s.window_to_buffer_coords(Gtk.TextWindowType.WIDGET,int(x),int(y));ok,it=s.get_iter_at_location(bx,by)
@@ -640,7 +654,7 @@ class PageView(Gtk.Box):
         for i in range(a,b):
             if fb is None or (i>a and bk.is_para_start(i)):fb=Adw.WrapBox(child_spacing=2,line_spacing=10,halign=Gtk.Align.START);s.append(fb)  # a real flow layout; Gtk.FlowBox is a grid
             full=s.gloss_full(i);cell=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,css_classes=['cell']);gl=Gtk.Label(label=s.gloss_for(i),tooltip_text=full or None,css_classes=['gloss']);wl=Gtk.Label(label=bk.words[i],css_classes=['w'])
-            cell.append(gl);cell.append(wl);bk.lemmas[i] in s.win.unknown and cell.add_css_class('unk');gs=s.win.genders();gs and gs[i] and cell.add_css_class('g-'+gs[i])
+            cell.append(gl);cell.append(wl);s.win.is_unknown(bk.lemmas[i]) and cell.add_css_class('unk');gs=s.win.genders();gs and gs[i] and cell.add_css_class('g-'+gs[i])
             k=Gtk.GestureClick();k.connect('released',lambda k,n,x,y,i=i:s.cell_click(n,i));cell.add_controller(k)
             k=Gtk.GestureClick(button=3);k.connect('pressed',lambda k,n,x,y,i=i:s.win.toggle_unknown(i));cell.add_controller(k)
             k=Gtk.GestureClick();k.connect('pressed',lambda k,n,x,y,i=i:(k.set_state(Gtk.EventSequenceState.CLAIMED),s.win.learn(i)));gl.add_controller(k)
@@ -668,7 +682,7 @@ class PageView(Gtk.Box):
     def mark_unknown(s,only=None):
         for k,cell in enumerate(s.cells):
             l=s.win.book.lemmas[s.a+k]
-            if only is None or l==only:(cell.add_css_class if l in s.win.unknown else cell.remove_css_class)('unk')
+            if only is None or l==only:(cell.add_css_class if s.win.is_unknown(l) else cell.remove_css_class)('unk')
     def highlight(s,i,n,dim):
         new={k for k in range(i-s.a,i+n-s.a) if 0<=k<len(s.cells)}
         for k in s.cur-new:s.cells[k].remove_css_class('cur')
@@ -692,7 +706,7 @@ class Win(Adw.ApplicationWindow):
         s.pos=json.loads(POS_FILE.read_text()) if POS_FILE.exists() else {}
         s.bookmarks=json.loads(BOOKMARKS.read_text()) if BOOKMARKS.exists() else {}
         s.seen={l.split('\t')[1].lower() for l in VOCAB.read_text().splitlines() if '\t' in l and not l.startswith('#')} if VOCAB.exists() else set()
-        s.unknown=set(UNKNOWN.read_text().split()) if UNKNOWN.exists() else set()
+        s.unknown={w if ':' in w else 'de:'+w for w in UNKNOWN.read_text().split()} if UNKNOWN.exists() else set()
         s.book=None;s.i=0;s.timer=None;s.save_timer=None;s.playing=False;s.ra=False;s.token=0;s.dict=Dict();s.tts=TTS();s.gloss=None;s.lex=None;s.lex_senses=[];s.beginner_row=None;s.req=0;s.resume=False;s.css=Gtk.CssProvider()
         s.selection_text='';s.selection_owner=None;s.page_selection_anchor=None
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),s.css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -948,7 +962,7 @@ class Win(Adw.ApplicationWindow):
                 if not here:row.add_css_class('dim-label')
                 row.connect('activated',lambda _r,p=path:(d.close(),s.load(p)))
                 rm=Gtk.Button(icon_name='edit-delete-symbolic',tooltip_text=s.t('remove_from_library'),valign=Gtk.Align.CENTER)
-                def forget(*_,p=path):s.pos.pop(p,None);s.save();refresh()
+                def forget(*_,p=path):s.remove_library_entry(p);refresh()
                 rm.connect('clicked',forget);row.add_suffix(rm);lb.append(row)
         def pick(*_):
             fd=Gtk.FileDialog(default_filter=s.book_filter())
@@ -960,6 +974,19 @@ class Win(Adw.ApplicationWindow):
         add.connect('clicked',pick)
         discover=Gtk.Button(label=s.t('discover'));hb.pack_end(discover);discover.connect('clicked',lambda *_:(d.close(),s.discover_books()))
         refresh();d.present(s)
+    def remove_library_entry(s,path):
+        if s.book and s.book_key()==path:
+            s.stop();s.book=None;s.gloss=None
+            for view in (s.pacer,s.ctx):view.a=view.b=0;view.buf.set_text('')
+            s.page.a=s.page.b=0;s.page.cells=[];s.page.cur=set();s.page.sel=set()
+            while (child:=s.page.get_first_child()):s.page.remove(child)
+            s.chapters.remove_all();s.chapbtn.set_sensitive(False)
+            s.set_title('Speedready');s.prog.set_title('Speedready');s.prog.set_subtitle('');s.pbar.set_fraction(0);s.cv.queue_draw()
+            s.update_banner()
+        s.pos.pop(path,None)
+        if s.pos.get('_last')==path:s.pos.pop('_last',None)
+        s.save()
+
     def discover_books(s):
         d=Adw.Dialog(title=s.t('discover'),content_width=640,content_height=650,follows_content_size=False)
         hb=Adw.HeaderBar();box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12,margin_start=18,margin_end=18,margin_top=12,margin_bottom=18)
@@ -1027,9 +1054,10 @@ class Win(Adw.ApplicationWindow):
 
     def load(s,p):
         s.stop()
-        try:s.book=Book(p,s.cfg['txt_lang'])
-        except Exception as e:s.book=None;return s.status(s.t('could_not_open',error=e))
-        if not s.book.n:s.book=None;return s.status(s.t('no_text'))
+        try:book=Book(p,s.cfg['txt_lang'])
+        except Exception as e:return s.status(s.t('could_not_open',error=e))
+        if not book.n:return s.status(s.t('no_text'))
+        s.book=book
         key=s.book_key();state=normalize_book_state(s.pos.get(key,s.pos.get(s.book.name,0)))
         if 'lang' in state:
             s.book.lang=state['lang'];s.book.lemmas=[lemma_of(w,s.book.lang) for w in s.book.words]
@@ -1169,7 +1197,7 @@ class Win(Adw.ApplicationWindow):
         if END_RE.search(last):d*=c['sentence_pause']
         elif COMMA_RE.search(last):d*=c['comma_pause']
         if any(len(w)>=c['long_word_len'] for w in b.words[s.i:s.i+n]):d*=c['long_word_pause']
-        if any(l in s.unknown for l in b.lemmas[s.i:s.i+n]):d*=c['unknown_pause']
+        if any(s.is_unknown(l) for l in b.lemmas[s.i:s.i+n]):d*=c['unknown_pause']
         if s.i+n<b.n and b.is_para_start(s.i+n):d=max(d,60000/c['wpm']*c['paragraph_pause'])
         s.timer=GLib.timeout_add(int(d),s.step)
     def step(s):
@@ -1225,11 +1253,13 @@ class Win(Adw.ApplicationWindow):
     def replay(s):s.book and s.goto(s.book.sent_start(s.i),keep_playing=True)
 
     # ---- unknown words
+    def is_unknown(s,lemma):return bool(s.book and f'{s.book.lang}:{lemma}' in s.unknown)
     def toggle_unknown(s,i):
-        if s.book and i is not None and s.book.lemmas[i]:s.set_unknown(s.book.lemmas[i],s.book.lemmas[i] not in s.unknown)
+        if s.book and i is not None and s.book.lemmas[i]:s.set_unknown(s.book.lemmas[i],not s.is_unknown(s.book.lemmas[i]))
     def set_unknown(s,lemma,flag):
-        if not lemma or (lemma in s.unknown)==flag:return
-        (s.unknown.add if flag else s.unknown.discard)(lemma);UNKNOWN.write_text('\n'.join(sorted(s.unknown))+'\n')
+        if not s.book or not lemma or s.is_unknown(lemma)==flag:return
+        key=f'{s.book.lang}:{lemma}'
+        (s.unknown.add if flag else s.unknown.discard)(key);UNKNOWN.write_text('\n'.join(sorted(s.unknown))+'\n')
         for t in(s.pacer,s.ctx,s.page):t.b and t.mark_unknown(only=lemma)
         s.status(s.t('unknown_words',count=len(s.unknown)))
 
@@ -1245,7 +1275,7 @@ class Win(Adw.ApplicationWindow):
         b=s.book;w=strip(b.words[i]);lemma=lemma_of(w,b.lang)
         if not w:return
         pk=s.pack();s.lex_senses=pk.senses(w) if pk else []
-        s.word,s.lemma=w,lemma;s.req+=1;s.show_def(w,lemma,[('','…')]);s.unkbtn.set_active(lemma in s.unknown)
+        s.word,s.lemma=w,lemma;s.req+=1;s.show_def(w,lemma,[('','…')]);s.unkbtn.set_active(s.is_unknown(lemma))
         s.learnbtn.set_visible(bool(s.gloss));s.gloss and s.learnbtn.set_active(s.gloss.raw(w)[1] in s.gloss.learned);s.pop.present(s)
         threading.Thread(target=s.fetch,args=(s.req,w,lemma,b.lang,b.sentence(i),b.name),daemon=True).start()
     def pack(s):

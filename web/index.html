@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Speedready</title>
 <meta name="description" content="Read books in any language at your own pace. Download free Gutenberg books, read offline, and use optional dictionaries for 10 languages.">
 <meta name="theme-color" content="#101012">
@@ -23,7 +23,7 @@
 :root[data-theme="light"]{
   --bg:#faf9f7; --fg:#1a1a1c; --dim:#6b6b72; --panel:#ffffff; --line:#e3e1dd;
   --accent:#d32f2f; --gloss:#1a56b8; --hl:#c8e6d0; --unk:#a86b00;
-  --masc:#1f5fd1; --fem:#c62839; --neut:#1b8a45;
+  --masc:#1f5fd1; --fem:#c62839; --neut:#19783c;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;overscroll-behavior:none}
@@ -34,7 +34,7 @@ body{
   padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
 }
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-.btn{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn{color:inherit;text-decoration:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn:active{background:var(--line)}
 .btn:disabled{opacity:.4}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
@@ -53,13 +53,16 @@ header{display:flex;align-items:center;gap:8px;padding:8px var(--pad);border-bot
 main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:18px var(--pad) 40vh}
 #page{max-width:680px;margin:0 auto;font-size:var(--size,19px);line-height:1.15}
 .p{margin:0 0 1.15em;display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 2px}
-.c{display:flex;flex-direction:column;align-items:center;padding:1px 3px;border-radius:7px;line-height:1.2}
-.c .g{font-size:.56em;color:var(--gloss);line-height:1.4;min-height:1.4em;white-space:nowrap}
+.c{max-width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;padding:1px 3px;border-radius:7px;line-height:1.2}
+.c .w{max-width:100%;overflow-wrap:anywhere}
+.c .g{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:.56em;color:var(--gloss);line-height:1.4;min-height:1.4em;white-space:nowrap}
 .c.cur{background:var(--hl)}
+#page .c.cur .w,#page .c.cur .g{color:var(--fg)}
 .c.g-m .w,#rsvp-word.g-m{color:var(--masc)}.c.g-f .w,#rsvp-word.g-f{color:var(--fem)}.c.g-n .w,#rsvp-word.g-n{color:var(--neut)}.c.g-c .w,#rsvp-word.g-c{color:var(--masc)}
 .c.read .w{color:var(--dim)}
 .c.unk .w{text-decoration:underline;text-decoration-color:var(--unk);text-underline-offset:3px}
-body.plain .c .g{display:none}
+body.plain .c .w{max-width:100%;overflow-wrap:anywhere}
+.c .g{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:none}
 body.plain .p{gap:0 5px}
 
 /* ---------- bottom controls ---------- */
@@ -109,19 +112,26 @@ button:disabled{opacity:.55;cursor:wait}
 }
 .sheet.on{display:flex}
 .sheet>div{
+  position:relative;
   background:var(--panel);width:100%;max-width:560px;max-height:82vh;overflow-y:auto;
   border-radius:20px 20px 0 0;padding:14px var(--pad) calc(18px + env(safe-area-inset-bottom));
   animation:up .22s ease-out;
 }
 @keyframes up{from{transform:translateY(100%)}}
+.sheet-toolbar{position:sticky;top:-14px;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--panel);padding-block:8px;margin-bottom:4px}
+.sheet-close{flex:none;width:44px;height:44px;font-size:24px;background:var(--panel);border-radius:8px}
+.sheet-toolbar h2,.sheet-toolbar #w-word{margin:0;min-width:0;overflow-wrap:anywhere}
+.sheet :is(input,button,summary,a),#discover{scroll-margin-block-start:72px}
 .grab{width:38px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 12px}
 .sheet h2{margin:0 0 4px;font-size:22px}
 .sheet h3{margin:16px 0 8px;font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
 .row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);min-height:52px}
 .row:last-child{border-bottom:0}
-.row label{flex:1}
+.row label{flex:1;min-width:0;overflow-wrap:anywhere}
+#n-today{font-size:14px;white-space:nowrap}
+@media(max-width:420px){#t-mode{min-width:0!important;max-width:48%}}
 .row small{display:block;color:var(--dim);font-size:12px;margin-top:2px}
-.list button{display:block;width:100%;text-align:left;padding:13px 10px;border-radius:10px;border-bottom:1px solid var(--line)}
+.list button{min-height:44px;overflow-wrap:anywhere;display:block;width:100%;text-align:left;padding:13px 10px;border-radius:10px;border-bottom:1px solid var(--line)}
 .list button:active{background:var(--line)}
 .list button.on{color:var(--accent);font-weight:600}
 .book{display:flex;align-items:center;border-bottom:1px solid var(--line)}
@@ -132,7 +142,7 @@ button:disabled{opacity:.55;cursor:wait}
 .found input{width:22px;height:22px;accent-color:var(--accent);flex:none}
 .found span{flex:1;min-width:0;overflow-wrap:anywhere}
 .found.known{opacity:.5}
-#book-lang{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 10px;font:inherit}
+#book-lang{font-size:16px!important;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 10px;font:inherit}
 .hint{color:var(--dim);font-size:14px;margin:0 0 8px}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .actions .btn{flex:1 1 44%}
@@ -144,16 +154,17 @@ button:disabled{opacity:.55;cursor:wait}
 #w-more{color:var(--dim);font-size:14px;line-height:1.5;white-space:pre-wrap;margin-top:10px}
 
 /* switch */
-.sw{width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;transition:background .15s;flex:none}
-.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
-.sw.on{background:var(--accent)}
+.sw{width:50px;height:44px;border-radius:15px;background:transparent;position:relative;flex:none}
+.sw::before{content:"";position:absolute;inset:7px 0;border-radius:15px;background:var(--line);transition:background .15s}
+.sw::after{content:"";position:absolute;top:10px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw.on::before{background:var(--accent)}
 .sw.on::after{transform:translateX(20px)}
 
 #rsvp{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 var(--pad)}
 body.rsvp #rsvp{display:flex}
 body.rsvp main{display:none}
-#rsvp-word{font-family:ui-monospace,"JetBrains Mono",Menlo,monospace;font-size:clamp(34px,11vw,72px);
-  line-height:1.1;white-space:nowrap}
+#rsvp-word{max-width:100%;overflow-wrap:anywhere;text-align:center;font-family:ui-monospace,"JetBrains Mono",Menlo,monospace;font-size:clamp(34px,11vw,72px);
+  line-height:1.1;white-space:normal}
 #rsvp-word i{color:var(--accent);font-style:normal}
 #rsvp-gloss{color:var(--gloss);font-size:clamp(16px,4.5vw,24px);min-height:1.4em}
 #rsvp-ctx{color:var(--dim);font-size:14px;line-height:1.5;text-align:center;max-width:620px;margin-top:18px}
@@ -170,13 +181,19 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
 #splash p{color:var(--dim);margin:0;max-width:320px;line-height:1.5}
 #pct{font-variant-numeric:tabular-nums;color:var(--accent);font-size:15px}
 .hidden{display:none!important}
+@media(prefers-reduced-motion:reduce){
+  .sheet>div{animation:none}
+  #toast{transform:translateX(-50%);transition:opacity .1s}
+  #fill{transition:none}
+  .sw::after,.sw::before{transition:none}
+}
 </style>
 </head>
 <body>
 
 <div id="splash">
   <h1>Speedready</h1>
-  <p id="splash-msg" data-t="loading">Preparing the dictionary…</p>
+  <p role="status" id="splash-msg" data-t="loading">Preparing the dictionary…</p>
   <div id="pct">0%</div>
 </div>
 
@@ -202,7 +219,7 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
 </footer>
 
 <!-- word sheet -->
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <div class="sheet" id="s-word"><div>
   <div class="grab"></div>
@@ -227,7 +244,7 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
   <div class="list" id="library"></div>
   <div class="row"><label for="book-lang" data-t="book_lang">Language of this book</label><input id="book-lang" list="book-languages" autocapitalize="none" spellcheck="false" placeholder="e.g. ar, ja, zh"><datalist id="book-languages"></datalist></div>
   <div class="actions">
-    <label class="btn" for="file" data-t="add_books">＋ Add books</label>
+    <button class="btn" id="b-add-books" data-t="add_books">＋ Add books</button>
     <button class="btn" id="b-scan" data-t="find_books">Find books on this device</button>
   </div>
   <p class="hint hidden" id="scan-hint" data-t="scan_hint_android">Android cannot open the whole Download folder: pick the folder your books are in.</p>
@@ -273,17 +290,17 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
 <div class="sheet" id="s-settings"><div>
   <div class="grab"></div>
   <h2 data-t="settings">Settings</h2>
-  <div class="row"><label data-t="gloss_label">Translation above the words<small data-t="gloss_hint">Shows your language above every word you have not marked as known</small></label><div class="sw on" id="t-gloss"></div></div>
-  <div class="row" id="gender-row"><label data-t="gender_label">Colors for der, die, das<small data-t="gender_hint">German nouns in blue (der), red (die) or green (das)</small></label><div class="sw on" id="t-gender"></div></div>
+  <div class="row"><label data-t="gloss_label">Translation above the words<small data-t="gloss_hint">Shows your language above every word you have not marked as known</small></label><button type="button" role="switch" aria-checked="true" class="sw on" id="t-gloss"></button></div>
+  <div class="row" id="gender-row"><label data-t="gender_label">Colors for der, die, das<small data-t="gender_hint">German nouns in blue (der), red (die) or green (das)</small></label><button type="button" role="switch" aria-checked="true" class="sw on" id="t-gender"></button></div>
   <div class="row"><label data-t="mode">Reading mode</label>
     <button class="btn" id="t-mode" style="min-width:150px"></button></div>
-  <div class="row"><label data-t="dark">Dark mode</label><div class="sw on" id="t-dark"></div></div>
+  <div class="row"><label data-t="dark">Dark mode</label><button type="button" role="switch" aria-checked="true" class="sw on" id="t-dark"></button></div>
   <div class="row"><label data-t="text_size">Text size</label>
-    <button class="btn icon" id="size-down">A−</button><button class="btn icon" id="size-up">A+</button></div>
-  <div class="row"><label data-t="tts_label">Read aloud while it advances<small data-t="tts_hint">The device voice reads each sentence and the text follows it</small></label><div class="sw" id="t-tts"></div></div>
+    <button class="btn icon" id="size-down" data-t-aria="text_size">A−</button><button class="btn icon" id="size-up" data-t-aria="text_size">A+</button></div>
+  <div class="row"><label data-t="tts_label">Read aloud while it advances<small data-t="tts_hint">The device voice reads each sentence and the text follows it</small></label><button type="button" role="switch" aria-checked="false" class="sw" id="t-tts"></button></div>
   <div id="voice-box" class="hidden">
     <div class="row"><label data-t="voice_speed">Voice speed</label>
-      <button class="btn icon" id="rate-down">−</button><b id="rate-val" style="min-width:42px;text-align:center">0.9×</b><button class="btn icon" id="rate-up">+</button></div>
+      <button class="btn icon" id="rate-down" data-t-aria="voice_speed">−</button><b id="rate-val" style="min-width:42px;text-align:center">0.9×</b><button class="btn icon" id="rate-up" data-t-aria="voice_speed">+</button></div>
     <h3 data-t="voice">Voice</h3>
     <div class="list" id="voices"></div>
   </div>
@@ -313,6 +330,8 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
 <script src="gender.js"></script>
 <script src="textclean.js"></script>
 <script src="reading.js"></script>
+<script src="epub.js"></script>
+<script src="catalog.js"></script>
 <script>
 //////////////////// language ////////////////////
 // The interface language. Written English, translated at runtime; the reader picks on
@@ -641,6 +660,16 @@ Object.assign(UI.nl,{"discover": "Gratis boeken downloaden", "catalog_hint": "Zo
 Object.assign(UI.pl,{"discover": "Pobierz bezpłatne książki", "catalog_hint": "Szukaj w Project Gutenberg we wszystkich dostępnych językach. Książki pozostają w bibliotece do czytania offline.", "search_books": "Tytuł lub autor", "catalog_language": "Język książki", "all_languages": "Wszystkie języki", "search": "Szukaj", "more_books": "Więcej książek", "other_sources": "Inne otwarte biblioteki", "source_hint": "Pobierz EPUB, PDF lub tekst i użyj Dodaj książki. Możesz też wkleić bezpośredni link z Gutenberg, Standard Ebooks lub Open Book Publishers.", "book_url": "Bezpośredni link do książki", "download_read": "Pobierz i czytaj", "catalog_loading": "Ładowanie katalogu…", "catalog_count": "Znaleziono {n} książek", "catalog_empty": "Nie znaleziono książek. Spróbuj innego tytułu, autora lub języka.", "catalog_error": "Katalog niedostępny. Połącz się z internetem i spróbuj ponownie.", "downloading": "Pobieranie książki…", "download": "Pobierz", "download_error": "Nie można pobrać lub zapisać. Sprawdź połączenie i miejsce albo otwórz źródło i użyj Dodaj książki.", "language_code": "Wpisz kod języka, np. ar, ja lub zh."});
 Object.assign(UI.ru,{"discover": "Скачать бесплатные книги", "catalog_hint": "Ищите в Project Gutenberg на всех доступных языках. Книги остаются в библиотеке для чтения без интернета.", "search_books": "Название или автор", "catalog_language": "Язык книги", "all_languages": "Все языки", "search": "Найти", "more_books": "Ещё книги", "other_sources": "Другие открытые библиотеки", "source_hint": "Скачайте EPUB, PDF или текст и нажмите Добавить книги. Или вставьте прямую ссылку из Gutenberg, Standard Ebooks или Open Book Publishers.", "book_url": "Прямая ссылка на книгу", "download_read": "Скачать и читать", "catalog_loading": "Загрузка каталога…", "catalog_count": "Найдено книг: {n}", "catalog_empty": "Книги не найдены. Попробуйте другое название, автора или язык.", "catalog_error": "Каталог недоступен. Подключитесь к интернету и повторите поиск.", "downloading": "Загрузка книги…", "download": "Скачать", "download_error": "Не удалось скачать или сохранить. Проверьте соединение и место либо откройте источник и добавьте файл.", "language_code": "Введите код языка, например ar, ja или zh."});
 Object.assign(UI.sv,{"discover": "Hämta gratis böcker", "catalog_hint": "Sök på Project Gutenberg på alla tillgängliga språk. Böcker sparas i biblioteket för läsning offline.", "search_books": "Titel eller författare", "catalog_language": "Bokens språk", "all_languages": "Alla språk", "search": "Sök", "more_books": "Fler böcker", "other_sources": "Andra öppna bibliotek", "source_hint": "Hämta EPUB, PDF eller text och använd Lägg till böcker. Eller klistra in en direktlänk från Gutenberg, Standard Ebooks eller Open Book Publishers.", "book_url": "Direktlänk till boken", "download_read": "Hämta och läs", "catalog_loading": "Laddar katalog…", "catalog_count": "{n} böcker hittades", "catalog_empty": "Inga böcker hittades. Prova en annan titel, författare eller ett annat språk.", "catalog_error": "Katalogen är inte tillgänglig. Anslut till internet och sök igen.", "downloading": "Hämtar boken…", "download": "Hämta", "download_error": "Kunde inte hämta eller spara. Kontrollera anslutning och lagring, eller öppna källan och använd Lägg till böcker.", "language_code": "Ange en språkkod, till exempel ar, ja eller zh."});
+Object.assign(UI.en,{"close": "Close", "no_text_file": "This file has no readable text.", "storage_notice": "Opened for reading, but could not save this book offline. Free some storage and add it again."});
+Object.assign(UI.pt,{"close": "Fechar", "no_text_file": "Este arquivo não contém texto legível.", "storage_notice": "Aberto para leitura, mas não foi possível salvar offline. Libere espaço e adicione novamente."});
+Object.assign(UI.es,{"close": "Cerrar", "no_text_file": "Este archivo no contiene texto legible.", "storage_notice": "Abierto para leer, pero no se pudo guardar sin conexión. Libera espacio y añádelo de nuevo."});
+Object.assign(UI.fr,{"close": "Fermer", "no_text_file": "Ce fichier ne contient aucun texte lisible.", "storage_notice": "Ouvert pour lecture, mais impossible de le garder hors ligne. Libérez de l’espace et ajoutez-le à nouveau."});
+Object.assign(UI.de,{"close": "Schließen", "no_text_file": "Diese Datei enthält keinen lesbaren Text.", "storage_notice": "Zum Lesen geöffnet, aber nicht offline gespeichert. Gib Speicher frei und füge das Buch erneut hinzu."});
+Object.assign(UI.it,{"close": "Chiudi", "no_text_file": "Questo file non contiene testo leggibile.", "storage_notice": "Aperto per la lettura, ma non salvato offline. Libera spazio e aggiungilo di nuovo."});
+Object.assign(UI.nl,{"close": "Sluiten", "no_text_file": "Dit bestand bevat geen leesbare tekst.", "storage_notice": "Geopend om te lezen, maar niet offline opgeslagen. Maak ruimte vrij en voeg het opnieuw toe."});
+Object.assign(UI.pl,{"close": "Zamknij", "no_text_file": "Ten plik nie zawiera czytelnego tekstu.", "storage_notice": "Otwarto do czytania, ale nie zapisano offline. Zwolnij miejsce i dodaj ponownie."});
+Object.assign(UI.ru,{"close": "Закрыть", "no_text_file": "В этом файле нет читаемого текста.", "storage_notice": "Книга открыта, но не сохранена для чтения без интернета. Освободите место и добавьте её снова."});
+Object.assign(UI.sv,{"close": "Stäng", "no_text_file": "Den här filen innehåller ingen läsbar text.", "storage_notice": "Öppnad för läsning men inte sparad offline. Frigör utrymme och lägg till den igen."});
 const LANGS=Object.keys(UI).map(c=>{const n=new Intl.DisplayNames([c],{type:'language'}).of(c);return [c,n[0].toUpperCase()+n.slice(1)]});   // every interface language, named in itself
 // Which language this build reads and glosses into comes from bundle.json and the dictionary's own
 // src/tgt fields, so swapping the shipped pair is a rebuild of the assets, not an edit to this file.
@@ -666,11 +695,12 @@ function applyLang(){
   buildVoiceList();buildLangList();genderLabels();
   if(catalog)buildCatalogLanguages();
   if(S.book)buildLibrary();
+  syncSwitches();
 }
 
 //////////////////// state ////////////////////
 const LS={get:(k,d)=>{try{const v=localStorage.getItem('sr:'+k);return v===null?d:JSON.parse(v)}catch{return d}},
-          set:(k,v)=>{try{localStorage.setItem('sr:'+k,JSON.stringify(v))}catch{}}};
+          set:(k,v)=>{try{localStorage.setItem('sr:'+k,JSON.stringify(v));return true}catch{return false}}};
 const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],pageA:0,pageB:0,
          ui:LS.get('ui',null),mode:'pacer',
          unknown:new Set(LS.get('unknown',[])),vocab:LS.get('vocab',[]),bookmarks:[],
@@ -679,6 +709,7 @@ const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],p
          voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false,
          genderOn:LS.get('gender',true),bundled:null,native:LS.get('native',null)};
 const $=s=>document.querySelector(s), page=$('#page');
+function syncSwitches(){for(const id of ['t-gloss','t-gender','t-dark','t-tts'])$('#'+id).setAttribute('aria-checked',String($('#'+id).classList.contains('on')))}
 let toastTimer=null;
 function toast(msg){
   const t=$('#toast'); t.textContent=msg; t.classList.add('on');
@@ -793,7 +824,7 @@ function chapterOf(i){let t='';for(const[name,at]of S.book.chapters){if(at<=i)t=
 //////////////////// rendering ////////////////////
 const PAGE=340;
 function renderPage(i){
-  const b=S.book, a=paraOf(Math.max(0,i-40));
+  const b=S.book,target=Math.max(0,i-40),a=b.words.length>12000?Math.max(paraOf(target),Math.max(0,i-PAGE)):paraOf(target);
   let end=a; while(end<b.words.length && end-a<PAGE) end++;
   end=b.words.length; // whole book renders fine for these sizes; keeps scrolling natural
   if(b.words.length>12000){ end=Math.min(b.words.length, a+PAGE*6); }
@@ -802,7 +833,7 @@ function renderPage(i){
   let p=document.createElement('div'); p.className='p'; frag.appendChild(p);
   for(let k=a;k<end;k++){
     if(k>a&&isParaStart(k)){p=document.createElement('div');p.className='p';frag.appendChild(p)}
-    const c=document.createElement('span'); c.className='c'; c.dataset.i=k;
+    const c=document.createElement('span'); c.className='c'; c.dataset.i=k;c.setAttribute('role','button');c.tabIndex=k===S.i?0:-1;
     const g=document.createElement('span'); g.className='g'; g.textContent=S.gloss?showGloss(b.words[k]):'';
     const w=document.createElement('span'); w.className='w'; w.textContent=b.words[k];
     if(isUnknown(b.words[k]))c.classList.add("unk");
@@ -838,12 +869,12 @@ function refreshGlosses(){
 let curCell=null;
 function highlight(i,scroll){
   const c=S.cells[i-S.pageA]; if(!c)return;
-  if(curCell)curCell.classList.remove('cur');
-  c.classList.add('cur'); curCell=c;
+  if(curCell){curCell.classList.remove('cur');curCell.tabIndex=-1;}
+  c.classList.add('cur');c.tabIndex=0;curCell=c;
   if(scroll){
     const r=c.getBoundingClientRect(), m=$('#main').getBoundingClientRect();
     if(r.top<m.top+m.height*0.28||r.bottom>m.top+m.height*0.72)
-      $('#main').scrollBy({top:r.top-(m.top+m.height*0.35),behavior:'smooth'});
+      $('#main').scrollBy({top:r.top-(m.top+m.height*0.35),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
   }
 }
 function updateHeader(){
@@ -854,9 +885,12 @@ function updateHeader(){
   $('#fill').style.width=(100*S.i/S.book.words.length)+'%';
 }
 function show(scroll=true){
+  if(!S.book?.words.length)return;
+  const readerHadFocus=page.contains(document.activeElement);
+  if(S.mode!=='rsvp'&&(S.i<S.pageA||S.i>=S.pageB))renderPage(S.i);
   if(S.playing&&S.i>S.shown&&S.i-S.shown<50)S.readNow=(S.readNow||0)+S.i-S.shown;   // only words read while it runs, not jumps
   S.shown=S.i;
-  if(S.mode==='rsvp')drawRsvp();else highlight(S.i,scroll);updateHeader();updateStar();saveSoon()}
+  if(S.mode==='rsvp')drawRsvp();else{highlight(S.i,scroll);if(readerHadFocus)S.cells[S.i-S.pageA]?.focus({preventScroll:true})}updateHeader();updateStar();saveSoon()}
 
 //////////////////// rsvp ////////////////////
 function pivot(w){const chars=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(w)].map(x=>x.segment):Array.from(w);
@@ -896,7 +930,7 @@ function step(){
   show(); S.timer=setTimeout(step,delay(S.i));
 }
 function play(){
-  if(S.playing)return;
+  if(S.playing||!S.book?.words.length)return;
   S.playing=true; $('#play').textContent=T('pause');
   if(S.tts){speakFrom(S.i)} else {show();S.timer=setTimeout(step,delay(S.i))}
 }
@@ -1066,7 +1100,7 @@ function exportAnki(){
 
 //////////////////// bookmarks ////////////////////
 const marksKey=()=>'marks:'+(S.book?.id||'starter');
-function loadMarks(){S.bookmarks=LS.get(marksKey(),[])}
+function loadMarks(){S.bookmarks=LS.get(marksKey(),[]).filter(i=>Number.isInteger(i)&&i>=0&&i<S.book.words.length)}
 function atBookmark(){return S.bookmarks.some(m=>Math.abs(m-S.i)<5)}
 function toggleBookmark(){
   const hit=S.bookmarks.find(m=>Math.abs(m-S.i)<5);
@@ -1090,9 +1124,42 @@ function buildMarks(){
 }
 
 //////////////////// sheets ////////////////////
-function openSheet(sel){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));$(sel).classList.add('on')}
-function closeSheets(){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'))}
-document.querySelectorAll('.sheet').forEach(s=>s.addEventListener('click',e=>{if(e.target===s)closeSheets()}));
+let sheetReturnFocus=null;
+const sheetBackground=()=>document.querySelectorAll('header,main,footer,#rsvp');
+function openSheet(sel){
+  pause();
+  if(!document.querySelector('.sheet.on'))sheetReturnFocus=document.activeElement;
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));
+  const sheet=$(sel);sheet.classList.add('on');
+  sheetBackground().forEach(e=>e.inert=true);
+  sheet.querySelector('.sheet-close').focus({preventScroll:true});
+}
+function closeSheets(){
+  const wasOpen=!!document.querySelector('.sheet.on');
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));
+  sheetBackground().forEach(e=>e.inert=false);
+  if(wasOpen)(sheetReturnFocus?.isConnected?sheetReturnFocus:$('#b-library')).focus({preventScroll:true});
+}
+document.querySelectorAll('.sheet').forEach((sheet,i)=>{
+  sheet.setAttribute('role','dialog');sheet.setAttribute('aria-modal','true');
+  const heading=sheet.querySelector('h2')||sheet.querySelector('#w-word');
+  heading.id=heading.id||'sheet-title-'+i;sheet.setAttribute('aria-labelledby',heading.id);
+  const close=document.createElement('button');close.type='button';close.className='sheet-close';
+  close.textContent='×';close.dataset.tAria='close';close.setAttribute('aria-label',T('close'));close.onclick=closeSheets;
+  const toolbar=document.createElement('div');toolbar.className='sheet-toolbar';toolbar.append(heading,close);sheet.querySelector('.grab').after(toolbar);
+  sheet.addEventListener('click',e=>{if(e.target===sheet)closeSheets()});
+});
+document.querySelectorAll('.sw').forEach(b=>{
+  const label=b.closest('.row').querySelector('label');label.id=b.id+'-label';b.setAttribute('aria-labelledby',label.id);label.htmlFor=b.id;
+});
+addEventListener('keydown',e=>{
+  const sheet=document.querySelector('.sheet.on');if(!sheet)return;
+  if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeSheets();return}
+  if(e.key!=='Tab')return;
+  const controls=[...sheet.querySelectorAll('button,input,select,a[href],summary,[tabindex="0"]')].filter(el=>!el.disabled&&el.getClientRects().length);
+  const index=controls.indexOf(document.activeElement),next=e.shiftKey?index-1:index+1;
+  if(next<0||next>=controls.length){e.preventDefault();controls[e.shiftKey?controls.length-1:0]?.focus()}
+},true);
 
 //////////////////// persistence ////////////////////
 let saveTimer=null;
@@ -1124,6 +1191,8 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();sa
 
 //////////////////// loading books ////////////////////
 async function loadBook(book,startAt){
+  if(!book?.words?.length)throw new Error(T('no_text_file'));
+  pause();
   S.book=book;
   page.lang=book.lang||'und';page.dir=book.lang?(Reading.rtl(book.lang)?'rtl':'ltr'):'auto';
   page.classList.toggle('cjk',/^(zh|ja|th|lo|km|my)$/.test(book.lang));
@@ -1133,13 +1202,16 @@ async function loadBook(book,startAt){
     if(pos!==null)LS.set(bookKey(),m(pos));
     LS.set(marksKey(),LS.get(marksKey(),[]).map(m));LS.set('clean:'+book.id,true);
   }
-  S.i=Math.min(startAt??LS.get(bookKey(),book.old2new?TextClean.start(book.chapters,book.words.length):0),book.words.length-1);
+  const position=startAt??LS.get(bookKey(),book.old2new?TextClean.start(book.chapters,book.words.length):0);
+  S.i=Math.max(0,Math.min(Number.isFinite(position)?Math.trunc(position):0,book.words.length-1));
   computeGenders();useDictFor(book);
   const pr=LS.get(prefsKey(),null);                 // each book keeps its own pace and mode
   if(pr){S.wpm=pr.wpm??S.wpm;S.gloss=pr.gloss??S.gloss;S.tts=pr.tts??S.tts;
          $('#wpm').textContent=S.wpm;$('#t-gloss').classList.toggle('on',S.gloss);
          document.body.classList.toggle('plain',!S.gloss);$('#t-tts').classList.toggle('on',S.tts);
          $('#voice-box').classList.toggle('hidden',!S.tts);}
+  syncSwitches();
+  syncSwitches();
   loadMarks();
   renderPage(S.i); setMode((LS.get(prefsKey(),{}) || {}).mode||'pacer'); buildChapters(); buildMarks(); buildLibrary(); LS.set('lastBook',book.id);
   requestAnimationFrame(()=>{const c=S.cells[S.i-S.pageA];if(c)c.scrollIntoView({block:'center'})});
@@ -1159,80 +1231,12 @@ function textToBook(text,title,id,language=''){
   const words=[],para=[];
   for(const p of text.split(/\n\s*\n|\r\n\s*\r\n/)){
     const ws=Reading.tokenize(p,lang);
-    if(ws.length){para.push(words.length);words.push(...ws)}
+    if(ws.length){para.push(words.length);for(const w of ws)words.push(w)}
   }
   return {id,title,lang,...TextClean.clean(words,para,[],title)};
 }
 // --- epub via the browser's own zip inflater (no library) ---
-async function epubToBook(file){
-  const buf=new Uint8Array(await file.arrayBuffer()), dv=new DataView(buf.buffer);
-  let eocd=buf.length-22;
-  while(eocd>0&&dv.getUint32(eocd,true)!==0x06054b50)eocd--;
-  if(eocd<=0)throw new Error('Arquivo .epub inválido');
-  let n=dv.getUint16(eocd+10,true), off=dv.getUint32(eocd+16,true);
-  const files={};
-  for(let k=0;k<n;k++){
-    const nameLen=dv.getUint16(off+28,true),extra=dv.getUint16(off+30,true),cmt=dv.getUint16(off+32,true);
-    const method=dv.getUint16(off+10,true),local=dv.getUint32(off+42,true),csize=dv.getUint32(off+20,true);
-    const name=new TextDecoder().decode(buf.subarray(off+46,off+46+nameLen));
-    files[name]={method,local,csize}; off+=46+nameLen+extra+cmt;
-  }
-  async function read(name){
-    const f=files[name]; if(!f)return null;
-    const nl=dv.getUint16(f.local+26,true), el=dv.getUint16(f.local+28,true);
-    const start=f.local+30+nl+el, raw=buf.subarray(start,start+f.csize);
-    if(f.method===0)return new TextDecoder('utf-8').decode(raw);
-    const ds=new DecompressionStream('deflate-raw');
-    const out=new Response(new Blob([raw]).stream().pipeThrough(ds));
-    return new TextDecoder('utf-8').decode(await out.arrayBuffer());
-  }
-  const container=await read('META-INF/container.xml');
-  const opfPath=container.match(/full-path="([^"]+)"/)[1];
-  const opf=await read(opfPath), dir=opfPath.replace(/[^/]*$/,'');
-  const items={},props={}; for(const m of opf.matchAll(/<item\b[^>]*>/g)){
-    const id=(m[0].match(/\bid="([^"]+)"/)||[])[1], href=(m[0].match(/href="([^"]+)"/)||[])[1];
-    if(id&&href){items[id]=href;props[id]=(m[0].match(/properties="([^"]+)"/)||[])[1]||''}
-  }
-  const tagged=Reading.langCode((opf.match(/<dc:language[^>]*>([^<]*)</)||[])[1]||'');
-  const parser=new DOMParser(); let words=[],para=[],chapters=[];
-  const path=(base,href)=>{const u=new URL(href,'http://x/'+base);return[decodeURIComponent(u.pathname.slice(1)),decodeURIComponent(u.hash.slice(1))]};
-  // the book's own table of contents (EPUB3 nav, else EPUB2 ncx) -> [title, file, anchor]
-  const toc=[], navId=Object.keys(props).find(id=>props[id].split(/\s+/).includes('nav'));
-  const ncxId=(opf.match(/<spine\b[^>]*\btoc="([^"]+)"/)||[])[1], tocId=navId||ncxId;
-  if(tocId&&items[tocId]){
-    const tp=path(dir,items[tocId])[0], src=await read(tp);
-    if(src){
-      const d=parser.parseFromString(src,navId?'text/html':'application/xml');
-      if(navId){const nav=d.querySelector('nav');nav&&nav.querySelectorAll('a[href]').forEach(a=>toc.push([a.textContent.split(/\s+/).filter(Boolean).join(' '),...path(tp,a.getAttribute('href'))]))}
-      else d.querySelectorAll('navPoint').forEach(n=>{const c=n.querySelector('content');c&&toc.push([(n.querySelector('text')?.textContent||'').split(/\s+/).filter(Boolean).join(' '),...path(tp,c.getAttribute('src'))])});
-    }
-  }
-  for(const m of opf.matchAll(/<itemref\b[^>]*idref="([^"]+)"/g)){
-    const href=items[m[1]]; if(!href)continue;
-    const name=path(dir,href)[0], html=await read(name); if(!html)continue;
-    const doc=parser.parseFromString(html,'text/html');
-    doc.querySelectorAll('style,script').forEach(e=>e.remove());
-    doc.querySelectorAll('sup').forEach(e=>{if(/^\s*[\[(]?[\d*†‡]{1,3}[\])]?\s*$/.test(e.textContent))e.remove()});   // footnote markers: 'fool¹' -> 'fool'
-    const base=words.length, mine=toc.filter(([,f])=>f===name);
-    // each anchor lands on the first block that is it, holds it, or comes after it; a missing anchor is null (resolveMissing finds it by title)
-    const pending=mine.map(([t,,a])=>({t,el:a?doc.getElementById(a):null,a,at:a?null:base}));
-    if(!toc.length){const head=doc.querySelector('h1,h2');if(head&&head.textContent.trim())pending.push({t:head.textContent.trim().replace(/\s+/g,' ').slice(0,60),at:base})}
-    for(const el of doc.body.querySelectorAll('p,div,li,h1,h2,h3,h4,blockquote')){
-      if(el.querySelector('p,div,li'))continue;
-      for(const x of pending)if(x.at===null&&x.el&&(x.el===el||x.el.contains(el)||el.contains(x.el)||x.el.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING))x.at=words.length;
-      const ws=Reading.tokenize(el.textContent||'',tagged);
-      if(ws.length){para.push(words.length);words.push(...ws)}
-    }
-    chapters.push(...pending.map(x=>[x.t,x.at]));
-  }
-  if(!words.length)throw new Error(T('no_text_epub'));
-  const title=(opf.match(/<dc:title[^>]*>([^<]+)/)||[])[1]||file.name.replace(/\.epub$/i,'');
-  const authors=[...opf.matchAll(/<dc:creator[^>]*>([^<]+)/g)].map(m=>m[1]).join(' ');
-  const c=TextClean.clean(words,para,chapters,title+' '+authors);   // page numbers, running headers, split sentences
-  c.chapters=TextClean.resolveMissing(c.words,c.para,c.chapters).filter(([t,i])=>t&&i!==null&&i<c.words.length);
-  const lang=tagged&&!['und','mul','zxx'].includes(tagged)?tagged:TextClean.detectLang(c.words)||'';
-  return {id:'f:'+file.name+':'+file.size,title,lang,...c};
-}
+async function epubToBook(file){return Epub.toBook(file,{Reading,TextClean})}
 
 //////////////////// boot ////////////////////
 // --- pdf via pdf.js, loaded only when a PDF is opened. Each printed line goes in as its own paragraph:
@@ -1274,12 +1278,12 @@ async function boot(){
   document.body.classList.toggle('plain',!S.gloss);
   try{
     S.bundle=await fetchJSON('bundle.json');
-    S.dict=S.bundled=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%');
+    S.dict=S.bundled=await fetchJSON(S.bundle.dict,p=>$('#pct').textContent=Math.round(p*100)+'%').catch(()=>({src:'',tgt:'',o:{},f:{},g:{}}));
     for(const[set,key]of[[S.learned,'learned'],[S.unknown,'unknown']]){   // words saved before 1.0.6 were all learned in the bundled language
-      const old=[...set].filter(x=>!x.includes(':'));if(!old.length)continue;
+      const old=[...set].filter(x=>!x.includes(':'));if(!old.length||!S.bundled.src)continue;
       old.forEach(x=>{set.delete(x);set.add(S.bundled.src+':'+x)});LS.set(key,[...set]);
     }
-    if(!S.native||!S.bundle.languages[S.native])S.native=S.bundle.languages[S.ui]?S.ui:S.bundled.tgt;   // first run: the interface language
+    if(!S.native||!S.bundle.languages[S.native])S.native=S.bundle.languages[S.ui]?S.ui:(S.bundled.tgt||'en');   // first run: the interface language
     await loadReadingLanguages();
     buildNativeList();
     $('#splash-msg').textContent=T('opening');
@@ -1287,6 +1291,7 @@ async function boot(){
     await loadBook(last&&last!=='starter'&&await libraryBook(last)||await starterBook());
     pickVoice();
     $('#splash').classList.add('hidden');
+    syncSwitches();
     openShared();
   }catch(e){
     $('#splash-msg').textContent=T('cannot_open')+e.message;
@@ -1316,7 +1321,11 @@ page.addEventListener('pointerdown',e=>{
     navigator.vibrate?.(12);
   },500);
 });
+addEventListener('blur',()=>{clearTimeout(holdTimer);held=false});
 ['pointerup','pointercancel','pointermove'].forEach(ev=>page.addEventListener(ev,()=>clearTimeout(holdTimer)));
+page.addEventListener('keydown',e=>{
+  const cell=e.target.closest('.c');if(cell&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();openWord(+cell.dataset.i)}
+});
 page.addEventListener('click',e=>{
   if(held){held=false;return}
   const g=e.target.closest('.g'), c=e.target.closest('.c'); if(!c)return;
@@ -1329,6 +1338,7 @@ page.addEventListener('click',e=>{
 });
 $('#w-here').onclick=()=>{closeSheets();play()};
 $('#w-learned').onclick=markLearned;
+document.querySelectorAll('.sw').forEach(b=>new MutationObserver(syncSwitches).observe(b,{attributes:true,attributeFilter:['class']}));
 $('#w-speak').onclick=()=>{warmUpSpeech();sheetWord&&speakText(sheetWord.word)};
 $('#w-web').onclick=()=>sheetWord&&open('https://'+(S.book?.lang||'en')+'.wiktionary.org/wiki/'+encodeURIComponent(sheetWord.lemma||sheetWord.word),'_blank');
 $('#w-unknown').onclick=()=>{
@@ -1361,12 +1371,13 @@ $('#size-up').onclick=()=>{S.size=Math.min(30,S.size+1);LS.set('size',S.size);ap
 $('#size-down').onclick=()=>{S.size=Math.max(13,S.size-1);LS.set('size',S.size);applySize()};
 $('#b-forget').onclick=()=>{if(confirm(T('forget_confirm'))){
   S.learned.clear();LS.set('learned',[]);$('#n-learned').textContent=0;refreshGlosses();S.mode==='rsvp'&&drawRsvp()}};
+$('#b-add-books').onclick=()=>$('#file').click();
 $('#file').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)await addBooks(fs)};
 $('#folder').onchange=e=>{const fs=[...e.target.files].filter(isBookFile);e.target.value='';booksFound(fs.map(f=>({name:f.name,size:f.size,file:f})))};
 $('#book-lang').onchange=async e=>{   // detection guessed wrong, or found nothing: the reader knows better
   const code=Reading.langCode(e.target.value);
   if(e.target.value.trim()&&!code){e.target.value=S.book.lang;return toast(T('language_code'))}
-  S.book.lang=code;delete S.book.genders;if(S.book.id!=='starter')await saveBook(S.book).catch(()=>{});
+  S.book.lang=code;delete S.book.genders;if(S.book.id!=='starter')await saveBook(S.book).catch(()=>toast(T('storage_notice')));
   await loadBook(S.book,S.i);
 };
 $('#b-scan').onclick=()=>window.AndroidShell?AndroidShell.scanFolder():window.webkit?.messageHandlers?.scanFolder?webkit.messageHandlers.scanFolder.postMessage(''):$('#folder').click();
@@ -1381,7 +1392,7 @@ $('#b-add-found').onclick=async()=>{
   if(files.length)await addBooks(files);
 };
 //////////////////// open book catalog ////////////////////
-let bookLanguages={},catalog=null,catalogMatches=[],catalogOffset=0,catalogBusy=false;
+let bookLanguages={},catalog=null,catalogIndex=null,catalogMatches=[],catalogOffset=0,catalogBusy=false;
 async function loadReadingLanguages(){
   try{const data=await fetchJSON('languages.json');bookLanguages=data.names;Reading.setAliases(data.aliases)}catch{bookLanguages=S.bundle.languages}
 }
@@ -1400,16 +1411,16 @@ async function searchCatalog(){
   setCatalogBusy(true);$('#catalog-status').textContent=T('catalog_loading');
   try{
     if(!catalog)catalog=(await fetchJSON('catalog.json.gz')).books;
+    if(!catalogIndex)catalogIndex=await Catalog.createIndex(catalog,()=>new Promise(resolve=>setTimeout(resolve,0)));
     if($('#catalog-language').options.length===1)buildCatalogLanguages();
-    const normalize=s=>s.normalize('NFKD').replace(/\p{M}/gu,'').toLocaleLowerCase(S.ui);
-    const query=normalize($('#catalog-query').value.trim()).split(/\s+/).filter(Boolean),lang=$('#catalog-language').value;
-    catalogMatches=catalog.filter(b=>(!lang||b[3].includes(lang))&&query.every(q=>normalize(b[1]+' '+b[2]).includes(q)));
+    catalogMatches=catalogIndex.search($('#catalog-query').value,$('#catalog-language').value);
     catalogOffset=0;$('#catalog-results').replaceChildren();renderCatalogPage();
     $('#catalog-status').textContent=catalogMatches.length?T('catalog_count').replace('{n}',catalogMatches.length.toLocaleString(S.ui)):T('catalog_empty');
   }catch(e){$('#catalog-status').textContent=T('catalog_error')}
   finally{setCatalogBusy(false)}
 }
 function renderCatalogPage(){
+  const owned=new Set(lib().map(b=>b.id));
   for(const b of catalogMatches.slice(catalogOffset,catalogOffset+24)){
     const row=document.createElement('div');row.className='book';
     const info=document.createElement('div'),title=document.createElement('a'),meta=document.createElement('small');
@@ -1417,7 +1428,7 @@ function renderCatalogPage(){
     meta.textContent=[b[2],b[3].map(l=>Reading.languageName(l,S.ui)).join(', ')].filter(Boolean).join(' · ');meta.dir='auto';
     info.append(title,meta);
     const button=document.createElement('button');button.className='btn';
-    button.textContent=lib().some(x=>x.id==='gutenberg:'+b[0])?T('read_here'):T('download');
+    button.textContent=owned.has('gutenberg:'+b[0])?T('read_here'):T('download');
     button.onclick=()=>downloadBook({id:b[0],title:b[1],lang:b[3][0]||''});
     button.setAttribute('aria-label',button.textContent+': '+b[1]);row.append(info,button);$('#catalog-results').append(row);
   }
@@ -1441,7 +1452,7 @@ async function downloadBook({id,url,title,lang}){
       const type=r.headers.get('content-type')||'',ext=type.includes('epub')?'epub':type.includes('pdf')?'pdf':type.includes('text/plain')?'txt':null;
       if(!ext)throw new Error('Unsupported file');
       const file=new File([data],(title||'book')+'.'+ext);
-      book=ext==='epub'?await epubToBook(file):ext==='pdf'?await pdfToBook(file):textToBook(await file.text(),title||'Book',key,lang);
+      book=ext==='epub'?await epubToBook(file):ext==='pdf'?await pdfToBook(file):textToBook(Reading.decodeText(new Uint8Array(await file.arrayBuffer()),type),title||'Book',key,lang);
       if(!book.words.length)throw new Error('Empty book');
       book.id=key;book.source=url||'https://www.gutenberg.org/ebooks/'+id;
       if(!book.lang&&lang)book.lang=Reading.langCode(lang);
@@ -1472,7 +1483,7 @@ async function saveBook(book){
   const fp=book.words.slice(0,40).join(' '),same=lib().find(b=>b.id===book.id);   // same file name and size, different book: keep both
   if(same&&same.fp!==fp)book.id+=':'+[...fp].reduce((h,c)=>Math.imul(h,31)+c.charCodeAt(0)|0,0).toString(36);
   await idb('readwrite',s=>s.put(book,'book:'+book.id));
-  LS.set('library',[{id:book.id,title:book.title,lang:book.lang,n:book.words.length,fp:book.words.slice(0,40).join(' ')},...lib().filter(b=>b.id!==book.id)]);
+  if(!LS.set('library',[{id:book.id,title:book.title,lang:book.lang,n:book.words.length,fp:book.words.slice(0,40).join(' ')},...lib().filter(b=>b.id!==book.id)]))throw new Error('Library storage unavailable');
 }
 function buildLibrary(){
   $('#scan-hint').classList.toggle('hidden',!window.AndroidShell);
@@ -1523,14 +1534,15 @@ window.booksFound=function(list){
 };
 async function addBooks(files){
   closeSheets();pause();$('#pct').textContent='';$('#splash').classList.remove('hidden');
-  let first=null,added=0;
+  let first=null,added=0,unsaved=false;
   for(const[i,f]of files.entries()){
     $('#splash-msg').textContent=files.length>1?T('adding').replace('{i}',i+1).replace('{n}',files.length):T('opening');
     try{
       const book=f.name.toLowerCase().endsWith('.epub')?await epubToBook(f)
                 :f.name.toLowerCase().endsWith('.pdf')?await pdfToBook(f)
-                :textToBook(await f.text(),f.name.replace(/\.[^.]+$/,''),'f:'+f.name+':'+f.size);
-      await saveBook(book).catch(()=>{});   // private mode: still readable now, just not kept
+                :textToBook(Reading.decodeText(new Uint8Array(await f.arrayBuffer())),f.name.replace(/\.[^.]+$/,''),'f:'+f.name+':'+f.size);
+      if(!book.words.length)throw new Error(T('no_text_file'));
+      await saveBook(book).catch(()=>{unsaved=true}); // readable now; report when it cannot be kept offline
       first=first||book;added++;
     }catch(err){toast(T('cannot_open')+f.name)}
   }
@@ -1538,6 +1550,7 @@ async function addBooks(files){
   $('#splash').classList.add('hidden');
   if(first&&!first.lang)toast(T('lang_unknown'));
   if(added>1)toast(T('added_n').replace('{n}',added));
+  if(unsaved)toast(T('storage_notice'));
 }
 // A book opened from another app ("Open with" on Android): the shell serves it at shared-file until it is taken
 async function openShared(){
@@ -1546,6 +1559,7 @@ async function openShared(){
 }
 // keyboard, for when she uses it on a laptop
 addEventListener('keydown',e=>{
+  if(!S.book)return;
   if(e.target.closest('input,select,textarea,button,a,summary')||document.querySelector('.sheet.on')){if(e.key==='Escape')closeSheets();return;}
   if(e.key===' '){e.preventDefault();toggle()}
   else if(e.key==='ArrowRight'){pause();S.i=Math.min(S.book.words.length-1,S.i+10);show()}

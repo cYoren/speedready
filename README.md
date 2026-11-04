@@ -195,3 +195,25 @@ cd ~/Projects/speedready
 /usr/bin/python3 -m unittest discover -s tests -q
 node tests/reading.cjs
 ```
+
+## Audit and release checks
+
+The [4 November 2026 audit](docs/audit-2026-11-04.md) records fixes, measurements,
+regression coverage, and the device/deployment checks still required before release.
+The download endpoint streams books with a 30 MB bound. EPUB import validates ZIP
+entries and bounds expanded text; the catalog builds a reusable search index.
+
+Additional local checks:
+
+```bash
+cd ~/Projects/speedready
+node tests/catalog.cjs
+node tests/downloads.cjs
+```
+
+`tests/browser_audit.cjs` exercises synthetic imports, long-book reading, storage
+failures, keyboard and touch controls, both themes, accessibility, and offline reopening.
+It requires an existing Playwright installation/browser and a cached axe-core 4.10.3
+script (`AXE_PATH` can select it); it does not download books from public sources.
+`PLAYWRIGHT_MODULE`, `CHROMIUM`, and `AUDIT_URL` can select local tooling and the preview URL.
+Screenshots and the JSON result are saved under the ignored `dist/audit/` directory.
