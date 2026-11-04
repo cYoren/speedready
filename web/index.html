@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <title>Speedready</title>
-<meta name="description" content="Speed reading, and reading in 10 languages with a translation above every word you do not know yet.">
+<meta name="description" content="Read books in any language at your own pace. Download free Gutenberg books, read offline, and use optional dictionaries for 10 languages.">
 <meta name="theme-color" content="#101012">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,6 +19,7 @@
   --masc:#6ea8ff; --fem:#ff7a85; --neut:#6fd08c;
   --pad:16px; --radius:14px;
 }
+:root[data-theme="light"] .btn.primary{color:#fff}
 :root[data-theme="light"]{
   --bg:#faf9f7; --fg:#1a1a1c; --dim:#6b6b72; --panel:#ffffff; --line:#e3e1dd;
   --accent:#d32f2f; --gloss:#1a56b8; --hl:#c8e6d0; --unk:#a86b00;
@@ -36,7 +37,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .btn{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn:active{background:var(--line)}
 .btn:disabled{opacity:.4}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
 .btn:disabled{opacity:.5}
 .icon{width:44px;min-width:44px;padding:0;font-size:19px}
 
@@ -78,6 +79,29 @@ footer{
 #wpm{min-width:58px;text-align:center;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
 #play{flex:1;min-width:0;height:46px;padding:10px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:26px;text-align:center}
 
+#discover{margin-top:20px;border-block:1px solid var(--line);padding-block:14px}
+#discover summary{cursor:pointer;font-weight:600;min-height:44px;display:list-item;padding-block:10px}
+#discover .hint{margin-block:12px;line-height:1.5}
+#catalog-form,#url-form{display:grid;gap:8px}
+#catalog-form input,#catalog-form select,#url-form input{min-width:0;width:100%;min-height:44px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;font-size:16px}
+#catalog-form label,#url-form label{margin-top:8px}
+#catalog-results .book{align-items:flex-start;gap:10px;padding-block:14px}
+#catalog-results .book>div{flex:1;min-width:0;overflow-wrap:anywhere}
+#catalog-results .book .btn{width:auto;flex:none;background:var(--bg);border:1px solid var(--line)}
+#catalog-results .book a,.source-links a{color:var(--fg);text-underline-offset:3px}
+#catalog-results .book a{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+#catalog-results .book small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.other-catalogs{margin-block:12px}
+#catalog-more{margin-block:12px;width:100%;border:1px solid var(--line)}
+button:disabled{opacity:.55;cursor:wait}
+#book-lang{width:115px;min-width:0}
+#page[dir=rtl] .p{direction:rtl}
+#page[dir=rtl] .c{text-align:right}
+#page.cjk .p{column-gap:0}
+#page.cjk .c{padding-inline:0}
+#catalog-results .book .btn{max-width:48%;white-space:normal;overflow-wrap:anywhere}
+#page .w{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 /* ---------- sheets ---------- */
 .sheet{
   position:fixed;inset:0;z-index:20;display:none;
@@ -201,7 +225,7 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
   <h2 data-t="books">Books</h2>
   <h3 data-t="library">Your library</h3>
   <div class="list" id="library"></div>
-  <div class="row"><label for="book-lang" data-t="book_lang">Language of this book</label><select id="book-lang"></select></div>
+  <div class="row"><label for="book-lang" data-t="book_lang">Language of this book</label><input id="book-lang" list="book-languages" autocapitalize="none" spellcheck="false" placeholder="e.g. ar, ja, zh"><datalist id="book-languages"></datalist></div>
   <div class="actions">
     <label class="btn" for="file" data-t="add_books">＋ Add books</label>
     <button class="btn" id="b-scan" data-t="find_books">Find books on this device</button>
@@ -209,6 +233,27 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
   <p class="hint hidden" id="scan-hint" data-t="scan_hint_android">Android cannot open the whole Download folder: pick the folder your books are in.</p>
   <input type="file" id="file" multiple accept=".epub,.pdf,.txt,application/epub+zip,application/pdf,text/plain" hidden>
   <input type="file" id="folder" webkitdirectory hidden>
+  <details id="discover">
+    <summary data-t="discover">Download free books</summary>
+    <p class="hint" data-t="catalog_hint">Search Project Gutenberg in any available language. Downloads stay in your library for offline reading.</p>
+    <form id="catalog-form">
+      <label for="catalog-query" data-t="search_books">Title or author</label>
+      <input id="catalog-query" type="search" maxlength="200" dir="auto">
+      <label for="catalog-language" data-t="catalog_language">Book language</label>
+      <select id="catalog-language"><option value="" data-t="all_languages">All languages</option></select>
+      <button class="btn" type="submit" data-t="search">Search</button>
+    </form>
+    <details class="other-catalogs">
+    <summary data-t="other_sources">Other open libraries</summary>
+    <p class="source-links"><a href="https://standardebooks.org/ebooks" target="_blank" rel="noopener">Standard Ebooks</a> · <a href="https://wikisource.org/" target="_blank" rel="noopener">Wikisource</a> · <a href="https://www.openbookpublishers.com/" target="_blank" rel="noopener">Open Book Publishers</a></p>
+    <p class="hint" data-t="source_hint">Download an EPUB, PDF or text file from an open library, then use Add books. You can also paste a direct file link from Gutenberg, Standard Ebooks or Open Book Publishers below.</p>
+    <form id="url-form"><label for="book-url" data-t="book_url">Direct book download link</label><input id="book-url" type="url" required placeholder="https://…"><button class="btn" type="submit" data-t="download_read">Download and read</button></form>
+    </details>
+    <p id="catalog-status" class="hint" role="status" aria-live="polite"></p>
+    <div id="catalog-results" class="list"></div>
+    <button id="catalog-more" class="btn hidden" data-t="more_books">More books</button>
+
+  </details>
   <h3 data-t="chapters">Chapters</h3>
   <div class="list" id="chapters"></div>
   <h3 data-t="bookmarks">Bookmarks</h3>
@@ -267,6 +312,7 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
 
 <script src="gender.js"></script>
 <script src="textclean.js"></script>
+<script src="reading.js"></script>
 <script>
 //////////////////// language ////////////////////
 // The interface language. Written English, translated at runtime; the reader picks on
@@ -583,6 +629,18 @@ const UI={
      credits:'Ordboksdata: Wiktionary (CC BY-SA 4.0) och FrequencyWords (MIT). Startbok från Project Gutenberg. Tal från din enhet.',
      marked_unknown:'Markerat som ett ord du lär dig',hold_hint:'Håll in ett ord för att markera det som ett du lär dig.'},
 };
+
+// Catalog copy follows the chosen interface language.
+Object.assign(UI.en,{"discover": "Download free books", "catalog_hint": "Search Project Gutenberg in any available language. Downloads stay in your library for offline reading.", "search_books": "Title or author", "catalog_language": "Book language", "all_languages": "All languages", "search": "Search", "more_books": "More books", "other_sources": "Other open libraries", "source_hint": "Download an EPUB, PDF or text file from an open library, then use Add books. Or paste a direct file link from Gutenberg, Standard Ebooks or Open Book Publishers.", "book_url": "Direct book download link", "download_read": "Download and read", "catalog_loading": "Loading catalog…", "catalog_count": "{n} books found", "catalog_empty": "No books found. Try another title, author or language.", "catalog_error": "Catalog unavailable. Connect to the internet and search again.", "downloading": "Downloading book…", "download": "Download", "download_error": "Could not download or save this book. Check your connection and storage, or open the source link and use Add books.", "language_code": "Enter a language code, such as ar, ja or zh."});
+Object.assign(UI.pt,{"discover": "Baixar livros gratuitos", "catalog_hint": "Pesquise no Project Gutenberg em qualquer idioma disponível. Os livros ficam na biblioteca para leitura offline.", "search_books": "Título ou autor", "catalog_language": "Idioma do livro", "all_languages": "Todos os idiomas", "search": "Pesquisar", "more_books": "Mais livros", "other_sources": "Outras bibliotecas abertas", "source_hint": "Baixe um EPUB, PDF ou texto de uma biblioteca aberta e use Adicionar livros. Ou cole um link direto do Gutenberg, Standard Ebooks ou Open Book Publishers.", "book_url": "Link direto para baixar o livro", "download_read": "Baixar e ler", "catalog_loading": "Carregando catálogo…", "catalog_count": "{n} livros encontrados", "catalog_empty": "Nenhum livro encontrado. Tente outro título, autor ou idioma.", "catalog_error": "Catálogo indisponível. Conecte-se à internet e pesquise novamente.", "downloading": "Baixando livro…", "download": "Baixar", "download_error": "Não foi possível baixar ou salvar. Verifique a conexão e o espaço livre, ou abra a fonte e use Adicionar livros.", "language_code": "Digite um código de idioma, como ar, ja ou zh."});
+Object.assign(UI.es,{"discover": "Descargar libros gratuitos", "catalog_hint": "Busca en Project Gutenberg en cualquier idioma disponible. Los libros quedan en tu biblioteca para leer sin conexión.", "search_books": "Título o autor", "catalog_language": "Idioma del libro", "all_languages": "Todos los idiomas", "search": "Buscar", "more_books": "Más libros", "other_sources": "Otras bibliotecas abiertas", "source_hint": "Descarga un EPUB, PDF o texto y usa Añadir libros. O pega un enlace directo de Gutenberg, Standard Ebooks u Open Book Publishers.", "book_url": "Enlace directo del libro", "download_read": "Descargar y leer", "catalog_loading": "Cargando catálogo…", "catalog_count": "{n} libros encontrados", "catalog_empty": "No se encontraron libros. Prueba otro título, autor o idioma.", "catalog_error": "Catálogo no disponible. Conéctate a internet y vuelve a buscar.", "downloading": "Descargando libro…", "download": "Descargar", "download_error": "No se pudo descargar o guardar. Comprueba la conexión y el espacio, o abre la fuente y usa Añadir libros.", "language_code": "Introduce un código de idioma, como ar, ja o zh."});
+Object.assign(UI.fr,{"discover": "Télécharger des livres gratuits", "catalog_hint": "Recherchez sur Project Gutenberg dans toutes les langues disponibles. Les livres restent disponibles hors ligne dans votre bibliothèque.", "search_books": "Titre ou auteur", "catalog_language": "Langue du livre", "all_languages": "Toutes les langues", "search": "Rechercher", "more_books": "Plus de livres", "other_sources": "Autres bibliothèques ouvertes", "source_hint": "Téléchargez un EPUB, PDF ou texte, puis utilisez Ajouter des livres. Ou collez un lien direct de Gutenberg, Standard Ebooks ou Open Book Publishers.", "book_url": "Lien direct du livre", "download_read": "Télécharger et lire", "catalog_loading": "Chargement du catalogue…", "catalog_count": "{n} livres trouvés", "catalog_empty": "Aucun livre trouvé. Essayez un autre titre, auteur ou langue.", "catalog_error": "Catalogue indisponible. Connectez-vous et relancez la recherche.", "downloading": "Téléchargement du livre…", "download": "Télécharger", "download_error": "Impossible de télécharger ou enregistrer. Vérifiez la connexion et le stockage, ou ouvrez la source et utilisez Ajouter des livres.", "language_code": "Saisissez un code de langue, comme ar, ja ou zh."});
+Object.assign(UI.de,{"discover": "Kostenlose Bücher herunterladen", "catalog_hint": "Project Gutenberg in allen verfügbaren Sprachen durchsuchen. Bücher bleiben zum Offline-Lesen in deiner Bibliothek.", "search_books": "Titel oder Autor", "catalog_language": "Buchsprache", "all_languages": "Alle Sprachen", "search": "Suchen", "more_books": "Weitere Bücher", "other_sources": "Weitere offene Bibliotheken", "source_hint": "Lade EPUB, PDF oder Text herunter und nutze Bücher hinzufügen. Oder füge einen direkten Link von Gutenberg, Standard Ebooks oder Open Book Publishers ein.", "book_url": "Direkter Downloadlink", "download_read": "Herunterladen und lesen", "catalog_loading": "Katalog wird geladen…", "catalog_count": "{n} Bücher gefunden", "catalog_empty": "Keine Bücher gefunden. Versuche einen anderen Titel, Autor oder eine andere Sprache.", "catalog_error": "Katalog nicht verfügbar. Verbinde dich mit dem Internet und suche erneut.", "downloading": "Buch wird heruntergeladen…", "download": "Herunterladen", "download_error": "Download oder Speichern fehlgeschlagen. Prüfe Verbindung und Speicher oder öffne die Quelle und nutze Bücher hinzufügen.", "language_code": "Gib einen Sprachcode ein, zum Beispiel ar, ja oder zh."});
+Object.assign(UI.it,{"discover": "Scarica libri gratuiti", "catalog_hint": "Cerca su Project Gutenberg in tutte le lingue disponibili. I libri restano nella biblioteca per la lettura offline.", "search_books": "Titolo o autore", "catalog_language": "Lingua del libro", "all_languages": "Tutte le lingue", "search": "Cerca", "more_books": "Altri libri", "other_sources": "Altre biblioteche aperte", "source_hint": "Scarica un EPUB, PDF o testo e usa Aggiungi libri. Oppure incolla un link diretto da Gutenberg, Standard Ebooks o Open Book Publishers.", "book_url": "Link diretto del libro", "download_read": "Scarica e leggi", "catalog_loading": "Caricamento catalogo…", "catalog_count": "{n} libri trovati", "catalog_empty": "Nessun libro trovato. Prova un altro titolo, autore o lingua.", "catalog_error": "Catalogo non disponibile. Collegati a internet e riprova.", "downloading": "Download del libro…", "download": "Scarica", "download_error": "Impossibile scaricare o salvare. Controlla connessione e spazio, oppure apri la fonte e usa Aggiungi libri.", "language_code": "Inserisci un codice lingua, come ar, ja o zh."});
+Object.assign(UI.nl,{"discover": "Gratis boeken downloaden", "catalog_hint": "Zoek in Project Gutenberg in alle beschikbare talen. Boeken blijven offline beschikbaar in je bibliotheek.", "search_books": "Titel of auteur", "catalog_language": "Boektaal", "all_languages": "Alle talen", "search": "Zoeken", "more_books": "Meer boeken", "other_sources": "Andere open bibliotheken", "source_hint": "Download een EPUB, PDF of tekst en gebruik Boeken toevoegen. Of plak een directe link van Gutenberg, Standard Ebooks of Open Book Publishers.", "book_url": "Directe downloadlink", "download_read": "Downloaden en lezen", "catalog_loading": "Catalogus laden…", "catalog_count": "{n} boeken gevonden", "catalog_empty": "Geen boeken gevonden. Probeer een andere titel, auteur of taal.", "catalog_error": "Catalogus niet beschikbaar. Maak verbinding en zoek opnieuw.", "downloading": "Boek downloaden…", "download": "Downloaden", "download_error": "Downloaden of opslaan mislukt. Controleer verbinding en opslag, of open de bron en gebruik Boeken toevoegen.", "language_code": "Voer een taalcode in, zoals ar, ja of zh."});
+Object.assign(UI.pl,{"discover": "Pobierz bezpłatne książki", "catalog_hint": "Szukaj w Project Gutenberg we wszystkich dostępnych językach. Książki pozostają w bibliotece do czytania offline.", "search_books": "Tytuł lub autor", "catalog_language": "Język książki", "all_languages": "Wszystkie języki", "search": "Szukaj", "more_books": "Więcej książek", "other_sources": "Inne otwarte biblioteki", "source_hint": "Pobierz EPUB, PDF lub tekst i użyj Dodaj książki. Możesz też wkleić bezpośredni link z Gutenberg, Standard Ebooks lub Open Book Publishers.", "book_url": "Bezpośredni link do książki", "download_read": "Pobierz i czytaj", "catalog_loading": "Ładowanie katalogu…", "catalog_count": "Znaleziono {n} książek", "catalog_empty": "Nie znaleziono książek. Spróbuj innego tytułu, autora lub języka.", "catalog_error": "Katalog niedostępny. Połącz się z internetem i spróbuj ponownie.", "downloading": "Pobieranie książki…", "download": "Pobierz", "download_error": "Nie można pobrać lub zapisać. Sprawdź połączenie i miejsce albo otwórz źródło i użyj Dodaj książki.", "language_code": "Wpisz kod języka, np. ar, ja lub zh."});
+Object.assign(UI.ru,{"discover": "Скачать бесплатные книги", "catalog_hint": "Ищите в Project Gutenberg на всех доступных языках. Книги остаются в библиотеке для чтения без интернета.", "search_books": "Название или автор", "catalog_language": "Язык книги", "all_languages": "Все языки", "search": "Найти", "more_books": "Ещё книги", "other_sources": "Другие открытые библиотеки", "source_hint": "Скачайте EPUB, PDF или текст и нажмите Добавить книги. Или вставьте прямую ссылку из Gutenberg, Standard Ebooks или Open Book Publishers.", "book_url": "Прямая ссылка на книгу", "download_read": "Скачать и читать", "catalog_loading": "Загрузка каталога…", "catalog_count": "Найдено книг: {n}", "catalog_empty": "Книги не найдены. Попробуйте другое название, автора или язык.", "catalog_error": "Каталог недоступен. Подключитесь к интернету и повторите поиск.", "downloading": "Загрузка книги…", "download": "Скачать", "download_error": "Не удалось скачать или сохранить. Проверьте соединение и место либо откройте источник и добавьте файл.", "language_code": "Введите код языка, например ar, ja или zh."});
+Object.assign(UI.sv,{"discover": "Hämta gratis böcker", "catalog_hint": "Sök på Project Gutenberg på alla tillgängliga språk. Böcker sparas i biblioteket för läsning offline.", "search_books": "Titel eller författare", "catalog_language": "Bokens språk", "all_languages": "Alla språk", "search": "Sök", "more_books": "Fler böcker", "other_sources": "Andra öppna bibliotek", "source_hint": "Hämta EPUB, PDF eller text och använd Lägg till böcker. Eller klistra in en direktlänk från Gutenberg, Standard Ebooks eller Open Book Publishers.", "book_url": "Direktlänk till boken", "download_read": "Hämta och läs", "catalog_loading": "Laddar katalog…", "catalog_count": "{n} böcker hittades", "catalog_empty": "Inga böcker hittades. Prova en annan titel, författare eller ett annat språk.", "catalog_error": "Katalogen är inte tillgänglig. Anslut till internet och sök igen.", "downloading": "Hämtar boken…", "download": "Hämta", "download_error": "Kunde inte hämta eller spara. Kontrollera anslutning och lagring, eller öppna källan och använd Lägg till böcker.", "language_code": "Ange en språkkod, till exempel ar, ja eller zh."});
 const LANGS=Object.keys(UI).map(c=>{const n=new Intl.DisplayNames([c],{type:'language'}).of(c);return [c,n[0].toUpperCase()+n.slice(1)]});   // every interface language, named in itself
 // Which language this build reads and glosses into comes from bundle.json and the dictionary's own
 // src/tgt fields, so swapping the shipped pair is a rebuild of the assets, not an edit to this file.
@@ -606,6 +664,8 @@ function applyLang(){
   document.querySelectorAll('[data-t-aria]').forEach(el=>el.setAttribute('aria-label',T(el.dataset.tAria)));
   $('#play').textContent=S.playing?T('pause'):(S.i>0?T('resume'):T('start'));
   buildVoiceList();buildLangList();genderLabels();
+  if(catalog)buildCatalogLanguages();
+  if(S.book)buildLibrary();
 }
 
 //////////////////// state ////////////////////
@@ -725,7 +785,7 @@ function buildNativeList(){
 //////////////////// book ////////////////////
 function paraOf(i){let lo=0,hi=S.book.para.length-1,r=0;while(lo<=hi){const m=(lo+hi)>>1;if(S.book.para[m]<=i){r=m;lo=m+1}else hi=m-1}return S.book.para[r]}
 function isParaStart(i){return S.book.para.includes(i)}
-const SENT_END=/[.!?…]["'”’“‘)»«]*$/;   // German closes quotes with « and “
+const SENT_END=/[.!?…。！？؟]["'”’“‘)»«]*$/;   // German closes quotes with « and “
 function sentEnd(i){const w=S.book.words;while(i<w.length-1&&!SENT_END.test(w[i])&&!isParaStart(i+1))i++;return i+1}
 function sentStart(i){const w=S.book.words;while(i>0&&!isParaStart(i)&&!SENT_END.test(w[i-1]))i--;return i}
 function chapterOf(i){let t='';for(const[name,at]of S.book.chapters){if(at<=i)t=name;else break}return t||S.book.title}
@@ -799,11 +859,13 @@ function show(scroll=true){
   if(S.mode==='rsvp')drawRsvp();else highlight(S.i,scroll);updateHeader();updateStar();saveSoon()}
 
 //////////////////// rsvp ////////////////////
-function pivot(w){const p=Math.min(Math.floor((w.length-1)/3),4);
-  return [w.slice(0,p),w[p]||'',w.slice(p+1)];}
+function pivot(w){const chars=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(w)].map(x=>x.segment):Array.from(w);
+  const p=Math.min(Math.floor((chars.length-1)/3),4);
+  return [chars.slice(0,p).join(''),chars[p]||'',chars.slice(p+1).join('')];}
 function drawRsvp(){
   const w=S.book.words[S.i]||'',[a,b,c]=pivot(w);
-  $('#rsvp-word').innerHTML=esc(a)+'<i>'+esc(b)+'</i>'+esc(c);
+  if(Reading.rtl(S.book.lang)||/\p{M}/u.test(w))$('#rsvp-word').textContent=w;
+  else $('#rsvp-word').innerHTML=esc(a)+'<i>'+esc(b)+'</i>'+esc(c);
   const gk=genderAt(S.i); $('#rsvp-word').className=gk?'g-'+gk:'';
   $('#rsvp-gloss').textContent=S.gloss?showGloss(w):'';
   const from=Math.max(0,S.i-7),to=Math.min(S.book.words.length,S.i+8);
@@ -1063,6 +1125,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();sa
 //////////////////// loading books ////////////////////
 async function loadBook(book,startAt){
   S.book=book;
+  page.lang=book.lang||'und';page.dir=book.lang?(Reading.rtl(book.lang)?'rtl':'ltr'):'auto';
+  page.classList.toggle('cjk',/^(zh|ja|th|lo|km|my)$/.test(book.lang));
+  $('#rsvp').dir=page.dir;
   if(book.old2new&&!LS.get('clean:'+book.id,false)){   // positions saved before cleanup index the raw words: move them once
     const pos=LS.get(bookKey(),null),n=book.words.length,m=TextClean.remap.bind(null,book.old2new,n);
     if(pos!==null)LS.set(bookKey(),m(pos));
@@ -1089,13 +1154,14 @@ function buildChapters(){
     box.appendChild(b);
   });
 }
-function textToBook(text,title,id){
+function textToBook(text,title,id,language=''){
+  const lang=Reading.langCode(language)||TextClean.detectLang(text.split(/\s+/).slice(0,1000))||'';
   const words=[],para=[];
   for(const p of text.split(/\n\s*\n|\r\n\s*\r\n/)){
-    const ws=p.split(/\s+/).filter(Boolean);
+    const ws=Reading.tokenize(p,lang);
     if(ws.length){para.push(words.length);words.push(...ws)}
   }
-  return {id,title,lang:TextClean.detectLang(words)||'',...TextClean.clean(words,para,[],title)};
+  return {id,title,lang,...TextClean.clean(words,para,[],title)};
 }
 // --- epub via the browser's own zip inflater (no library) ---
 async function epubToBook(file){
@@ -1127,6 +1193,7 @@ async function epubToBook(file){
     const id=(m[0].match(/\bid="([^"]+)"/)||[])[1], href=(m[0].match(/href="([^"]+)"/)||[])[1];
     if(id&&href){items[id]=href;props[id]=(m[0].match(/properties="([^"]+)"/)||[])[1]||''}
   }
+  const tagged=Reading.langCode((opf.match(/<dc:language[^>]*>([^<]*)</)||[])[1]||'');
   const parser=new DOMParser(); let words=[],para=[],chapters=[];
   const path=(base,href)=>{const u=new URL(href,'http://x/'+base);return[decodeURIComponent(u.pathname.slice(1)),decodeURIComponent(u.hash.slice(1))]};
   // the book's own table of contents (EPUB3 nav, else EPUB2 ncx) -> [title, file, anchor]
@@ -1153,7 +1220,7 @@ async function epubToBook(file){
     for(const el of doc.body.querySelectorAll('p,div,li,h1,h2,h3,h4,blockquote')){
       if(el.querySelector('p,div,li'))continue;
       for(const x of pending)if(x.at===null&&x.el&&(x.el===el||x.el.contains(el)||el.contains(x.el)||x.el.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING))x.at=words.length;
-      const ws=(el.textContent||'').split(/\s+/).filter(Boolean);
+      const ws=Reading.tokenize(el.textContent||'',tagged);
       if(ws.length){para.push(words.length);words.push(...ws)}
     }
     chapters.push(...pending.map(x=>[x.t,x.at]));
@@ -1163,9 +1230,7 @@ async function epubToBook(file){
   const authors=[...opf.matchAll(/<dc:creator[^>]*>([^<]+)/g)].map(m=>m[1]).join(' ');
   const c=TextClean.clean(words,para,chapters,title+' '+authors);   // page numbers, running headers, split sentences
   c.chapters=TextClean.resolveMissing(c.words,c.para,c.chapters).filter(([t,i])=>t&&i!==null&&i<c.words.length);
-  const tagged=TextClean.langCode((opf.match(/<dc:language[^>]*>([^<]*)</)||[])[1]||'');
-  const real=tagged&&!['un','mu','zx'].includes(tagged);   // und, mul, zxx: calibre's 'undetermined' and friends
-  const lang=S.bundle.languages[tagged]?tagged:TextClean.detectLang(c.words)||(real?tagged:'');
+  const lang=tagged&&!['und','mul','zxx'].includes(tagged)?tagged:TextClean.detectLang(c.words)||'';
   return {id:'f:'+file.name+':'+file.size,title,lang,...c};
 }
 
@@ -1215,6 +1280,7 @@ async function boot(){
       old.forEach(x=>{set.delete(x);set.add(S.bundled.src+':'+x)});LS.set(key,[...set]);
     }
     if(!S.native||!S.bundle.languages[S.native])S.native=S.bundle.languages[S.ui]?S.ui:S.bundled.tgt;   // first run: the interface language
+    await loadReadingLanguages();
     buildNativeList();
     $('#splash-msg').textContent=T('opening');
     const last=LS.get('lastBook','starter');   // your own book, where you left it
@@ -1289,8 +1355,8 @@ $('#t-tts').onclick=e=>{
   if(S.playing){pause();play()}
 };
 function setRate(v){S.rate=Math.max(.5,Math.min(1.6,Math.round(v*10)/10));LS.set('rate',S.rate);$('#rate-val').textContent=S.rate.toFixed(1)+'×'}
-$('#rate-up').onclick=()=>{setRate(S.rate+.1);warmUpSpeech();speakText('So klingt es jetzt.')};
-$('#rate-down').onclick=()=>{setRate(S.rate-.1);warmUpSpeech();speakText('So klingt es jetzt.')};
+$('#rate-up').onclick=()=>{setRate(S.rate+.1);warmUpSpeech();speakText(S.book?.words.slice(S.i,S.i+12).join(' ')||T('start'))};
+$('#rate-down').onclick=()=>{setRate(S.rate-.1);warmUpSpeech();speakText(S.book?.words.slice(S.i,S.i+12).join(' ')||T('start'))};
 $('#size-up').onclick=()=>{S.size=Math.min(30,S.size+1);LS.set('size',S.size);applySize()};
 $('#size-down').onclick=()=>{S.size=Math.max(13,S.size-1);LS.set('size',S.size);applySize()};
 $('#b-forget').onclick=()=>{if(confirm(T('forget_confirm'))){
@@ -1298,7 +1364,9 @@ $('#b-forget').onclick=()=>{if(confirm(T('forget_confirm'))){
 $('#file').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)await addBooks(fs)};
 $('#folder').onchange=e=>{const fs=[...e.target.files].filter(isBookFile);e.target.value='';booksFound(fs.map(f=>({name:f.name,size:f.size,file:f})))};
 $('#book-lang').onchange=async e=>{   // detection guessed wrong, or found nothing: the reader knows better
-  S.book.lang=e.target.value;delete S.book.genders;if(S.book.id!=='starter')await saveBook(S.book).catch(()=>{});
+  const code=Reading.langCode(e.target.value);
+  if(e.target.value.trim()&&!code){e.target.value=S.book.lang;return toast(T('language_code'))}
+  S.book.lang=code;delete S.book.genders;if(S.book.id!=='starter')await saveBook(S.book).catch(()=>{});
   await loadBook(S.book,S.i);
 };
 $('#b-scan').onclick=()=>window.AndroidShell?AndroidShell.scanFolder():window.webkit?.messageHandlers?.scanFolder?webkit.messageHandlers.scanFolder.postMessage(''):$('#folder').click();
@@ -1312,6 +1380,87 @@ $('#b-add-found').onclick=async()=>{
   }
   if(files.length)await addBooks(files);
 };
+//////////////////// open book catalog ////////////////////
+let bookLanguages={},catalog=null,catalogMatches=[],catalogOffset=0,catalogBusy=false;
+async function loadReadingLanguages(){
+  try{const data=await fetchJSON('languages.json');bookLanguages=data.names;Reading.setAliases(data.aliases)}catch{bookLanguages=S.bundle.languages}
+}
+function setCatalogBusy(busy){
+  catalogBusy=busy;
+  document.querySelectorAll('#discover button,#discover input,#discover select').forEach(el=>el.disabled=busy);
+}
+function buildCatalogLanguages(){
+  const sel=$('#catalog-language'),value=sel.value;
+  const languages=[...new Set(catalog.flatMap(b=>b[3]))].sort((a,b)=>Reading.languageName(a,S.ui).localeCompare(Reading.languageName(b,S.ui),S.ui));
+  sel.replaceChildren(new Option(T('all_languages'),''),...languages.map(c=>new Option(Reading.languageName(c,S.ui),c)));
+  sel.value=value;
+}
+async function searchCatalog(){
+  if(catalogBusy)return;
+  setCatalogBusy(true);$('#catalog-status').textContent=T('catalog_loading');
+  try{
+    if(!catalog)catalog=(await fetchJSON('catalog.json.gz')).books;
+    if($('#catalog-language').options.length===1)buildCatalogLanguages();
+    const normalize=s=>s.normalize('NFKD').replace(/\p{M}/gu,'').toLocaleLowerCase(S.ui);
+    const query=normalize($('#catalog-query').value.trim()).split(/\s+/).filter(Boolean),lang=$('#catalog-language').value;
+    catalogMatches=catalog.filter(b=>(!lang||b[3].includes(lang))&&query.every(q=>normalize(b[1]+' '+b[2]).includes(q)));
+    catalogOffset=0;$('#catalog-results').replaceChildren();renderCatalogPage();
+    $('#catalog-status').textContent=catalogMatches.length?T('catalog_count').replace('{n}',catalogMatches.length.toLocaleString(S.ui)):T('catalog_empty');
+  }catch(e){$('#catalog-status').textContent=T('catalog_error')}
+  finally{setCatalogBusy(false)}
+}
+function renderCatalogPage(){
+  for(const b of catalogMatches.slice(catalogOffset,catalogOffset+24)){
+    const row=document.createElement('div');row.className='book';
+    const info=document.createElement('div'),title=document.createElement('a'),meta=document.createElement('small');
+    title.textContent=b[1];title.title=b[1];title.dir='auto';title.href='https://www.gutenberg.org/ebooks/'+b[0];title.target='_blank';title.rel='noopener';
+    meta.textContent=[b[2],b[3].map(l=>Reading.languageName(l,S.ui)).join(', ')].filter(Boolean).join(' · ');meta.dir='auto';
+    info.append(title,meta);
+    const button=document.createElement('button');button.className='btn';
+    button.textContent=lib().some(x=>x.id==='gutenberg:'+b[0])?T('read_here'):T('download');
+    button.onclick=()=>downloadBook({id:b[0],title:b[1],lang:b[3][0]||''});
+    button.setAttribute('aria-label',button.textContent+': '+b[1]);row.append(info,button);$('#catalog-results').append(row);
+  }
+  catalogOffset+=24;$('#catalog-more').classList.toggle('hidden',catalogOffset>=catalogMatches.length);
+}
+// The web endpoint also serves packaged apps and extensions, which use local/custom origins.
+function downloadEndpoint(params){
+  const local=location.hostname==='speedready.invalid'||location.protocol!=='https:'&&location.protocol!=='http:';
+  return (local?'https://speedready.vercel.app':'')+'/api/book?'+new URLSearchParams(params);
+}
+async function downloadBook({id,url,title,lang}){
+  if(catalogBusy)return;
+  setCatalogBusy(true);$('#catalog-status').textContent=T('downloading');
+  try{
+    const key=id?'gutenberg:'+id:'url:'+url;
+    let book=await libraryBook(key);
+    if(!book){
+      const r=await fetch(downloadEndpoint(id?{id}:{url}),{signal:AbortSignal.timeout(60000)});
+      if(!r.ok)throw new Error('Download failed');
+      const data=await r.blob();
+      const type=r.headers.get('content-type')||'',ext=type.includes('epub')?'epub':type.includes('pdf')?'pdf':type.includes('text/plain')?'txt':null;
+      if(!ext)throw new Error('Unsupported file');
+      const file=new File([data],(title||'book')+'.'+ext);
+      book=ext==='epub'?await epubToBook(file):ext==='pdf'?await pdfToBook(file):textToBook(await file.text(),title||'Book',key,lang);
+      if(!book.words.length)throw new Error('Empty book');
+      book.id=key;book.source=url||'https://www.gutenberg.org/ebooks/'+id;
+      if(!book.lang&&lang)book.lang=Reading.langCode(lang);
+      await saveBook(book); // success means this book really is available offline
+    }
+    pause();await loadBook(book);closeSheets();$('#catalog-status').textContent='';
+  }catch(e){$('#catalog-status').textContent=T('download_error');toast(T('download_error'))}
+  finally{setCatalogBusy(false)}
+}
+$('#catalog-form').onsubmit=e=>{e.preventDefault();searchCatalog()};
+$('#catalog-language').onchange=searchCatalog;
+$('#catalog-more').onclick=renderCatalogPage;
+$('#discover').ontoggle=()=>{if($('#discover').open&&!catalog)searchCatalog()};
+$('#url-form').onsubmit=e=>{
+  e.preventDefault();const url=$('#book-url').value.trim();
+  const match=url.match(/^https:\/\/(?:www\.)?gutenberg\.org\/ebooks\/([1-9]\d*)(?:[./?#]|$)/);
+  downloadBook(match?{id:match[1]}:{url});
+};
+
 //////////////////// library ////////////////////
 // Imported books are parsed once and kept in IndexedDB ('book:'+id): the file pickers give no lasting handle to the
 // file, and parsing a big epub again on every launch would be slow. LS 'library' is the list, newest first.
@@ -1328,7 +1477,8 @@ async function saveBook(book){
 function buildLibrary(){
   $('#scan-hint').classList.toggle('hidden',!window.AndroidShell);
   $('#gender-row').classList.toggle('hidden',!Gender.LANGS.includes(S.book?.lang));genderLabels();
-  const sel=$('#book-lang');sel.replaceChildren(new Option(T('lang_other'),''),...Object.entries(S.bundle?.languages||{}).map(([c,n])=>new Option(n,c)));
+  const sel=$('#book-lang');
+  $('#book-languages').replaceChildren(...Object.keys(bookLanguages).map(c=>new Option(Reading.languageName(c,S.ui),c)));
   sel.value=S.book?.lang||'';
   const box=$('#library');box.replaceChildren();
   for(const b of [{id:'starter',title:T('starter_book'),lang:S.bundled?.src},...lib()]){
@@ -1336,7 +1486,7 @@ function buildLibrary(){
     const open=document.createElement('button'),info=document.createElement('small');
     const pos=LS.get('pos:'+b.id,0),pct=b.n?Math.round(100*pos/b.n):null;
     open.textContent=b.title;open.classList.toggle('on',S.book?.id===b.id);
-    info.textContent=[S.bundle?.languages[b.lang],pct===null?'':pct+'%'].filter(Boolean).join(' · ');open.appendChild(info);
+    info.textContent=[b.lang?Reading.languageName(b.lang,S.ui):'',pct===null?'':pct+'%'].filter(Boolean).join(' · ');open.appendChild(info);
     open.onclick=async()=>{closeSheets();pause();
       const book=b.id==='starter'?await starterBook():await libraryBook(b.id);
       if(book)loadBook(book);else{LS.set('library',lib().filter(x=>x.id!==b.id));toast(T('cannot_open')+b.title)}};
@@ -1396,7 +1546,7 @@ async function openShared(){
 }
 // keyboard, for when she uses it on a laptop
 addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT')return;
+  if(e.target.closest('input,select,textarea,button,a,summary')||document.querySelector('.sheet.on')){if(e.key==='Escape')closeSheets();return;}
   if(e.key===' '){e.preventDefault();toggle()}
   else if(e.key==='ArrowRight'){pause();S.i=Math.min(S.book.words.length-1,S.i+10);show()}
   else if(e.key==='ArrowLeft'){pause();S.i=Math.max(0,S.i-10);show()}
