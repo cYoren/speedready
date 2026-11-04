@@ -1,6 +1,6 @@
 # Speedready
 
-Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwaita, one Python file.
+Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwaita with a shared web reader for mobile and browsers.
 
 - **Pacer**: the whole text on screen, a highlight sweeps through at your pace, read words dim behind it
 - **RSVP**: one word (or chunk) flashed at a time with a red pivot letter
@@ -144,3 +144,54 @@ ASC_KEY_PATH=… ASC_KEY_ID=… ASC_ISSUER=… ios/release.sh   # signed .ipa fo
 ```
 
 Create the app record (bundle id `io.github.cyoren.speedready`) in App Store Connect before the first upload.
+
+## Read in any language and find free books
+
+Reading languages are independent of the interface and the ten optional dictionary languages.
+EPUB language metadata is preserved, including three-letter ISO codes; use the book-language
+field to correct it. Enter a code such as `ar`, `ja`, `zh`, or `fil`. Arabic and Hebrew read
+right to left. Chinese, Japanese, Thai, and other scripts without spaces are segmented into
+reading units (browser `Intl.Segmenter`; system ICU on Linux, with a character fallback).
+Existing positions for books in spaced scripts keep their original indices. Dictionary and
+speech availability still depend on the installed language pair and device voices.
+
+In **Books → Download free books**, search the bundled Project Gutenberg catalog by title,
+author, and any catalog language. Downloads are saved in the library and reopen offline.
+The Linux library has the same **Download free books** button. Linux downloads keep the
+original EPUB/text file in `~/.local/share/speedready/books/` and reuse it on later downloads.
+The catalog snapshot includes 78,461 texts across 68 languages; availability depends on the source.
+
+**Other open libraries** links to Standard Ebooks, Wikisource, and Open Book Publishers.
+Import their downloaded files with **Add books**, or paste a direct EPUB/PDF/text URL from
+Gutenberg, Standard Ebooks, or Open Book Publishers in the web reader (EPUB/text on Linux).
+Direct downloads are limited to 30 MB. Books retain their own licenses; check the source terms.
+
+The official Gutenberg CSV is cached locally by `tools/build_catalog.py`; building again
+reuses it. To deliberately refresh the catalog snapshot:
+
+```bash
+cd ~/Projects/speedready
+python tools/build_catalog.py --refresh
+```
+
+The website uses `api/book.js` to download selected books from approved HTTPS hosts, because
+Gutenberg does not allow cross-origin browser downloads. It rejects arbitrary hosts, unsafe
+redirects, oversized downloads, and HTML error pages. Deploy both `web/` and the root `api/`
+function with the repository's Vercel configuration. Packaged mobile apps/extensions use
+`https://speedready.vercel.app/api/book`; their direct downloads require this function to be
+published there. The Linux reader downloads from the sources directly.
+
+For a local preview with working downloads (Node 24+):
+
+```bash
+cd ~/Projects/speedready
+node --use-env-proxy tools/serve.cjs
+```
+
+Open `http://127.0.0.1:8765` in a browser. Verification:
+
+```bash
+cd ~/Projects/speedready
+/usr/bin/python3 -m unittest discover -s tests -q
+node tests/reading.cjs
+```
