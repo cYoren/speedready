@@ -47,7 +47,7 @@
           words[words.length-1]=last.slice(0,-1)+p[0];p=p.slice(1);first[k]-=1;   // 'Mühlen-' | page break | 'knappe'
         }
       }else starts.push(words.length);
-      words.push(...p);cut=false;
+      for(const w of p)words.push(w);cut=false;
     }
     const start=new Array(first.length);let nxt=words.length;
     for(let k=first.length-1;k>=0;k--){if(first[k]!==null)nxt=first[k];start[k]=nxt}   // a dropped paragraph maps to the next kept word

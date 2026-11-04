@@ -49,3 +49,8 @@ def tokenize(text,lang=''):
         if words and all(unicodedata.category(c)[0] in 'PS' for c in part):words[-1]+=part
         else:words.append(part)
     return words
+
+
+def decode_text(data):
+    if data.startswith((b'\xff\xfe',b'\xfe\xff')):return data.decode('utf-16',errors='replace')
+    return data.decode('utf-8-sig',errors='replace')
