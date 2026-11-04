@@ -8,10 +8,12 @@ drag epub/txt files onto the window to add them to the library
 Lookups are appended to ~/.config/speedready/vocab.tsv, importable into Anki as-is. Unknown words live in unknown.txt (one lemma per line).
 Beginner mode (settings): a gloss in your mother tongue sits above each word; tap the gloss to mark the word learned.
 """
-import bisect,html,json,locale,os,re,shutil,sqlite3,subprocess,sys,threading,time,urllib.error,urllib.parse,urllib.request,wave,zipfile,posixpath
+import bisect,html,json,locale,os,re,shutil,sqlite3,subprocess,sys,threading,time,unicodedata,urllib.error,urllib.parse,urllib.request,wave,zipfile,posixpath
 from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree as ET
+from reading import lang_code,tokenize,rtl
+import bookcatalog
 import gi;gi.require_version('Gtk','4.0');gi.require_version('Adw','1');gi.require_version('PangoCairo','1.0')
 from gi.repository import Gtk,Adw,Gdk,Gio,GLib,Pango,PangoCairo
 try:import simplemma
@@ -36,7 +38,7 @@ DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'dict_langs':'en,duden',           # sources in order: a wiktionary language code or 'duden' (German only). Wikimedia rate-limits bursts, so keep it short
  'web_dicts':'de=https://www.duden.de/rechtschreibung/{word}, *=https://{lang}.wiktionary.org/wiki/{word}',  # lang=url, * = fallback
  'tts_voices':'de=de_DE-thorsten-medium, en=en_US-lessac-medium, fr=fr_FR-siwis-medium, es=es_ES-davefx-medium, it=it_IT-riccardo-x_low, pt=pt_PT-tugão-medium, nl=nl_NL-ronnie-medium, pl=pl_PL-gosia-medium, ru=ru_RU-irina-medium, sv=sv_SE-nst-medium',  # piper voices, downloaded on first use
- 'tts_speed':1.0,'txt_lang':'de','save_vocab':True,
+ 'tts_speed':1.0,'txt_lang':'','save_vocab':True,
  'beginner':False,'native_lang':'en','ui_lang':'en','onboarded':False,'translate_provider':'deepl',
  'gloss_threshold':0,'gloss':'#8ab4f8',
  'noun_gender':True,'masculine':'#6ea8ff','feminine':'#ff7a85','neuter':'#6fd08c',   # German books only: nouns colored by gender (der / die / das)  # beginner mode: mother-tongue gloss above every word you haven't learned yet (offline pack, downloaded once)
@@ -180,13 +182,17 @@ TEXT={
 }
 POS='Noun|Proper noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Numeral|Article|Particle|Determiner|Contraction|Phrase'
 BLOCK={'p','div','br','h1','h2','h3','h4','h5','h6','li','blockquote','tr','section','article','dd','dt','pre','hr'}
-END_RE=re.compile(r'[.!?…]["\'”’“‘)»«]*$');COMMA_RE=re.compile(r'[,;:]["\'”’“‘)»«]*$')  # German closes quotes with « and “
+END_RE=re.compile(r'[.!?…。！？؟]["\'”’“‘)»«]*$');COMMA_RE=re.compile(r'[,;:]["\'”’“‘)»«]*$')  # German closes quotes with « and “
 UA={'User-Agent':'Speedready/1.0 (https://github.com/cYoren/speedready) python-urllib'}
 strip=lambda w:re.sub(r'^\W+|\W+$','',w)
 CLEAN=1   # positions saved without this flag index the raw word list (what add() sees) and are remapped once through Book.old2new
 DROP='\x00'  # the parser prefixes words it knows are not text (page <title>s, footnote markers); clean() drops them, raw word counts stay put
 FRONT=re.compile(r'(cover|titel(seite)?|title( page)?|inhalt(sverzeichnis)?|(table of )?contents|impressum|copyright|widmung|dedication|(das |zum )?buch|(der |über den )?autor(in)?|about the author|introduction|how to read.*)',re.I)
 PAGE_NUM=re.compile(r'(?:[-–—|\[(]\s*)?(?:(?:seite|page|s\.|p\.)\s*)?\d{1,4}(?:\s*[-–—|\])])?',re.I)  # '– 7 –', '[7]', 'Seite 7', '7'
+
+TEXT['en'].update(discover='Download free books',catalog_query='Title or author',all_languages='All languages',catalog_loading='Loading catalog…',more_books='More books',book_url='Direct EPUB or text link',download_read='Download and read',catalog_rights='Books stay in your library for offline reading. From other libraries, download an EPUB or text file and use Add books.',downloading='Downloading book…',download='Download',catalog_count='{count} books found',catalog_error='Catalog unavailable.',download_error='Could not download. Check your connection or use Add books.',language_code='Language code, e.g. ar, ja, zh. Press Enter to save.',book_language='Book language')
+TEXT['pt'].update(discover='Baixar livros gratuitos',catalog_query='Título ou autor',all_languages='Todos os idiomas',catalog_loading='Carregando catálogo…',more_books='Mais livros',book_url='Link direto para EPUB ou texto',download_read='Baixar e ler',catalog_rights='Os livros ficam na biblioteca para leitura offline. Em outras bibliotecas, baixe EPUB ou texto e use Adicionar livros.',downloading='Baixando livro…',download='Baixar',catalog_count='{count} livros encontrados',catalog_error='Catálogo indisponível.',download_error='Não foi possível baixar. Verifique a conexão ou use Adicionar livros.',language_code='Código do idioma, como ar, ja, zh. Pressione Enter para salvar.',book_language='Idioma do livro')
+
 def system_lang():
     code=(locale.getlocale()[0] or os.environ.get('LANG','en')).split('_')[0].split('.')[0].lower()
     return code if code in dict(LANGUAGES) else 'en'
@@ -217,10 +223,6 @@ def lemma_of(w,lang):
     try:return simplemma.lemmatize(w,lang=lang).lower() if simplemma else w.lower()
     except Exception:return w.lower()
 CONNECTORS=set('a an the of and or in on at to for by with from der die das des dem den und oder von zu im am an auf mit für le la les de du des et à au aux en el los las del y il lo gli di e o os as do da dos das em no na het een van op och i av på ett w z na do и в на с к о'.split())   # the only lowercase words a heading may have ('The End of the Road', 'Die Mühle im Koselbruch')
-ISO3={'ger':'de','deu':'de','eng':'en','spa':'es','fre':'fr','fra':'fr','ita':'it','dut':'nl','nld':'nl','pol':'pl','por':'pt','rus':'ru','swe':'sv'}
-def lang_code(tag):
-    """An epub's <dc:language> as a two-letter code: 'DE', 'de-DE', 'ger' and 'deu' are all 'de'."""
-    t=tag.strip().lower();return ISO3.get(t[:3],t[:2])
 def table(spec):return dict(x.strip().split('=',1) for x in spec.split(',') if '=' in x)
 _genders=None
 def gender_data():
@@ -238,11 +240,11 @@ def merged(cfg,key):
 # ---------------------------------------------------------------- book
 class Html(HTMLParser):
     """Body text with newlines at block boundaries; records the word count at wanted anchors (for the chapter list)."""
-    def __init__(s,anchors=()):super().__init__();s.out=[];s.skip=0;s.head=0;s.sup=0;s.want=set(anchors);s.found={}
+    def __init__(s,anchors=(),lang=''):super().__init__();s.lang=lang;s.out=[];s.skip=0;s.head=0;s.sup=0;s.want=set(anchors);s.found={}
     def handle_starttag(s,t,a):
         s.skip+=t in('style','script');s.head+=t=='head';s.sup+=t=='sup';t in BLOCK and s.out.append('\n')
         i=dict(a).get('id')
-        if i in s.want:s.found[i]=len(''.join(s.out).split())
+        if i in s.want:s.found[i]=len(tokenize(''.join(s.out),s.lang))
     def handle_endtag(s,t):s.skip-=t in('style','script');s.head-=t=='head';s.sup=max(0,s.sup-(t=='sup'));t in BLOCK and s.out.append('\n')
     def handle_data(s,d):
         if s.skip:return
@@ -279,7 +281,7 @@ def read_epub(path):
     z=zipfile.ZipFile(path);names=set(z.namelist())
     opf_path=ET.fromstring(z.read('META-INF/container.xml')).find('.//{*}rootfile').get('full-path')
     opf=ET.fromstring(z.read(opf_path));d=posixpath.dirname(opf_path);d=d+'/' if d else ''
-    lang=lang_code(opf.findtext('.//{*}language') or 'en');authors=' '.join(x.text or '' for x in opf.iterfind('.//{*}creator'));items={i.get('id'):i for i in opf.iterfind('.//{*}item')}
+    lang=lang_code(opf.findtext('.//{*}language') or '');authors=' '.join(x.text or '' for x in opf.iterfind('.//{*}creator'));items={i.get('id'):i for i in opf.iterfind('.//{*}item')}
     def resolve(base,href):
         f,_,anchor=urllib.parse.unquote(href).partition('#');return posixpath.normpath(posixpath.join(posixpath.dirname(base),f)) if f else base,anchor
     toc=[]  # (title, file, anchor)
@@ -296,7 +298,7 @@ def read_epub(path):
         if item is None:continue
         name=posixpath.normpath(d+urllib.parse.unquote(item.get('href')))
         if name not in names:continue
-        mine=[(t,a) for t,f,a in toc if f==name];p=Html(a for t,a in mine if a);p.feed(z.read(name).decode('utf-8','replace'))
+        mine=[(t,a) for t,f,a in toc if f==name];p=Html((a for t,a in mine if a),lang);p.feed(z.read(name).decode('utf-8','replace'))
         out.append((''.join(p.out),[(t,p.found.get(a) if a else 0) for t,a in mine]))  # None = anchor missing (broken epub), Book searches the title text
     return out,lang,authors
 
@@ -378,7 +380,7 @@ class Book:
         s.chapters=out
     def add(s,text):
         for para in text.split('\n'):
-            ws=para.split()
+            ws=tokenize(para,getattr(s,'lang',''))
             if ws:s.para_start.append(len(s.words));s.words.extend(ws)
     def is_para_start(s,i):k=bisect.bisect_left(s.para_start,i);return k<len(s.para_start) and s.para_start[k]==i
     def para_of(s,i):return s.para_start[bisect.bisect_right(s.para_start,i)-1]
@@ -486,6 +488,7 @@ class Gloss:
         s.learned=set(s.learned_file.read_text().split()) if s.learned_file.exists() else set();s.cache={};s.db=None
         s.error=None;s.progress=''
         if s.path.exists():s.db=sqlite3.connect(s.path,check_same_thread=False)
+        elif src not in dict(LANGUAGES) or tgt not in dict(LANGUAGES):s.error='pack_none_published'
         else:threading.Thread(target=s.fetch,args=(status,on_change),daemon=True).start()
     @property
     def pair(s):return f'{s.src.upper()}→{s.tgt.upper()}'
@@ -768,7 +771,7 @@ class Win(Adw.ApplicationWindow):
 
     # ---- language / onboarding
     def t(s,key,/,**values):return tr(s.cfg.get('ui_lang','en'),key,**values)
-    def genders(s):return s.book and s.cfg['noun_gender'] and s.book.genders
+    def genders(s):return s.book and s.book.lang=='de' and s.cfg['noun_gender'] and s.book.genders
     def write_cfg(s):atomic_text(CFG_FILE,json.dumps(s.cfg,indent=1,ensure_ascii=False))
     def refresh_ui_text(s):
         for key,w in s.tip_widgets.items():w.set_tooltip_text(s.t(key))
@@ -926,6 +929,15 @@ class Win(Adw.ApplicationWindow):
         hb=Adw.HeaderBar();add=Gtk.Button(label=s.t('add_books'),css_classes=['suggested-action']);hb.pack_start(add)
         box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12,margin_top=12,margin_bottom=18,margin_start=18,margin_end=18)
         lb=Gtk.ListBox(css_classes=['boxed-list'],selection_mode=Gtk.SelectionMode.NONE);empty=Gtk.Label(css_classes=['dim-label'],margin_top=40,wrap=True)
+        if s.book:
+            lang=Gtk.Entry(text=s.book.lang,placeholder_text=s.t('language_code'))
+            langrow=Adw.ActionRow(title=s.t('book_language'));langrow.add_suffix(lang);box.append(langrow)
+            def set_language(*_):
+                code=lang_code(lang.get_text())
+                if lang.get_text().strip() and not code:return s.status(s.t('language_code'))
+                s.book.lang=code;s.book.lemmas=[lemma_of(w,code) for w in s.book.words];s.book.genders=gender.genders(s.book.words,gender_data(),s.book.para_start) if code=='de' else None
+                s.pacer.set_direction(Gtk.TextDirection.RTL if rtl(code) else Gtk.TextDirection.LTR);s.page.set_direction(s.pacer.get_direction());s.setup_gloss();s.page.b=0;s.show();s.save()
+            lang.connect('activate',set_language)
         box.append(lb);box.append(empty);view=Adw.ToolbarView(content=box);view.add_top_bar(hb);d.set_child(view)
         def refresh(*_):
             lb.remove_all();books=library_entries(s.pos);empty.set_label(s.t('no_books'));empty.set_visible(not books)
@@ -945,13 +957,83 @@ class Win(Adw.ApplicationWindow):
                 except GLib.Error:return
                 d.close();s.add_books([files.get_item(i).get_path() for i in range(files.get_n_items())])
             fd.open_multiple(d,None,done)
-        add.connect('clicked',pick);refresh();d.present(s)
+        add.connect('clicked',pick)
+        discover=Gtk.Button(label=s.t('discover'));hb.pack_end(discover);discover.connect('clicked',lambda *_:(d.close(),s.discover_books()))
+        refresh();d.present(s)
+    def discover_books(s):
+        d=Adw.Dialog(title=s.t('discover'),content_width=640,content_height=650,follows_content_size=False)
+        hb=Adw.HeaderBar();box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12,margin_start=18,margin_end=18,margin_top=12,margin_bottom=18)
+        query=Gtk.SearchEntry(placeholder_text=s.t('catalog_query'),hexpand=True)
+        language=Gtk.DropDown(model=Gtk.StringList.new([s.t('all_languages')]))
+        controls=Gtk.Box(spacing=8);controls.append(query);controls.append(language);box.append(controls)
+        status=Gtk.Label(label=s.t('catalog_loading'),wrap=True,xalign=0);box.append(status)
+        lb=Gtk.ListBox(css_classes=['boxed-list'],selection_mode=Gtk.SelectionMode.NONE);scroll=Gtk.ScrolledWindow(vexpand=True,child=lb,min_content_height=200);box.append(scroll)
+        more=Gtk.Button(label=s.t('more_books'),visible=False);box.append(more)
+        link=Gtk.Entry(placeholder_text=s.t('book_url'));box.append(link)
+        getlink=Gtk.Button(label=s.t('download_read'));box.append(getlink)
+        sources=Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE,column_spacing=12,row_spacing=6)
+        for name,url in [('Standard Ebooks','https://standardebooks.org/ebooks'),('Wikisource','https://wikisource.org/'),('Open Book Publishers','https://www.openbookpublishers.com/')]:sources.append(Gtk.LinkButton(uri=url,label=name))
+        box.append(sources);box.append(Gtk.Label(label=s.t('catalog_rights'),wrap=True,xalign=0,css_classes=['dim-label']))
+        view=Adw.ToolbarView(content=box);view.add_top_bar(hb);d.set_child(view)
+        codes=[''];matches=[];offset=0;busy=False;alive=True
+        def closed(*_):
+            nonlocal alive
+            alive=False
+        d.connect('closed',closed)
+        def busy_ui(value):
+            nonlocal busy
+            busy=value
+            for widget in (query,language,getlink,lb,more):widget.set_sensitive(not value)
+        def acquire(book=None,url=None):
+            if busy:return
+            busy_ui(True);status.set_label(s.t('downloading'))
+            def finish(path,error):
+                if not alive:return
+                busy_ui(False)
+                if error:status.set_label(s.t('download_error')+' '+error)
+                else:
+                    d.close();s.load(str(path))
+                    if book and s.book:
+                        s.book.lang=s.book.lang or (lang_code(book[3][0]) if book[3] else '');s.book.lemmas=[lemma_of(w,s.book.lang) for w in s.book.words];s.setup_gloss();s.save()
+            def work():
+                try:path=bookcatalog.download(book_id=book[0] if book else None,url=url);error=None
+                except Exception as e:path=None;error=str(e)
+                GLib.idle_add(finish,path,error)
+            threading.Thread(target=work,daemon=True).start()
+        def page(*_):
+            nonlocal offset
+            for b in matches[offset:offset+24]:
+                row=Adw.ActionRow(title=html.escape(b[1]),subtitle=html.escape(b[2]+' · '+', '.join(b[3])))
+                row.set_title_lines(2);row.set_subtitle_lines(2)
+                button=Gtk.Button(label=s.t('download'),valign=Gtk.Align.CENTER);button.connect('clicked',lambda _,b=b:acquire(b));row.add_suffix(button);lb.append(row)
+            offset+=24;more.set_visible(offset<len(matches))
+        def search(*_):
+            nonlocal matches,offset
+            if busy:return
+            matches=bookcatalog.search(query.get_text(),codes[language.get_selected()]);offset=0;lb.remove_all();page();status.set_label(s.t('catalog_count',count=len(matches)))
+        def ready(error=None):
+            if not alive:return
+            busy_ui(False)
+            if error:status.set_label(s.t('catalog_error')+' '+error);return
+            names=bookcatalog.books();codes.extend(sorted({l for b in names for l in b[3]}))
+            language.set_model(Gtk.StringList.new([s.t('all_languages')]+[bookcatalog.LANGUAGE_NAMES.get(c,c) for c in codes[1:]]))
+            query.connect('search-changed',search);language.connect('notify::selected',search);search()
+        def preload():
+            try:bookcatalog.books();error=None
+            except Exception as e:error=str(e)
+            GLib.idle_add(ready,error)
+        more.connect('clicked',page);getlink.connect('clicked',lambda *_:acquire(url=link.get_text().strip()))
+        busy_ui(True);threading.Thread(target=preload,daemon=True).start();d.present(s)
+
     def load(s,p):
         s.stop()
         try:s.book=Book(p,s.cfg['txt_lang'])
         except Exception as e:s.book=None;return s.status(s.t('could_not_open',error=e))
         if not s.book.n:s.book=None;return s.status(s.t('no_text'))
         key=s.book_key();state=normalize_book_state(s.pos.get(key,s.pos.get(s.book.name,0)))
+        if 'lang' in state:
+            s.book.lang=state['lang'];s.book.lemmas=[lemma_of(w,s.book.lang) for w in s.book.words]
+            s.book.genders=gender.genders(s.book.words,gender_data(),s.book.para_start) if s.book.lang=='de' else None
         for k in BOOK_PREFS:
             if k in state:s.cfg[k]=state[k]
         if state.get('clean')!=CLEAN:   # saved against the uncleaned word list: move it (and the bookmarks) once
@@ -959,6 +1041,8 @@ class Win(Adw.ApplicationWindow):
             for m in s.bookmarks.get(key,[]):m['i']=s.book.remap(m['i'])
             key in s.bookmarks and s.write_bookmarks()
         if 'n' not in state and not state.get('position'):state['position']=s.book.start()   # never read: skip the front matter
+        s.pacer.set_direction(Gtk.TextDirection.RTL if rtl(s.book.lang) else Gtk.TextDirection.LTR)
+        s.page.set_direction(s.pacer.get_direction())
         s.i=min(state.get('position',0),s.book.n-1);s.ra=bool(state.get('read_along',False));s.pos['_last']=p;s.set_title(f'Speedready · {s.book.title}');s.pacer.a=s.pacer.b=0
         s.chapters.remove_all()
         for t,i in s.book.chapters:row=Gtk.ListBoxRow(child=Gtk.Label(label=t,xalign=0,wrap=True,margin_start=10,margin_end=10,margin_top=6,margin_bottom=6));row.idx=i;s.chapters.append(row)
@@ -989,7 +1073,7 @@ class Win(Adw.ApplicationWindow):
     def flush_position(s):
         s.save_timer=None
         if s.book:
-            state={'position':s.i,**{k:s.cfg[k] for k in BOOK_PREFS},'read_along':s.ra,'n':s.book.n,'title':s.book.title,'read_at':time.time(),'clean':CLEAN}
+            state={'position':s.i,**{k:s.cfg[k] for k in BOOK_PREFS},'lang':s.book.lang,'read_along':s.ra,'n':s.book.n,'title':s.book.title,'read_at':time.time(),'clean':CLEAN}
             s.pos[s.book_key()]=state;s.pos['_last']=s.book.path
         atomic_text(POS_FILE,json.dumps(s.pos,ensure_ascii=False));return False
     def save(s):
@@ -1025,6 +1109,15 @@ class Win(Adw.ApplicationWindow):
         d=Adw.Dialog(title=s.t('bookmarks_title'),content_width=560,content_height=520,follows_content_size=False)
         hb=Adw.HeaderBar();add=Gtk.Button(label=s.t('add_bookmark'),css_classes=['suggested-action']);hb.pack_start(add)
         box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12,margin_top=12,margin_bottom=18,margin_start=18,margin_end=18);lb=Gtk.ListBox(css_classes=['boxed-list'],selection_mode=Gtk.SelectionMode.NONE);empty=Gtk.Label(css_classes=['dim-label'],margin_top=40)
+        if s.book:
+            lang=Gtk.Entry(text=s.book.lang,placeholder_text=s.t('language_code'))
+            langrow=Adw.ActionRow(title=s.t('book_language'));langrow.add_suffix(lang);box.append(langrow)
+            def set_language(*_):
+                code=lang_code(lang.get_text())
+                if lang.get_text().strip() and not code:return s.status(s.t('language_code'))
+                s.book.lang=code;s.book.lemmas=[lemma_of(w,code) for w in s.book.words];s.book.genders=gender.genders(s.book.words,gender_data(),s.book.para_start) if code=='de' else None
+                s.pacer.set_direction(Gtk.TextDirection.RTL if rtl(code) else Gtk.TextDirection.LTR);s.page.set_direction(s.pacer.get_direction());s.setup_gloss();s.page.b=0;s.show();s.save()
+            lang.connect('activate',set_language)
         box.append(lb);box.append(empty);view=Adw.ToolbarView(content=box);view.add_top_bar(hb);d.set_child(view)
         def refresh(*_):
             lb.remove_all();marks=s.current_bookmarks();empty.set_label(s.t('no_bookmarks'));empty.set_visible(not marks)
@@ -1056,6 +1149,8 @@ class Win(Adw.ApplicationWindow):
         c=s.cfg;chunk=s.book.words[s.i:s.i+s.chunk_len(s.i)];w=' '.join(chunk);mid=len(chunk)//2
         p=sum(len(x)+1 for x in chunk[:mid])+min((len(chunk[mid])-1)//3,4)
         fd=Pango.FontDescription(f'{c["font_word"]} {c["word_size"]}px');lay=lambda t:(l:=area.create_pango_layout(t),l.set_font_description(fd),l)[-1]
+        if rtl(s.book.lang) or any(unicodedata.category(ch).startswith('M') for ch in w):
+            full=lay(w);fw,fh=full.get_pixel_size();cr.set_source_rgb(*[int(c['fg'][i:i+2],16)/255 for i in (1,3,5)]);cr.move_to((W-fw)/2,(H-fh)/2);PangoCairo.show_layout(cr,full);return
         L,P,R=lay(w[:p]),lay(w[p]),lay(w[p+1:]);pw,ph=P.get_pixel_size();cx,cy=W/2,H/2
         rgb=lambda h:cr.set_source_rgb(*[int(h[i:i+2],16)/255 for i in(1,3,5)])
         if c['pivot_guides']:
