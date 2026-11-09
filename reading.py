@@ -11,6 +11,7 @@ def lang_code(tag):
     return LANGUAGES['aliases'].get(t,t) if re.fullmatch('[a-z]{2,3}',t) else ''
 def rtl(lang):return lang_code(lang) in {'ar','he','fa','ur','ps','sd','ug','yi','dv','syr','arc','ckb'}
 _NEEDS_BREAK=re.compile('[\u0e00-\u0fff\u1000-\u109f\u1780-\u17ff\u3040-\u30ff\u3400-\u9fff\U00020000-\U000323af]')
+DROP='\x00'   # parser marker for text that must not be read (same value as speedready.DROP)
 _icu=None
 
 def _breaker():
@@ -27,6 +28,17 @@ def _breaker():
     return _icu
 
 def tokenize(text,lang=''):
+    # speedready.py prefixes parser-known non-text (page titles, footnote markers) with DROP. A marked span
+    # that has to be segmented must not lose its mark on the second word: '\x00日本語の本' is not text either.
+    if DROP in text:
+        words=[]
+        for k,piece in enumerate(text.split(DROP)):
+            part=_segment(piece,lang)
+            words+=part if k==0 else [DROP+w for w in part]
+        return words
+    return _segment(text,lang)
+
+def _segment(text,lang=''):
     if not _NEEDS_BREAK.search(text):return text.split()
     parts=[];icu=_breaker()
     if icu:

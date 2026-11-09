@@ -29,6 +29,13 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'dist/audit'),base=pr
    const real=idb;idb=(mode,fn)=>mode==='readwrite'?Promise.reject(new Error('QuotaExceededError')):real(mode,fn);
    try{await addBooks([new File(['A readable temporary book.'],'temporary.txt')])}finally{idb=real}
   });assert((await p.locator('#toast').innerText()).includes('could not save'));checks.push('Storage failure is visible while the book remains readable');
+  await p.evaluate(async()=>{await loadBook(textToBook('Der M\u00fcller stand in der T\u00fcr der alten M\u00fchle.','Gloss','audit:gloss','de'))});
+  await p.evaluate(()=>{S.gloss=true;document.body.classList.remove('plain');refreshGlosses();show(false)});
+  const glossShown=await p.evaluate(()=>[...document.querySelectorAll('#page .c .g')].some(g=>g.textContent.trim()&&getComputedStyle(g).display!=='none'));
+  await p.evaluate(()=>{S.gloss=false;document.body.classList.add('plain');refreshGlosses()});
+  const glossHidden=await p.evaluate(()=>[...document.querySelectorAll('#page .c .g')].every(g=>getComputedStyle(g).display==='none'));
+  assert(glossShown&&glossHidden,'translations must show with the toggle on, and hide only when it is off');
+  checks.push('Translation above the words shows while enabled and hides when disabled');
   await p.locator('#b-settings').tap();
   assert.equal(await p.locator('#s-settings').getAttribute('role'),'dialog');assert(await p.locator('main').evaluate(e=>e.inert));
   await p.locator('#t-dark').focus();const before=await p.locator('#t-dark').getAttribute('aria-checked');await p.keyboard.press('Space');

@@ -22,6 +22,15 @@ class ReadingTests(unittest.TestCase):
             p=Path(d)/'book.txt';p.write_text('我喜欢读书。你呢？')
             b=app.Book(str(p),'zh');self.assertGreater(b.n,1)
             self.assertEqual(''.join(b.words),'我喜欢读书。你呢？')
+    def test_parser_exclusions_survive_segmentation(self):
+        # A page title or a footnote marker in Chinese or Japanese: every piece of the marked span has to stay
+        # marked, or Book.clean() keeps the title as reading text (Codex review, PR #13).
+        marked=app.DROP+'日本語の本'
+        self.assertEqual(reading.tokenize(marked,'ja'),[app.DROP+'日本語',app.DROP+'の',app.DROP+'本'])
+        Html=app.Html('',lang='ja');Html.feed('<head><title>日本語の本</title></head><body><p>本文です。</p></body>')
+        clean=object.__new__(app.Book);clean.words=reading.tokenize(''.join(Html.out),'ja');clean.para_start=[0];clean.old2new=[];clean.chapters=[]
+        clean.clean('')
+        self.assertNotIn('日本語の本',''.join(clean.words))
     def test_catalog_search_includes_languages_without_dictionaries(self):
         self.assertGreater(len(bookcatalog.books()),70000)
         self.assertTrue(bookcatalog.search(language='zh'));self.assertTrue(bookcatalog.search(language='ja'))

@@ -29,6 +29,6 @@ Open any EPUB or text file; the app recognizes its language. Page numbers and he
 
 <b>Private</b>
 
-No account, no tracking, no ads. A language pair's dictionary downloads once (about 2 MB) and then works offline. Your books and your progress never leave your device.
+No account, no tracking, no ads. The language pair that comes with the app works offline with no download; another pair downloads once (about 2 MB) and then works offline. Your books and your progress never leave your device.
 
 The reader is free, open-source software. The reader code is MIT-licensed. Dictionaries use Wiktionary data under CC BY-SA 4.0; frequency data is from FrequencyWords under MIT. Attribution and licence details are in the source repository.

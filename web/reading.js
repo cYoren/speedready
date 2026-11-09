@@ -6,6 +6,12 @@
   const rtl=lang=>/^(ar|he|fa|ur|ps|sd|ug|yi|dv|syr|arc|ckb)$/.test(langCode(lang));
   const segments=new Map();
   function tokenize(text,lang){
+    // The EPUB reader marks non-text (page titles, footnote markers) with a leading \u0000. Segmentation must keep
+    // the mark on every piece of a marked span, the way spaced scripts keep it on every word.
+    if(text.includes('\u0000'))return text.split('\u0000').flatMap((piece,k)=>{const ws=segment(piece,lang);return k?ws.map(w=>'\u0000'+w):ws});
+    return segment(text,lang);
+  }
+  function segment(text,lang){
     // Keep the established indices for spaced scripts. Segment only scripts which need it.
     if(!/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u.test(text))return text.trim().split(/\s+/u).filter(Boolean);
     let s;
