@@ -46,12 +46,16 @@ EOF
 fi
 
 echo "Building release APK"
+VER=$(sed -n "s/.*versionName '\(.*\)'.*/\1/p" "$AND/app/build.gradle")
+CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' "$AND/app/build.gradle")
+# F-Droid's updater compares versionCode, not tags: a tag that did not bump it would never reach Android.
+# Bump versionCode/versionName, commit, then tag v$VER before this build.
+python3 tools/check_release_tag.py "v$VER"
 (cd "$AND" && ./gradlew --quiet clean :app:assembleRelease)
 
 APK=$(find "$AND/app/build/outputs/apk/release" -name '*.apk' | head -1)
 [ -n "$APK" ] || { echo "no APK produced" >&2; exit 1; }
 
-VER=$(sed -n "s/.*versionName '\(.*\)'.*/\1/p" "$AND/app/build.gradle")
 OUT="$AND/app/build/outputs/apk/release/speedready-$VER.apk"
 [ "$APK" = "$OUT" ] || cp "$APK" "$OUT"
 
@@ -63,6 +67,6 @@ echo "versionName: $VER"
 echo "SHA-256:     $FP"
 echo
 echo "Next:"
-echo "  1. gh release create v$VER --repo cYoren/speedready --title v$VER --notes-file fastlane/metadata/android/en-US/changelogs/2.txt '$OUT'"
+echo "  1. gh release create v$VER --repo cYoren/speedready --title v$VER --notes-file fastlane/metadata/android/en-US/changelogs/$CODE.txt '$OUT'"
 echo "  2. put this in android/fdroid/io.github.cyoren.speedready.yml:"
 echo "       AllowedAPKSigningKeys: $FP"

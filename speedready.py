@@ -494,11 +494,25 @@ class TTS:
             except Exception as e:status(f'speech failed: {e}')
         threading.Thread(target=go,daemon=True).start()
 
+CLOSED_POS={'article','det','conj','prep','preposition','particle'}   # a common word's gloss should be its grammatical sense, not a homograph
+COMMON_RANK=250        # the words frequent enough to need the stricter scoring above
+
+def pick_gloss(rows,surface,rank):
+    """The one row to gloss a surface word with. rows are (word,pos,tgt,prio) in pack order, rank is the
+    word's frequency rank (None when unranked). tools/export_web.py calls this too, so the web and desktop
+    readers cannot drift apart again on which sense they show."""
+    common=bool(rank and rank<=COMMON_RANK)
+    def score(r):
+        word,pos,tgt,prio=r
+        exact=0 if word==surface else 1 if word.lower()==surface.lower() else 2
+        return (exact if common else 0,0 if common and pos in CLOSED_POS else 1,prio,exact,len(tgt))
+    return min(rows,key=score) if rows else None
+
 class Gloss:
     """Offline gloss pack (tools/build_pack.py) + the learner's 'learned' list. db stays None until the pack is on disk;
     error says why it never will be, so beginner mode can say so instead of rendering a page of blank glosses."""
-    def __init__(s,src,tgt,status,on_change):
-        s.src,s.tgt=src,tgt;s.path=PACKS/f'gloss-{src}-{tgt}.sqlite';s.learned_file=DIR/f'learned-{src}-{tgt}.txt'
+    def __init__(s,src,tgt,status,on_change,path=None):
+        s.src,s.tgt=src,tgt;s.path=Path(path) if path else PACKS/f'gloss-{src}-{tgt}.sqlite';s.learned_file=DIR/f'learned-{src}-{tgt}.txt'
         s.learned=set(s.learned_file.read_text().split()) if s.learned_file.exists() else set();s.cache={};s.db=None
         s.error=None;s.progress=''
         if s.path.exists():s.db=sqlite3.connect(s.path,check_same_thread=False)
@@ -536,11 +550,8 @@ class Gloss:
             if override:s.cache[w]=override;return override
             l=s.lemma(w);rows=s.db.execute('SELECT word,pos,tgt,prio FROM gloss WHERE word IN (?,?,?)',(l,w,w.lower())).fetchall()
             if s.tgt!='en':rows=[r for r in rows if r[3]<9]
-            rank=s.db.execute('SELECT rank FROM freq WHERE word=?',(w.lower(),)).fetchone();common=bool(rank and rank[0]<=250);closed={'article','det','conj','prep','preposition','particle'}
-            def score(r):
-                word,pos,tgt,prio=r;exact=0 if word==w else 1 if word.lower()==w.lower() else 2
-                return (exact if common else 0,0 if common and pos in closed else 1,prio,exact,len(tgt))
-            r=min(rows,key=score) if rows else None
+            rank=s.db.execute('SELECT rank FROM freq WHERE word=?',(w.lower(),)).fetchone()
+            r=pick_gloss(rows,w,rank[0] if rank else None)
             s.cache[w]=(s.short(r[2]) if r else None,l)
         return s.cache[w]
     @staticmethod

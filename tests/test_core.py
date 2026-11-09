@@ -28,6 +28,14 @@ class CoreTests(unittest.TestCase):
         query=urllib.parse.parse_qs(google.query)
         self.assertEqual(query['sl'],['de']);self.assertEqual(query['tl'],['pt']);self.assertEqual(query['text'],[phrase])
 
+    def test_common_function_words_are_glossed_through_every_target(self):
+        from coreglosses import core
+        # The three documented failures (TODO 6): a context-free dictionary answers a homograph.
+        self.assertEqual(core('de','es').get('wollen'),'querer')       # not "de lana"
+        self.assertTrue(core('sv','de').get('är','').startswith('ist'))   # not "Gut, Ware"
+        self.assertEqual(core('nl','pt').get('is'),'é')                 # not "seu"
+        self.assertEqual(core('de','pt').get('für'),'para')
+
     def test_beginner_mode_never_claims_glosses_it_is_not_showing(self):
         def fake(db=None,error=None,src='de',tgt='pt'):
             g=object.__new__(app.Gloss);g.src,g.tgt,g.db,g.error,g.progress=src,tgt,db,error,'';return g
