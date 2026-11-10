@@ -3,7 +3,7 @@
 // tests/test_web_parity.py checks both give the same words, paragraphs and position map.
 (function(root){
   const DROP='\u0000';   // the parser's mark on words that are not text; dropped here, raw word counts stay put
-  const END=/[.!?…]["'”’“‘)»«]*$/;
+  const END=/[.!?…。！？؟]["'”’“‘)»«]*$/;
   const PAGE_NUM=/^(?:[-–—|\[(]\s*)?(?:(?:seite|page|s\.|p\.)\s*)?\d{1,4}(?:\s*[-–—|\])])?$/i;   // '– 7 –', '[7]', 'Seite 7', '7'
   const FRONT=/^(cover|titel(seite)?|title( page)?|inhalt(sverzeichnis)?|(table of )?contents|impressum|copyright|widmung|dedication|(das |zum )?buch|(der |über den )?autor(in)?|about the author|introduction|how to read.*)$/i;
   const LOWER=/^(?:(?![A-ZÄÖÜ])\p{L})+[,.;:!?]?$/u, HYPHEN=/\p{L}-$/u, ALPHA=/\p{L}/u;
@@ -47,7 +47,7 @@
           words[words.length-1]=last.slice(0,-1)+p[0];p=p.slice(1);first[k]-=1;   // 'Mühlen-' | page break | 'knappe'
         }
       }else starts.push(words.length);
-      words.push(...p);cut=false;
+      for(const w of p)words.push(w);cut=false;
     }
     const start=new Array(first.length);let nxt=words.length;
     for(let k=first.length-1;k>=0;k--){if(first[k]!==null)nxt=first[k];start[k]=nxt}   // a dropped paragraph maps to the next kept word
@@ -103,7 +103,7 @@
   }
   // an epub's <dc:language> as a two-letter code: 'DE', 'de-DE', 'ger' and 'deu' are all 'de' (same as lang_code in speedready.py)
   const ISO3={ger:'de',deu:'de',eng:'en',spa:'es',fre:'fr',fra:'fr',ita:'it',dut:'nl',nld:'nl',pol:'pl',por:'pt',rus:'ru',swe:'sv'};
-  const langCode=tag=>{const t=tag.trim().toLowerCase();return ISO3[t.slice(0,3)]||t.slice(0,2)};
+  const langCode=tag=>{const t=tag.trim().toLowerCase();const base=t.replace(/_/g,'-').split('-')[0];return /^[a-z]{2,3}$/.test(base)?ISO3[base]||base:''};
   const TextClean={clean,resolveMissing,remap,start,detectLang,langCode,DROP};
   if(typeof module!=='undefined'&&module.exports)module.exports=TextClean;else root.TextClean=TextClean;
 })(typeof self!=='undefined'?self:this);

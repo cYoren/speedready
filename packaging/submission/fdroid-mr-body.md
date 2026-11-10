@@ -1,6 +1,8 @@
 Paste this over the description of https://gitlab.com/fdroid/fdroiddata/-/merge_requests/49884
 (Edit -> replace the body -> Save). Every line below is already true of the branch and the tagged
-release; there are no TODO lines left.
+release; there are no TODO lines left. Version numbers are deliberately not repeated here: the build
+entry is whatever `metadata/io.github.cyoren.speedready.yml` in the merge request names, so update
+that file to the newest tag instead of editing this text.
 
 ---
 
@@ -12,7 +14,7 @@ release; there are no TODO lines left.
 * [x] The original app author has been notified (and does not oppose the inclusion). If you are not the author, please paste the link of the reply from the author.
   <br>I am the author.
 * [x] The upstream app source code repo contains the app metadata in a [Fastlane](https://gitlab.com/snippets/1895688) or [Triple-T](https://gitlab.com/snippets/1901490) folder structure. The summary and description must be included and images, icon, and changelog should also be provided for better user experience. The `en-US` locale must be included.
-  <br>`fastlane/metadata/android/en-US/` with title, short and full description, icon, three phone screenshots and changelogs for versionCode 1, 2, 3 and 4.
+  <br>`fastlane/metadata/android/en-US/` with title, short and full description, icon, three phone screenshots and a changelog for versionCode 1 through 8.
 
 ### Docs
 
@@ -45,7 +47,7 @@ release; there are no TODO lines left.
 * [x] External repos are added as git submodules instead of srclibs. You can update git submodules without opening an MR in this repo and the submodule is covered by our scanner.
   <br>No external repos: the app has no dependencies at all (`dependencies { }`).
 * [x] Enable [Reproducible Builds](https://f-droid.org/docs/Reproducible_Builds). We'll use your signature for improved security/reliability, also allowing users to switch between different channels. Do note that if you don't enable reproducible build then the apk will be signed with our key so you can't enable it later. If you can't enable this, please add the reasons here.
-  <br>Enabled. `Binaries` and `AllowedAPKSigningKeys` are set, and `speedready-1.0.4.apk` is published.
+  <br>Enabled. `Binaries` and `AllowedAPKSigningKeys` are set, and the APK for this build entry is published under the release tag.
   <br>The app is a WebView wrapper with no dependencies, `minifyEnabled false`, and `dependenciesInfo`
   disabled, so the build is deterministic. Measured on commit `d1fe0b3` (tag `v1.0.4`, JDK 21,
   Gradle 8.11.1 as pinned in the wrapper):
@@ -53,19 +55,22 @@ release; there are no TODO lines left.
   <br>- a clean unsigned build without signing credentials has the same 21 non-signature zip entries, byte-for-byte, as the signed APK
   <br>- clean unsigned APK: `sha256 80180a8999dfd608ef0eed3f6363facdc3fdab29721ab90de0fb25b5dd42ac66`
   <br>The signing config only applies when a local `keystore.properties` is present, so the F-Droid
-  builder without one produces an unsigned APK with identical payload bytes.
+  builder without one produces an unsigned APK with identical payload bytes. That measurement was
+  made on `v1.0.4` and the same `tools/make_release_apk.sh` builds every later release; the APK for
+  the build entry in this merge request is published under `Binaries` and signed with the key in
+  `AllowedAPKSigningKeys`.
 * [x] Setup abi split if the APK is large and the splitted ones can be much smaller.
   <br>Not applicable: no native code, single ABI-independent APK.
 * [x] Only the latest versions should be kept in the metadata before it's merged. If you update the metadata, please replace the old versions with the new ones.
-  <br>One build entry, versionCode 4.
+  <br>One build entry, naming the newest release tag with its versionName, versionCode and full commit hash.
 * [x] Don't add any disabled versions in the metadata.
 * [x] The `commit` field should be the full hash. Please don't use tag or branch in commit.
-  <br>`commit: d1fe0b38263d461267453e7275c0a2f2c2971027` (full hash for `v1.0.4`).
+  <br>`commit:` is the full 40-character hash the build entry checks out, never a tag or a branch.
 
 ### Pipeline
 
 * [x] All pipelines should pass.
-  <br>MR pipeline `2886187302` passed all nine jobs on head `38601acde00994aeb046d5f91c67ecb4658ad87e`, including F-Droid lint, checkupdates and build. The build used source commit `d1fe0b38263d461267453e7275c0a2f2c2971027` and verified the published APK.
+  <br>The last MR pipeline (`2886187302`) passed all nine jobs, including F-Droid lint, checkupdates and build. Rerun it after the build entry is bumped to the current tag; checkupdates reports the version it will build.
 * [x] All warnings and errors in the Reports tab should be fixed or explained.
   <br>The pipeline's test report contains zero tests and no test failures; no code-quality report was generated. All lint and build jobs passed.
 * [x] F-Droid CI runners are under GitLab's FOSS program, so there's no need for you to pay for any CI time. If Gitlab starts asking for phone numbers or credit cards don't submit anything, just leave a note in the MR so we know we need to trigger the CI.
@@ -79,4 +84,4 @@ Thanks for the review @seekme-seekyou. All four points are addressed:
 3. `Summary`, `Description` and `AutoName` removed from the yaml; they live in the upstream Fastlane folder.
 4. `commit` is now the full hash.
 
-Since the previous update, the app has released `v1.0.4` (`versionCode 4`). This release removes the non-commercial MUSE data from the dictionary pipeline and corrects the listing to describe the shipped German-to-Portuguese dictionary only. The commit also removes the workstation-specific Android SDK path from the repository; the build uses `ANDROID_HOME` and was verified from `android/app` with no local SDK or signing properties.
+Since the previous update the app has released past `v1.0.4`. That release removed the non-commercial MUSE data from the dictionary pipeline and corrected the listing to describe the shipped German-to-Portuguese dictionary only; the commit also removed the workstation-specific Android SDK path, so the build uses `ANDROID_HOME` and works from `android/app` with no local SDK or signing properties. The build entry attached here is the current tag.

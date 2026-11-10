@@ -1,7 +1,7 @@
 {
   "name": "Speedready",
   "short_name": "Speedready",
-  "description": "Speed reading, and reading in 10 languages with a translation above every word you do not know yet.",
+  "description": "Read books in any language, download free books, and read offline. Optional dictionaries cover 10 languages.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
