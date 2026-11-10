@@ -31,10 +31,26 @@ assert len(inline) == 1, 'expected exactly one inline <script> in web/index.html
 script = inline[0]
 register = "if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));\n"
 assert register in script, 'service worker registration moved; update build_chrome.py'
-(OUT / 'app' / 'app.js').write_text(script.replace(register, ''))   # the extension ships its files: no offline cache
+# The extension ships its files, so no offline cache, and the two remote packs come from the packs host.
+app_js = script.replace(register, '')
+for before, after in (("Gender.load('genders-'+lang+'.json.gz')", "Gender.load(S.bundle.packs+'genders-'+lang+'.json.gz')"),
+                      ("fetchJSON('catalog.json.gz')", "fetchJSON(S.bundle.packs+'catalog.json.gz')")):
+    assert app_js.count(before) == 1, f'the reader changed; update build_chrome.py: {before}'
+    app_js = app_js.replace(before, after)
+(OUT / 'app' / 'app.js').write_text(app_js)
 html = html.replace(f'<script>{script}</script>', '<script src="app.js"></script>\n<script src="bridge.js"></script>')
 html = html.replace('<link rel="manifest" href="manifest.webmanifest">\n', '')
 (OUT / 'app' / 'index.html').write_text(html)
+# Noun genders (7 MB across ten languages) and the 3 MB book catalog stay out of the package: the extension
+# fetches the one language a reader opens, and the catalog on first search, from the same packs host the
+# dictionaries already come from, and the reader caches them. Both paths already fail soft (genders off,
+# catalog says it could not load), so a reader with no network loses nothing else.
+REMOTE = ('genders-', 'catalog.json.gz')
+for name in REMOTE:
+    for path in (OUT / 'app').glob(name + '*' if name.endswith('-') else name):
+        path.unlink()
+for name in REMOTE:
+    assert not list((OUT / 'app').glob(name + '*' if name.endswith('-') else name)), name
 
 # Firefox's add-on checker refuses JSON files this big; the reader unpacks gzip itself (fetchJSON)
 bundle = json.loads((OUT / 'app' / 'bundle.json').read_text())
