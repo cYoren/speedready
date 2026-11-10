@@ -1,6 +1,6 @@
-"""The web reader's gender.js / textclean.js must give exactly what gender.py / Book.clean give.
-Runs the JavaScript under node; skipped when node is not installed."""
-import json,shutil,subprocess,tempfile,unittest
+"""The web reader's gender.js / textclean.js must give exactly what gender.py / Book.clean give,
+and its shipped dictionary lookup exactly what the exported gloss map answers."""
+import json,shutil,subprocess,sys,tempfile,unittest
 from pathlib import Path
 
 import gender
@@ -8,6 +8,8 @@ import speedready as app
 
 ROOT=Path(__file__).resolve().parent.parent
 NODE=shutil.which('node')
+sys.path.insert(0,str(ROOT/'tools'))
+from export_web import web_lookup
 RUN="""
 const G=require(process.argv[2]+'/web/gender.js'),C=require(process.argv[2]+'/web/textclean.js'),zlib=require('zlib'),fs=require('fs');
 const data=JSON.parse(zlib.gunzipSync(fs.readFileSync(process.argv[2]+'/web/genders-de.json.gz')));
@@ -17,6 +19,26 @@ const out=input.map(b=>{const c=C.clean(b.words,b.para,b.chapters,b.names);
   return {genders:G.genders(b.words,data,b.para),clean:c,start:C.start(c.chapters,c.words.length)}});
 fs.writeFileSync(process.argv[3],JSON.stringify(out));
 """
+
+LOOKUP="""
+const fs=require('fs');
+const html=fs.readFileSync(process.argv[2]+'/web/index.html','utf8');
+const NL=String.fromCharCode(10);
+const at=html.indexOf('const strip=');
+const strip=html.slice(at,html.indexOf(NL,at));
+const a=html.indexOf('function glossOf(word){'),b=html.indexOf(NL+'}',a);
+const fn=html.slice(a,b+2);
+const dict=JSON.parse(fs.readFileSync(process.argv[2]+'/web/dict-de-pt.json','utf8'));
+const words=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
+const S={dict,book:null,native:'pt'};
+const lookup=eval(strip+NL+fn+NL+';glossOf');
+fs.writeFileSync(process.argv[3],JSON.stringify(words.map(w=>{const [g,l]=lookup(w);return [g,l]})));
+"""
+
+def js_lookup(words):
+    with tempfile.TemporaryDirectory() as d:
+        f=Path(d)/'words.json';f.write_text(json.dumps(words));script=Path(d)/'lookup.js';script.write_text(LOOKUP)
+        subprocess.run([NODE,str(script),str(ROOT),str(f)],check=True);return json.loads(f.read_text())
 
 def js(books):
     with tempfile.TemporaryDirectory() as d:
@@ -44,6 +66,10 @@ def compare(t,books):
 
 @unittest.skipUnless(NODE,'node not installed')
 class WebParity(unittest.TestCase):
+    def test_shipped_dictionary_lookup_matches_the_exported_map(self):
+        dictionary=json.loads((ROOT/'web/dict-de-pt.json').read_text())
+        words=list(dict.fromkeys(json.loads((ROOT/'web/starter-de.json').read_text())['words']))[:3000]
+        self.assertEqual([list(web_lookup(dictionary,w)) for w in words],js_lookup(words))
     def test_same_output_on_the_starter_book_and_page_junk(self):
         s=json.loads((ROOT/'web/starter-de.json').read_text())
         wrapped='Der Müller stand in der Tür der alten Mühle und sah hinaus auf den Weg, der zum Dorf führte. Es war kalt'.split()

@@ -79,7 +79,7 @@ public class MainActivity extends Activity {
         s.setAllowFileAccess(false);           // assets only; no reading the filesystem
         s.setAllowContentAccess(false);
         s.setMediaPlaybackRequiresUserGesture(false);
-        s.setTextZoom(100);                    // the app has its own text size control
+        s.setTextZoom(Math.round(getResources().getConfiguration().fontScale * 100)); // honor the system text size as well as the reader control
         CookieManager.getInstance().setAcceptCookie(false);
 
         web.setWebChromeClient(new WebChromeClient() {
@@ -319,7 +319,7 @@ public class MainActivity extends Activity {
     private void back() {
         // let the page close its own sheets first
         web.evaluateJavascript(
-                "(function(){var s=document.querySelector('.sheet.on');if(s){s.classList.remove('on');return 'handled'}return 'exit'})()",
+                "(function(){var s=document.querySelector('.sheet.on');if(s){closeSheets();return 'handled'}return 'exit'})()",
                 value -> {
                     if (value == null || !value.contains("handled")) finish();
                 });

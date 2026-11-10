@@ -1,6 +1,6 @@
 # Speedready
 
-Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwaita, one Python file.
+Pacer and RSVP reader for epub/txt, built for language learners. GTK4 / libadwaita with a shared web reader for mobile and browsers.
 
 - **Pacer**: the whole text on screen, a highlight sweeps through at your pace, read words dim behind it
 - **RSVP**: one word (or chunk) flashed at a time with a red pivot letter
@@ -67,9 +67,10 @@ figures come from `tools/release_packs.py` measured against each pair's top 2,00
 
 Content words are reliable across every pair. The commonest grammar words often are not: Wiktionary
 picks the wrong homograph for them (`sv->de` gives `är` as "Gut, Ware", `nl->pt` gives `is` as
-"seu"). `GLOSS_OVERRIDES` in `speedready.py` fixes these by hand for de->pt only. Curating that list
-once for de->en and pivoting it would fix every de->X pair at once, since knowing that `wollen` is
-"want" and not "woollen" does not depend on the target language.
+"seu"). `core/` fixes these for every pair: each source language's ~300 commonest words are checked
+once in English and pivoted through English into every target (`coreglosses.py`), so `de->es wollen`
+is "querer", `sv->de är` is "ist; sind" and `nl->pt is` is "é". `GLOSS_OVERRIDES` in `speedready.py`
+keeps the hand-curated de->pt glosses, which are more idiomatic than the pivot.
 
 ## German noun genders
 
@@ -109,7 +110,7 @@ screen). It is a separate implementation from the desktop reader; they share the
 pipeline (`tools/export_web.py`, `coreglosses.py`), not the reading code.
 
 `core/` holds hand-checked glosses for each language's ~300 most frequent words, which a
-context-free dictionary gets wrong most often. `python tools/export_web.py --patch <dict files>`
+context-free dictionary gets wrong most often. `/usr/bin/python3 tools/export_web.py --patch <dict files>`
 writes them into exported dictionaries; pairs without English go through English.
 
 Read-along drives the highlight from its own estimated clock rather than from
@@ -119,17 +120,26 @@ arrive. Devices with no speech voices installed say so instead of failing silent
 Build its data from a desktop pack:
 
 ```
-python tools/export_web.py de pt      # -> web/dict-de-pt.json (8.5 MB, ~1.7 MB gzipped)
+/usr/bin/python3 tools/export_web.py de pt      # -> web/dict-de-pt.json (8.2 MB, ~1.5 MB gzipped)
+/usr/bin/python3 tools/export_web.py --check    # web reader vs desktop reader, over the starter book
 ```
+
+The exported glosses are the ones the desktop reader would show: `tools/export_web.py` calls
+`speedready.pick_gloss`, the same scoring `Gloss.raw` uses, so the two readers weigh exact case,
+part of speech and frequency identically instead of the web taking the highest-priority row.
+`--check` prints the agreement over the bundled starter book and fails below 99%. Build against the
+published pack (`gh release download packs --pattern gloss-de-pt.sqlite`), not a cache left over from
+before 1.0.4: those carry MUSE data, which is never exported.
 
 The shipped language pair is named in `web/bundle.json` and nowhere else; `index.html` and `sw.js`
 both read it, and the reader takes its source language from the dictionary's own `src` field. So
 changing which pair the website and the Android APK carry is that one command plus a starter book,
 with no code edit. A test enforces it: neither file may name a dictionary or a language again.
 
-One APK still ships one pair, because the dictionary is bundled and the app asks for no permissions
-at all. Shipping more than one means either a bigger APK or network access, which is a trade worth
-making deliberately.
+One APK still ships one pair, because that dictionary is bundled: the shipped pair reads offline
+with no download. The app's one permission is internet, used to fetch another language pair or a
+free book, never to measure what you read. Shipping several pairs means either a bigger APK or
+network access, which is a trade worth making deliberately.
 
 ## iPhone and iPad app
 
@@ -144,3 +154,85 @@ ASC_KEY_PATH=… ASC_KEY_ID=… ASC_ISSUER=… ios/release.sh   # signed .ipa fo
 ```
 
 Create the app record (bundle id `io.github.cyoren.speedready`) in App Store Connect before the first upload.
+
+## Read in any language and find free books
+
+Reading languages are independent of the interface and the ten optional dictionary languages.
+EPUB language metadata is preserved, including three-letter ISO codes; use the book-language
+field to correct it. Enter a code such as `ar`, `ja`, `zh`, or `fil`. Arabic and Hebrew read
+right to left. Chinese, Japanese, Thai, and other scripts without spaces are segmented into
+reading units (browser `Intl.Segmenter`; system ICU on Linux, with a character fallback).
+Existing positions for books in spaced scripts keep their original indices. Dictionary and
+speech availability still depend on the installed language pair and device voices.
+
+In **Books → Download free books**, search the bundled Project Gutenberg catalog by title,
+author, and any catalog language. Downloads are saved in the library and reopen offline.
+The Linux library has the same **Download free books** button. Linux downloads keep the
+original EPUB/text file in `~/.local/share/speedready/books/` and reuse it on later downloads.
+The catalog snapshot includes 78,461 texts across 68 languages; availability depends on the source.
+
+**Other open libraries** links to Standard Ebooks, Wikisource, and Open Book Publishers.
+Import their downloaded files with **Add books**, or paste a direct EPUB/PDF/text URL from
+Gutenberg, Standard Ebooks, or Open Book Publishers in the web reader (EPUB/text on Linux).
+Direct downloads are limited to 30 MB. Books retain their own licenses; check the source terms.
+
+The official Gutenberg CSV is cached locally by `tools/build_catalog.py`; building again
+reuses it. To deliberately refresh the catalog snapshot:
+
+```bash
+cd ~/Projects/speedready
+python tools/build_catalog.py --refresh
+```
+
+The website uses `api/book.js` to download selected books from approved HTTPS hosts, because
+Gutenberg does not allow cross-origin browser downloads. It rejects arbitrary hosts, unsafe
+redirects, oversized downloads, and HTML error pages. Deploy both `web/` and the root `api/`
+function with the repository's Vercel configuration. Packaged mobile apps/extensions use
+`https://speedready.vercel.app/api/book`; their direct downloads require this function to be
+published there. The Linux reader downloads from the sources directly.
+
+For a local preview with working downloads (Node 24+):
+
+```bash
+cd ~/Projects/speedready
+node --use-env-proxy tools/serve.cjs
+```
+
+Open `http://127.0.0.1:8765` in a browser. Verification:
+
+```bash
+cd ~/Projects/speedready
+/usr/bin/python3 -m unittest discover -s tests -q
+node tests/reading.cjs
+/usr/bin/python3 tools/export_web.py --check    # web and desktop readers agree on the starter book
+```
+
+Before tagging a release, run the guard F-Droid needs: a tag that does not bump Android's
+`versionCode` is found by the `Tags` updater and then ignored, so it never reaches Android users.
+
+```
+python tools/check_release_tag.py v1.0.9        # --strict also compares the fdroiddata metadata
+tools/make_release_apk.sh                       # runs the guard before it builds
+```
+
+## Audit and release checks
+
+The [4 November 2026 audit](docs/audit-2026-11-04.md) records fixes, measurements,
+regression coverage, and the device/deployment checks still required before release.
+The download endpoint streams books with a 30 MB bound. EPUB import validates ZIP
+entries and bounds expanded text; the catalog builds a reusable search index.
+
+Additional local checks:
+
+```bash
+cd ~/Projects/speedready
+node tests/catalog.cjs
+node tests/downloads.cjs
+```
+
+`tests/browser_audit.cjs` exercises synthetic imports, long-book reading, storage
+failures, keyboard and touch controls, both themes, accessibility, and offline reopening.
+It requires an existing Playwright installation/browser and a cached axe-core 4.10.3
+script (`AXE_PATH` can select it); it does not download books from public sources.
+`PLAYWRIGHT_MODULE`, `CHROMIUM`, and `AUDIT_URL` can select local tooling and the preview URL.
+Screenshots and the JSON result are saved under the ignored `dist/audit/` directory.
