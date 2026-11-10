@@ -26,7 +26,7 @@ def metadata_state(text):
     """(versionName, versionCode, commit) of the last fdroiddata build entry: what F-Droid will check out."""
     build=text.rsplit('- versionName:',1)
     if len(build)<2:return None
-    entry=build[1]
+    entry='  versionName:'+build[1]   # rsplit ate the first field's name; put it back so field('versionName') finds it
     def field(key):
         m=re.search(rf'^\s*{key}:\s*(\S+)\s*$',entry,re.M);return m[1].strip("'\"") if m else None
     name,code,commit=field('versionName'),field('versionCode'),field('commit')

@@ -28,13 +28,16 @@ def _breaker():
     return _icu
 
 def tokenize(text,lang=''):
-    # speedready.py prefixes parser-known non-text (page titles, footnote markers) with DROP. A marked span
-    # that has to be segmented must not lose its mark on the second word: '\x00日本語の本' is not text either.
+    # speedready.py prefixes parser-known non-text (page titles, footnote markers) with DROP, one mark per
+    # whitespace-delimited token. A marked token that has to be segmented must not lose its mark on the second
+    # word ('\x00日本語の本' is not text either), but the mark ends at the next whitespace: the prose after a
+    # footnote ('fool\x001 then the rest') is ordinary text again.
     if DROP in text:
         words=[]
         for k,piece in enumerate(text.split(DROP)):
-            part=_segment(piece,lang)
-            words+=part if k==0 else [DROP+w for w in part]
+            if k==0:words+=_segment(piece,lang);continue
+            end=re.match(r'\S*',piece).end()
+            words+=[DROP+w for w in _segment(piece[:end],lang)]+_segment(piece[end:],lang)
         return words
     return _segment(text,lang)
 
