@@ -35,7 +35,7 @@ PRIVATE BY DESIGN
 • Your books, words and progress stay on your computer
 
 ALSO FROM US
-Speedready is also on your phone and computer: https://speedready.vercel.app/
+Speedready is also an app: Android https://play.google.com/store/apps/details?id=io.github.cyoren.speedready and iPhone and iPad https://apps.apple.com/app/id6818031802
 Datalyst tracks your habits and shows what affects your focus, sleep and mood: https://www.datalyst.one/
 
 ## Descrição (pt-BR)
@@ -66,7 +66,7 @@ PRIVADO DE VERDADE
 • Seus livros, palavras e progresso ficam no seu computador
 
 TAMBÉM NOSSO
-O Speedready também está no seu celular e computador: https://speedready.vercel.app/
+O Speedready também é um app: Android https://play.google.com/store/apps/details?id=io.github.cyoren.speedready e iPhone e iPad https://apps.apple.com/app/id6818031802
 O Datalyst acompanha seus hábitos e mostra o que afeta seu foco, sono e humor: https://www.datalyst.one/
 
 ## Privacy practices tab
