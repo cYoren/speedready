@@ -19,6 +19,11 @@ class ReleaseTagTests(unittest.TestCase):
         self.assertRegex(name,r'^\d+\.\d+\.\d+$')
         meta=guard.metadata_state((ROOT/guard.METADATA).read_text())
         self.assertIsInstance(meta[1],int);self.assertRegex(meta[2],r'^[0-9a-f]{40}$')
+        self.assertRegex(meta[0],r'^\d+\.\d+\.\d+$')   # versionName is the first field of the entry: it must survive the split
+        text='Builds:\n  - versionName: 1.0.6\n    versionCode: 6\n    commit: '+'a'*40+'\n  - versionName: 1.0.7\n    versionCode: 7\n    commit: '+'b'*40+'\n    subdir: x\n'
+        self.assertEqual(guard.metadata_state(text),('1.0.7',7,'b'*40))
+    def test_strict_mode_accepts_metadata_that_matches_the_tag(self):
+        self.assertEqual(guard.errors('v1.0.7','1.0.7',7,'v1.0.6',6,('1.0.7',7,'b'*40),True,'b'*40),[])
     def test_strict_mode_reports_metadata_that_is_behind_the_tag(self):
         problems=guard.errors('v1.0.8','1.0.8',8,'v1.0.7',7,('1.0.7',7,'a'*40),True,'b'*40)
         self.assertEqual(len(problems),2,problems)

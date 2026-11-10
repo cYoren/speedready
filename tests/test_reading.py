@@ -31,6 +31,18 @@ class ReadingTests(unittest.TestCase):
         clean=object.__new__(app.Book);clean.words=reading.tokenize(''.join(Html.out),'ja');clean.para_start=[0];clean.old2new=[];clean.chapters=[]
         clean.clean('')
         self.assertNotIn('日本語の本',''.join(clean.words))
+    def test_footnote_marker_does_not_swallow_the_rest_of_the_paragraph(self):
+        # Codex review, PR #14: the mark covers the footnote token only, not the prose after it.
+        words=reading.tokenize('First word'+app.DROP+'1 then the rest of this sentence.')
+        self.assertEqual([w for w in words if not w.startswith(app.DROP)],['First','word','then','the','rest','of','this','sentence.'])
+        self.assertEqual([w for w in words if w.startswith(app.DROP)],[app.DROP+'1'])
+        ja=reading.tokenize('本'+app.DROP+'日本語 そして本文です。','ja')
+        marked=[w for w in ja if w.startswith(app.DROP)]
+        self.assertEqual(''.join(marked),app.DROP*len(marked)+'日本語');self.assertEqual(''.join(w for w in ja if not w.startswith(app.DROP)),'本そして本文です。')
+        h=app.Html();h.feed('<p>First word<sup>1</sup> then the rest of this sentence.</p>')
+        b=object.__new__(app.Book);b.words=reading.tokenize(''.join(h.out)) ;b.para_start=[0];b.old2new=[];b.chapters=[]
+        b.clean('')
+        self.assertEqual(' '.join(b.words),'First word then the rest of this sentence.')
     def test_catalog_search_includes_languages_without_dictionaries(self):
         self.assertGreater(len(bookcatalog.books()),70000)
         self.assertTrue(bookcatalog.search(language='zh'));self.assertTrue(bookcatalog.search(language='ja'))
