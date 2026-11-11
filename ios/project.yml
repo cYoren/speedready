@@ -58,6 +58,7 @@ targets:
           src="$SRCROOT/../dist/safari"
           [ -f "$src/manifest.json" ] || { echo "error: run python3 tools/build_chrome.py first"; exit 1; }
           rsync -a "$src/" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/"
+          echo "note: embedded Safari extension $(plutil -extract version raw "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/manifest.json")"   # dist/safari is a build artifact: this line shows which one went in
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.cyoren.speedready.safari
