@@ -28,6 +28,15 @@ class ReleaseTagTests(unittest.TestCase):
         problems=guard.errors('v1.0.8','1.0.8',8,'v1.0.7',7,('1.0.7',7,'a'*40),True,'b'*40)
         self.assertEqual(len(problems),2,problems)
     @unittest.skipUnless((ROOT/'.git').exists(),'not a git checkout')
+    def test_strict_compares_against_the_commit_an_annotated_tag_points_at(self):
+        # `git rev-parse v1.0.9` returns the tag object for an annotated tag, and that is never the
+        # commit fdroiddata checks out: strict mode has to resolve the commit, or it can never pass.
+        annotated=[t for t in guard.git('tag','-l','v*').split() if guard.git('cat-file','-t',t)=='tag']
+        self.assertTrue(annotated,'expected the repository to keep annotated release tags')
+        for tag in annotated:
+            self.assertEqual(guard.commit_at(tag),guard.git('rev-list','-n','1',tag),tag)
+            self.assertNotEqual(guard.commit_at(tag),guard.git('rev-parse',tag),tag)
+    @unittest.skipUnless((ROOT/'.git').exists(),'not a git checkout')
     def test_history_only_trips_on_the_release_that_forgot_the_bump(self):
         tags=guard.git('tag','-l','v*','--sort=v:refname').split()
         failed={t:guard.check(t,verbose=False) for t in tags if guard.check(t,verbose=False)}

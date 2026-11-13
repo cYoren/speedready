@@ -39,6 +39,10 @@ def tag_at_head():
     try:return git('describe','--tags','--exact-match','HEAD')
     except subprocess.CalledProcessError:return None
 
+def commit_at(tag):
+    """The commit fdroiddata checks out for `tag`. An annotated tag's own object is not it."""
+    return git('rev-parse',f'{tag}^{{commit}}')
+
 def versions_at(tag):
     return gradle_version(git('show',f'{tag}:{GRADLE}'))
 
@@ -71,7 +75,7 @@ def check(tag=None,strict=False,verbose=True):
         except (subprocess.CalledProcessError,ValueError):pass
     meta=None
     if strict and (ROOT/METADATA).exists():meta=metadata_state((ROOT/METADATA).read_text())
-    commit=git('rev-parse',tag)
+    commit=commit_at(tag)
     out=errors(tag,name,code,prev,prev_code,meta,strict,commit)
     if not out and verbose:print(f'{tag}: versionName {name}, versionCode {code}'+(f' > {prev_code} at {prev}' if prev_code else '')+'  ok')
     return out
