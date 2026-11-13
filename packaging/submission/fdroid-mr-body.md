@@ -14,7 +14,7 @@ that file to the newest tag instead of editing this text.
 * [x] The original app author has been notified (and does not oppose the inclusion). If you are not the author, please paste the link of the reply from the author.
   <br>I am the author.
 * [x] The upstream app source code repo contains the app metadata in a [Fastlane](https://gitlab.com/snippets/1895688) or [Triple-T](https://gitlab.com/snippets/1901490) folder structure. The summary and description must be included and images, icon, and changelog should also be provided for better user experience. The `en-US` locale must be included.
-  <br>`fastlane/metadata/android/en-US/` with title, short and full description, icon, three phone screenshots and a changelog for versionCode 1 through 8.
+  <br>`fastlane/metadata/android/en-US/` with title, short and full description, icon, three phone screenshots and a changelog for versionCode 1 through 9.
 
 ### Docs
 
@@ -45,19 +45,20 @@ that file to the newest tag instead of editing this text.
 * [x] There is an issue tracker and contact info of the author so that we can report bugs and contact the author.
 * [x] An AuthorName must be added. It doesn't need to be the real name.
 * [x] External repos are added as git submodules instead of srclibs. You can update git submodules without opening an MR in this repo and the submodule is covered by our scanner.
-  <br>No external repos: the app has no dependencies at all (`dependencies { }`).
+  <br>No external repos. The app has one Maven dependency, `androidx.core:core` (used for the
+  edge-to-edge window insets Android 15+ requires); everything else is the WebView host in
+  `android/app/src/main/java` plus the reader in `web/`.
 * [x] Enable [Reproducible Builds](https://f-droid.org/docs/Reproducible_Builds). We'll use your signature for improved security/reliability, also allowing users to switch between different channels. Do note that if you don't enable reproducible build then the apk will be signed with our key so you can't enable it later. If you can't enable this, please add the reasons here.
   <br>Enabled. `Binaries` and `AllowedAPKSigningKeys` are set, and the APK for this build entry is published under the release tag.
-  <br>The app is a WebView wrapper with no dependencies, `minifyEnabled false`, and `dependenciesInfo`
-  disabled, so the build is deterministic. Measured on commit `d1fe0b3` (tag `v1.0.4`, JDK 21,
-  Gradle 8.11.1 as pinned in the wrapper):
-  <br>- two clean signed builds are byte-identical: `sha256 554c6a448fb6bc421f36b8428d8572e15d55154179527e52f8073f7e3f6588fe`
-  <br>- a clean unsigned build without signing credentials has the same 21 non-signature zip entries, byte-for-byte, as the signed APK
-  <br>- clean unsigned APK: `sha256 80180a8999dfd608ef0eed3f6363facdc3fdab29721ab90de0fb25b5dd42ac66`
+  <br>The app is a WebView wrapper whose payload is static assets, and `dependenciesInfo` is
+  disabled, so the build is deterministic. Re-measured on the commit this build entry names
+  (JDK 21, Gradle 8.11.1 as pinned in the wrapper, `minifyEnabled`/`shrinkResources` on):
+  <br>- two clean signed builds are byte-identical: `sha256 d468c5c8e512170c7f2310fad7c9a66f0bf2abd9b8070d33727c4ba4f530ea50`
+  <br>- a clean build without signing credentials produces the same 68 zip entries, byte-for-byte, as the signed APK
+  <br>- clean unsigned APK: `sha256 f11db85db7cb99a3b96568ef48303e202c757bde3a6a5ed0db19618a9ecd1cb8`
   <br>The signing config only applies when a local `keystore.properties` is present, so the F-Droid
-  builder without one produces an unsigned APK with identical payload bytes. That measurement was
-  made on `v1.0.4` and the same `tools/make_release_apk.sh` builds every later release; the APK for
-  the build entry in this merge request is published under `Binaries` and signed with the key in
+  builder without one produces an unsigned APK with identical payload bytes. The APK for the build
+  entry in this merge request is published under `Binaries` and signed with the key in
   `AllowedAPKSigningKeys`.
 * [x] Setup abi split if the APK is large and the splitted ones can be much smaller.
   <br>Not applicable: no native code, single ABI-independent APK.
@@ -84,4 +85,6 @@ Thanks for the review @seekme-seekyou. All four points are addressed:
 3. `Summary`, `Description` and `AutoName` removed from the yaml; they live in the upstream Fastlane folder.
 4. `commit` is now the full hash.
 
-Since the previous update the app has released past `v1.0.4`. That release removed the non-commercial MUSE data from the dictionary pipeline and corrected the listing to describe the shipped German-to-Portuguese dictionary only; the commit also removed the workstation-specific Android SDK path, so the build uses `ANDROID_HOME` and works from `android/app` with no local SDK or signing properties. The build entry attached here is the current tag.
+Since the previous update the app has released several versions. That release removed the non-commercial MUSE data from the dictionary pipeline and corrected the listing to describe the shipped German-to-Portuguese dictionary only; the commit also removed the workstation-specific Android SDK path, so the build uses `ANDROID_HOME` and works from `android/app` with no local SDK or signing properties. The build entry attached here is the current tag.
+
+The release the build entry now names brings the reading work: the reader accepts any language pair, imports PDFs, downloads free books from the Project Gutenberg catalogue without leaving the app, and the desktop app and the website now choose the same translation for a word (99.3% agreement over the starter book, up from 94.4%). Noun genders are in nine languages. `versionName`/`versionCode` live in `android/app/build.gradle`, the signing key is unchanged from the previous build entry, and the APK published under `Binaries` for this tag verifies against `AllowedAPKSigningKeys`.
