@@ -52,10 +52,12 @@ that file to the newest tag instead of editing this text.
   <br>Enabled. `Binaries` and `AllowedAPKSigningKeys` are set, and the APK for this build entry is published under the release tag.
   <br>The app is a WebView wrapper whose payload is static assets, and `dependenciesInfo` is
   disabled, so the build is deterministic. Re-measured on the commit this build entry names
-  (JDK 21, Gradle 8.11.1 as pinned in the wrapper, `minifyEnabled`/`shrinkResources` on):
+  (JDK 21, Gradle 9.2.0 as pinned in the wrapper, `minifyEnabled`/`shrinkResources` on):
   <br>- two clean signed builds are byte-identical: `sha256 d468c5c8e512170c7f2310fad7c9a66f0bf2abd9b8070d33727c4ba4f530ea50`
   <br>- a clean build without signing credentials produces the same 68 zip entries, byte-for-byte, as the signed APK
   <br>- clean unsigned APK: `sha256 f11db85db7cb99a3b96568ef48303e202c757bde3a6a5ed0db19618a9ecd1cb8`
+  <br>- `fdroid build` on this build entry, from a checkout of the tagged commit, produces that same
+  unsigned APK: `f11db85db7cb99a3b96568ef48303e202c757bde3a6a5ed0db19618a9ecd1cb8`
   <br>The signing config only applies when a local `keystore.properties` is present, so the F-Droid
   builder without one produces an unsigned APK with identical payload bytes. The APK for the build
   entry in this merge request is published under `Binaries` and signed with the key in
