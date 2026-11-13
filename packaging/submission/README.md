@@ -44,7 +44,7 @@ in this repository:
 - **Description.** Paste `fdroid-mr-body.md` over the merge request body
   (Edit → replace the whole description → Save).
 - **Metadata.** `../android/fdroid/io.github.cyoren.speedready.yml` is the file to copy over
-  `metadata/io.github.cyoren.speedready.yml` on the `speedready` branch. It names `v1.0.9`: version
+  `metadata/io.github.cyoren.speedready.yml` on the `speedready` branch. It names `v1.0.10`: version
   name, version code, full commit hash, the same `AllowedAPKSigningKeys`, and the `scanignore`
   entries F-Droid's scanner needs for every `.gz` under `web/`.
 
@@ -55,14 +55,14 @@ in a GitLab account), which is why this last push is yours:
 git clone -b speedready https://gitlab.com/gustavo.cesar.marcelino4/fdroiddata
 cd fdroiddata
 cp ~/Projects/speedready/android/fdroid/io.github.cyoren.speedready.yml metadata/
-git commit -am "io.github.cyoren.speedready: 1.0.9"
+git commit -am "io.github.cyoren.speedready: 1.0.10"
 git push          # asks for your GitLab username + a personal access token as the password
 ```
 
 A working copy with that commit already staged is at
 `~/.cache/speedready/fdroiddata-fork/repo` if you would rather just `git push` from there.
 
-Before pushing, `python tools/check_release_tag.py --strict v1.0.9` in this repository must print
+Before pushing, `python tools/check_release_tag.py --strict v1.0.10` in this repository must print
 ok: it compares the metadata's version, code and commit against the tag.
 
 Watch the merge request for review comments; the queue is measured in weeks.

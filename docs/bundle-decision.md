@@ -1,9 +1,9 @@
 # Which language pairs the APK carries — the decision Gus has to make
 
 Step 5 of the F-Droid handover. Nothing here is urgent: the current choice ships and works, and
-`v1.0.9` is already published with it. This is about the *next* release.
+`v1.0.10` is already published with it. This is about the *next* release.
 
-Measured 13 November 2026 on the published `speedready-1.0.9.apk`; every size below was taken by
+Measured 13 November 2026 on the published `speedready-1.0.10.apk` (identical payload to 1.0.9); every size below was taken by
 adding the file to a copy of that APK and re-measuring, not estimated.
 
 ## What the app ships today
