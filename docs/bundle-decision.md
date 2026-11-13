@@ -55,7 +55,8 @@ fetching, so this is APK-only. A half hour plus a rebuild.
 
 ### C. Fetch every pair at runtime (bundle none)
 
-**Cost:** the first book in *any* pair needs a 1.7–4.5 MB download, de→pt included.
+**Cost:** the first book in *any* pair needs a 0.8–4.5 MB download (median 1.7 MB, de→en 2.8 MB),
+de→pt included.
 **Benefit:** the APK drops to ~8.4 MB and carries no Wiktionary-derived data at all, which makes the
 licence story and the reproducible-build story simpler.
 **Downside:** the app's "no network for the bundled pair" promise disappears entirely, and the F-Droid
