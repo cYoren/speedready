@@ -20,9 +20,9 @@ RepoType: git
 Repo: https://github.com/cYoren/speedready.git
 Binaries: https://github.com/cYoren/speedready/releases/download/v%v/speedready-%v.apk
 Builds:
-  - versionName: 1.0.7
-    versionCode: 7
-    commit: 04bdfc12eebae7ad3ce970682dc5183aa242a3dc
+  - versionName: 1.0.9
+    versionCode: 9
+    commit: f1cc981a02040879e2ac7fbfc8be801e0cfa508d
     subdir: android/app
     gradle:
       - yes
@@ -39,5 +39,5 @@ AllowedAPKSigningKeys: eeb938688a5078f4a1536abbd1020774a538bb01f0a7a874ef3e0c824
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.0.7
-CurrentVersionCode: 7
+CurrentVersion: 1.0.9
+CurrentVersionCode: 9
