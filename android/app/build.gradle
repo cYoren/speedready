@@ -16,8 +16,8 @@ android {
         applicationId 'io.github.cyoren.speedready'
         minSdk 26                 // WebView with DecompressionStream and modern JS
         targetSdk 36
-        versionCode 9
-        versionName '1.0.9'
+        versionCode 10
+        versionName '1.0.10'
     }
 
     signingConfigs {
