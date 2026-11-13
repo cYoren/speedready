@@ -1,10 +1,21 @@
-"""The release guard in tools/check_release_tag.py: a tag has to bump Android's versionCode."""
+"""The release guard in tools/check_release_tag.py: a tag has to bump Android's versionCode, and the
+fdroiddata metadata has to survive F-Droid's scanner."""
 import sys,unittest
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT/'tools'))
 import check_release_tag as guard
+
+class MetadataScanignoreTests(unittest.TestCase):
+    """fdroidserver fails the build on any .gz it is not told to ignore, so every one must be listed."""
+    def test_every_gzip_in_web_is_in_scanignore(self):
+        import yaml
+        found=sorted('web/'+p.name for p in (ROOT/'web').glob('*.gz'))
+        self.assertTrue(found,'expected web/ to ship at least one .gz asset')
+        listed=sorted((ROOT/guard.METADATA).read_text().split('scanignore:')[1].split('AllowedAPKSigningKeys')[0].replace('- ','').split())
+        missing=[f for f in found if f not in listed]
+        self.assertEqual(missing,[],f'{guard.METADATA} does not scanignore {missing}: fdroidserver fails the build on them')
 
 class ReleaseTagTests(unittest.TestCase):
     def test_a_tag_that_does_not_bump_versioncode_is_rejected(self):

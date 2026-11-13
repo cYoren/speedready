@@ -26,13 +26,24 @@ Builds:
     subdir: android/app
     gradle:
       - yes
-    # fdroidserver's scanner flags every .gz as a possible prebuilt blob. This one is plain
-    # JSON compressed by tools/build_genders.py, and the desktop app, the web reader and the
-    # APK assets all need it, so scandelete would break the build and scanignore is correct.
+    # fdroidserver's scanner flags every .gz as a possible prebuilt blob. These are plain JSON
+    # compressed by tools/build_genders.py, tools/build_genders_more.py and tools/build_catalog.py,
+    # and the desktop app, the web reader and the APK assets all need them, so scandelete would
+    # break the build and scanignore is correct. Every .gz under web/ belongs here: the scanner
+    # fails the build on any one of them that is not listed.
     # Keep this field inside the build entry: the fdroiddata schema rejects it at app level,
     # and fdroid rewritemeta strips comments, so the live copy in fdroiddata carries none.
     scanignore:
+      - web/catalog.json.gz
       - web/genders-de.json.gz
+      - web/genders-es.json.gz
+      - web/genders-fr.json.gz
+      - web/genders-it.json.gz
+      - web/genders-nl.json.gz
+      - web/genders-pl.json.gz
+      - web/genders-pt.json.gz
+      - web/genders-ru.json.gz
+      - web/genders-sv.json.gz
 
 # tools/make_release_apk.sh prints this line.
 AllowedAPKSigningKeys: eeb938688a5078f4a1536abbd1020774a538bb01f0a7a874ef3e0c8240a5e361
