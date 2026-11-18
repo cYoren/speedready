@@ -3,7 +3,10 @@
 // #text=token: the same in a tab of its own. #pdf=url: a PDF the browser was showing.
 (() => {
   const hash = new URLSearchParams(location.hash.slice(1)), embedded = hash.has('embed');
-  const close = () => parent.postMessage({type: 'speedready-close'}, '*');
+  const close = () => {
+    try { if (typeof pause === 'function') pause(); if (typeof save === 'function') save(); } catch {}
+    parent.postMessage({type: 'speedready-close'}, '*');
+  };
   if (embedded) {
     const b = Object.assign(document.createElement('button'), {id: 'sr-close', className: 'btn icon', textContent: '✕'});
     b.setAttribute('aria-label', chrome.i18n.getMessage('close'));
@@ -21,6 +24,7 @@
     history.replaceState(null, '', location.pathname);   // a reload must not add the same text twice
     let file = null;
     if (token) {
+      if (embedded) await chrome.storage.session.set({['sr:boot:' + token]: 1}).catch(() => {});
       const key = 'sr:' + token, {[key]: page} = await chrome.storage.session.get(key);
       await chrome.storage.session.remove(key);
       if (page?.text) file = new File([page.text], fileName(page.title) + '.txt', {type: 'text/plain'});

@@ -4,13 +4,23 @@
 const app = path => chrome.runtime.getURL('app/index.html' + path);
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({id: 'selection', title: chrome.i18n.getMessage('readSelection'), contexts: ['selection']});
-  chrome.contextMenus.create({id: 'page', title: chrome.i18n.getMessage('readPage'), contexts: ['page']});
+  if (!chrome.contextMenus) return;
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({id: 'selection', title: chrome.i18n.getMessage('readSelection'), contexts: ['selection']});
+    chrome.contextMenus.create({id: 'page', title: chrome.i18n.getMessage('readPage'), contexts: ['page']});
+  });
 });
-chrome.contextMenus.onClicked.addListener((info, tab) => read(tab, info.selectionText));
-chrome.commands.onCommand.addListener((command, tab) => command === 'read-page' && read(tab));
+
+chrome.contextMenus?.onClicked?.addListener((info, tab) => {
+  read(tab, info.menuItemId === 'selection' ? 'selection' : 'page', info.selectionText, info.frameId);
+});
+
+chrome.commands?.onCommand?.addListener((command, tab) => {
+  if (command === 'read-page') read(tab, 'auto');
+});
+
 chrome.runtime.onMessage.addListener((m, sender, reply) => {
-  if (m.type === 'read') read(m.tab).then(() => reply());
+  if (m.type === 'read') read(m.tab, 'auto').finally(() => reply());
   return true;
 });
 
@@ -20,16 +30,69 @@ async function hand(payload) {
   return token;
 }
 
-async function read(tab, selection) {
+async function read(tab, mode = 'auto', selection = '', frameId) {
   const url = tab?.url || '';
   if (/\.pdf($|[?#])/i.test(url)) return chrome.tabs.create({url: app('#pdf=' + encodeURIComponent(url)), index: tab.index + 1});
+
+  // If the overlay is already open and user re-triggers the shortcut without a new selection, toggle it closed.
+  if (mode === 'auto' && tab?.id) {
+    try {
+      const [{result: closed}] = await chrome.scripting.executeScript({
+        target: {tabId: tab.id},
+        func: () => {
+          const f = document.getElementById('speedready-frame');
+          if (!f) return false;
+          f.remove();
+          document.documentElement.style.overflow = document.documentElement.dataset.srOverflow ?? '';
+          delete document.documentElement.dataset.srOverflow;
+          return true;
+        },
+      });
+      if (closed) return;
+    } catch (_) {}
+  }
+
   let page = null;
-  try { [{result: page}] = await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['content.js']}); } catch (_) {}
-  if (!page?.text && selection) page = {title: tab.title || 'Selection', text: selection};
-  if (!page?.text) return chrome.tabs.create({url: app(''), index: tab.index + 1});   // nothing readable here: the library
+  if (tab?.id) {
+    try {
+      await chrome.scripting.executeScript({
+        target: {tabId: tab.id, ...(frameId != null ? {frameIds: [frameId]} : {})},
+        func: (m) => { window.__srMode = m; },
+        args: [mode],
+      });
+      [{result: page}] = await chrome.scripting.executeScript({
+        target: {tabId: tab.id, ...(frameId != null ? {frameIds: [frameId]} : {})},
+        files: ['content.js'],
+      });
+    } catch (_) {}
+  }
+  if (mode === 'selection' && selection && (!page?.text || page.text.length < selection.trim().length)) {
+    page = {title: tab?.title || 'Selection', text: selection.trim()};
+  } else if (!page?.text && selection) {
+    page = {title: tab?.title || 'Selection', text: selection.trim()};
+  }
+  if (!page?.text) return chrome.tabs.create({url: app(''), index: (tab?.index ?? 0) + 1});
   const token = await hand(page);
   try {
     await chrome.scripting.executeScript({target: {tabId: tab.id}, func: overlay, args: [app('#embed=' + token)]});
+    // If the page's CSP frame-src blocks chrome-extension:// iframes, bridge.js never boots; fall back to a new tab.
+    setTimeout(async () => {
+      const bootKey = 'sr:boot:' + token;
+      const got = await chrome.storage.session.get(bootKey).catch(() => ({}));
+      if (got[bootKey]) {
+        await chrome.storage.session.remove(bootKey).catch(() => {});
+        return;
+      }
+      await chrome.scripting.executeScript({
+        target: {tabId: tab.id},
+        func: () => {
+          document.getElementById('speedready-frame')?.remove();
+          document.documentElement.style.overflow = document.documentElement.dataset.srOverflow ?? '';
+          delete document.documentElement.dataset.srOverflow;
+        },
+      }).catch(() => {});
+      chrome.tabs.create({url: app('#text=' + token), index: tab.index + 1});
+    }, 1200);
   } catch (_) {
     chrome.tabs.create({url: app('#text=' + token), index: tab.index + 1});
   }
@@ -40,11 +103,16 @@ function overlay(src) {
   document.getElementById('speedready-frame')?.remove();
   const frame = Object.assign(document.createElement('iframe'), {id: 'speedready-frame', src, allow: 'clipboard-write'});
   frame.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;border:0;margin:0;z-index:2147483647;background:#101012;color-scheme:normal';
-  const overflow = document.documentElement.style.overflow;
+  if (!('srOverflow' in document.documentElement.dataset)) {
+    document.documentElement.dataset.srOverflow = document.documentElement.style.overflow;
+  }
   document.documentElement.style.overflow = 'hidden';
   const close = e => {
     if (e.source !== frame.contentWindow || e.data?.type !== 'speedready-close') return;
-    frame.remove(); document.documentElement.style.overflow = overflow; removeEventListener('message', close);
+    frame.remove();
+    document.documentElement.style.overflow = document.documentElement.dataset.srOverflow ?? '';
+    delete document.documentElement.dataset.srOverflow;
+    removeEventListener('message', close);
   };
   addEventListener('message', close);
   document.documentElement.append(frame);
