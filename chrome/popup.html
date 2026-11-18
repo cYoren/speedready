@@ -15,6 +15,18 @@
   <div class="row"><span data-i18n="streak"></span><b id="streak"></b></div>
 </section>
 
+<section class="controls" aria-label="Reading settings">
+  <div class="seg" role="group" aria-label="Mode">
+    <button type="button" id="mode-pacer" class="seg-btn">Pacer</button>
+    <button type="button" id="mode-rsvp" class="seg-btn">RSVP</button>
+  </div>
+  <div class="wpm-step">
+    <button type="button" id="wpm-down" aria-label="Slower">−</button>
+    <b id="wpm-val">280 WPM</b>
+    <button type="button" id="wpm-up" aria-label="Faster">+</button>
+  </div>
+</section>
+
 <button id="read" class="primary" type="button"><span data-i18n="readPage"></span><small id="read-meta"></small></button>
 <button id="library" type="button" data-i18n="openLibrary"></button>
 <p class="hint"><span id="shortcut"></span><span data-i18n="selectionTip"></span></p>

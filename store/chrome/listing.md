@@ -12,9 +12,11 @@ Homepage: https://speedready.vercel.app/?utm_source=chrome-store  Support: https
 Speedready helps you read any web page or PDF faster, right where it is. Press Alt+Shift+S (or click the toolbar button) and the article opens in a calm reader with a moving pacer that carries your eyes along the lines. Prefer one word at a time? Switch to the flash mode and set the speed.
 
 READ FASTER
-• Speed read the page you are on: the article only, without menus, ads or footers
+• Speed read the page you are on: the article only, without menus, ads or footers, with automatic chapter headings
+• Toggle Pacer vs. RSVP (one word at a time) and adjust WPM directly from the toolbar popup with live reading-time estimates
+• Ephemeral web reading keeps your book library clean—save favorite articles with one click (☆)
 • Select a paragraph and right-click to read just that part
-• PDFs too: open a PDF in Chrome and press the button, or add your own PDF and EPUB files to your library
+• PDFs too: open any PDF in your browser (including ArXiv and authenticated pages) and press the button, or add your own PDF and EPUB files to your library
 • Set the speed up to 1,500 words per minute, with a pacer or one word at a time
 
 LEARN A LANGUAGE WHILE YOU READ
