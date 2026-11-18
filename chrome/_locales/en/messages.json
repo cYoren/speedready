@@ -1,9 +1,9 @@
 {
  "extName": {
-  "message": "Speedready: Speed Reader for Pages, PDFs and Languages"
+  "message": "Speedready: RSVP Speed Reader for Pages, PDFs & EPUB"
  },
  "extDescription": {
-  "message": "Read web pages and PDFs faster, with a moving pacer or one word at a time. Translations over each word help you learn a language."
+  "message": "RSVP speed reader for web pages, PDFs & EPUBs with a moving pacer, one-word flash mode, and inline translations."
  },
  "readPage": {
   "message": "Speed read this page"
@@ -36,6 +36,6 @@
   "message": "Close"
  },
  "pdfBlocked": {
-  "message": "Chrome kept this PDF from the extension. Download it and add it in Books ☰."
+  "message": "The browser kept this PDF from the extension. Download it and add it in Books ☰."
  }
 }

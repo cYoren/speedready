@@ -23,7 +23,7 @@ version = f'{app}.{commits}'
 
 shutil.rmtree(OUT, ignore_errors=True)
 shutil.copytree(ROOT / 'chrome', OUT)
-shutil.copytree(WEB, OUT / 'app', ignore=shutil.ignore_patterns('sw.js', 'manifest.webmanifest'))
+shutil.copytree(WEB, OUT / 'app', ignore=shutil.ignore_patterns('sw.js', 'manifest.webmanifest', 'robots.txt', 'sitemap.xml'))
 shutil.move(OUT / 'bridge.js', OUT / 'app' / 'bridge.js')
 
 inline = re.findall(r'<script>(.*?)</script>', html, re.S)

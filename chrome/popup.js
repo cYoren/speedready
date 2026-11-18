@@ -15,8 +15,27 @@ $('#today').textContent = `${fmt(today)} / ${fmt(goal)}`;
 $('#fill').style.width = Math.min(100, 100 * today / goal) + '%';
 $('#streak').textContent = fmt(streak);
 
-const [command] = await chrome.commands.getAll();
+const command = (await chrome.commands?.getAll?.().catch(() => []) ?? []).find(c => c.name === 'read-page');
 $('#shortcut').textContent = command?.shortcut ? t('shortcutHint').replace('{key}', command.shortcut) + ' · ' : '';
+
+// Preview word count & reading time on the active tab when scriptable.
+chrome.tabs.query({active: true, currentWindow: true}).then(async ([tab]) => {
+  const url = tab?.url || '';
+  if (!tab?.id || !/^https?:/i.test(url)) return;
+  if (/\.pdf($|[?#])/i.test(url)) {
+    $('#read-meta').textContent = 'PDF document';
+    return;
+  }
+  try {
+    const [{result}] = await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['content.js']});
+    const words = result?.text ? result.text.trim().split(/\s+/).filter(Boolean).length : 0;
+    if (words >= 30) {
+      const wpm = Math.max(100, Number(get('wpm', 300)) || 300);
+      const mins = Math.max(1, Math.round(words / wpm));
+      $('#read-meta').textContent = `${fmt(words)} words · ~${mins} min (${wpm} WPM)`;
+    }
+  } catch {}
+});
 $('#read').addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
   await chrome.runtime.sendMessage({type: 'read', tab}); close();
