@@ -1,21 +1,35 @@
-// Injected on demand. Returns {title, text}: the selection when requested or present, else the page's
-// main text with paragraphs separated by blank lines (the reader's paragraph mark).
+// Injected on demand. Returns {title, text, lang, headings, isPdf}: the selection when requested or
+// present, else the page's main text with paragraphs separated by blank lines and section headings.
 (() => {
   const mode = window.__srMode || 'auto';
   delete window.__srMode;
+  const lang = (document.documentElement.lang || '').trim();
+  const title = document.title || location.hostname;
+  if (document.contentType === 'application/pdf') return {title, text: '', lang, headings: [], isPdf: true};
+
   const selected = getSelection()?.toString().trim();
-  if (mode === 'selection' && selected) return {title: document.title || location.hostname, text: selected};
+  if (mode === 'selection' && selected) return {title, text: selected, lang, headings: []};
   if (mode === 'auto' && selected && selected.split(/\s+/).length >= 3) {
-    return {title: document.title || location.hostname, text: selected};
+    return {title, text: selected, lang, headings: []};
   }
+
   const blocks = 'h1,h2,h3,h4,p,li,blockquote,pre,figcaption';
   const skip = 'nav,header,footer,aside,form,[role=navigation],[aria-hidden=true],.mw-editsection,.reflist,.navbox,sup.reference';
-  const textOf = root => [...root.querySelectorAll(blocks)]
-    .filter(el => el.checkVisibility?.() !== false && !el.closest(skip) && !el.parentElement?.closest(blocks))
-    .map(el => el.innerText.replace(/\s+/g, ' ').trim()).filter(t => t.length > 1);
+  const collect = root => {
+    const paras = [], headings = [];
+    for (const el of root.querySelectorAll(blocks)) {
+      if (el.checkVisibility?.() === false || el.closest(skip) || el.parentElement?.closest(blocks)) continue;
+      const t = el.innerText.replace(/\s+/g, ' ').trim();
+      if (t.length <= 1) continue;
+      if (/^H[1-3]$/.test(el.tagName) && t.length <= 100) headings.push([t, paras.length]);
+      paras.push(t);
+    }
+    return {paras, headings};
+  };
+
   const candidates = [...document.querySelectorAll('article,main,[role=main],#content,.content,.post,.entry-content')];
-  let best = candidates.map(textOf).sort((a, b) => b.join(' ').length - a.join(' ').length)[0];
-  if (!best || best.join(' ').length < 400) best = textOf(document.body);
-  if (!best.length) best = [document.body.innerText];
-  return {title: document.title || location.hostname, text: best.join('\n\n')};
+  let best = candidates.map(collect).sort((a, b) => b.paras.join(' ').length - a.paras.join(' ').length)[0];
+  if (!best || best.paras.join(' ').length < 400) best = collect(document.body);
+  if (!best.paras.length) best = {paras: [document.body.innerText], headings: []};
+  return {title, text: best.paras.join('\n\n'), lang, headings: best.headings};
 })();
