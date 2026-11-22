@@ -1225,7 +1225,7 @@ class Win(Adw.ApplicationWindow):
         s.timer=GLib.timeout_add(int(d),s.step)
     def step(s):
         s.timer=None;n=s.chunk_len(s.i)
-        if s.session:s.session['words']+=n
+        s.session_words(n)
         s.i+=n
         if s.i<s.book.n:s.tick()
         else:s.i=s.book.n-1;s.stop()
@@ -1241,6 +1241,8 @@ class Win(Adw.ApplicationWindow):
         if s.timer:GLib.source_remove(s.timer);s.timer=None
         s.playing=False;s.token+=1;s.tts.stop_audio();s.playbtn.set_icon_name('media-playback-start-symbolic');s.tv.set_reveal_top_bars(True);s.save()
         s.session_end()
+    def session_words(s,n):
+        if s.session:s.session['words']+=n     # every path that advances the reader has to count, or the session is dropped
     def session_end(s):
         """A finished reading session, as two ranges. Never what was read: no title, no words."""
         x=s.session;s.session=None
@@ -1280,7 +1282,7 @@ class Win(Adw.ApplicationWindow):
     def ra_tick(s):
         s.show();s.timer=GLib.timeout_add(int(s.ra_d[s.i-s.ra_a]),s.ra_step)
     def ra_step(s):
-        s.timer=None;s.i+=1
+        s.timer=None;s.i+=1;s.session_words(1)   # read-along advances one word at a time, not through step()
         if s.i<s.ra_e:s.ra_tick()
         elif s.i<s.book.n:s.ra_sentence()
         else:s.i=s.book.n-1;s.stop()

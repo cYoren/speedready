@@ -24,7 +24,7 @@ class Analytics:
     """Anonymous events only. A call returns at once: the POST happens on a daemon thread and a
     failure is dropped, because losing an event must never interrupt reading."""
     def __init__(s,state_path,version,platform='linux',locale='en',is_enabled=None,key=None,host=None,send=None,timeout=5):
-        s.path,s.version,s.platform,s.locale,timeout=state_path,version,platform,locale,timeout
+        s.path,s.version,s.platform,s.locale,s.timeout=state_path,version,platform,locale,timeout
         s.key=KEY if key is None else key   # a test passes '' to prove the off switch
         s.host=host or HOST
         s.enabled=is_enabled or (lambda:True)
@@ -33,6 +33,7 @@ class Analytics:
         try:s.state.update(json.loads(s.path.read_text()))
         except Exception:pass                  # no state yet, or unreadable: start a fresh anonymous id
         s.lock=threading.Lock()
+        s.save()   # the anonymous id must survive the first launch, long before any reading milestone
     @property
     def on(s):return bool(s.key) and bool(s.enabled())
     def save(s):

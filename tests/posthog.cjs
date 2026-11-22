@@ -43,6 +43,17 @@ assert.deepStrictEqual(sent.map(x=>x.event),['settings_analytics_opt_out']);
 ph.setOptOut(true);ph.setOptOut(false);ph.track('app_opened');
 assert.deepStrictEqual(sent.map(x=>x.event),['app_opened']);
 
+// storage that reads empty and refuses every write: the switch still has to take effect now
+{
+  const sent=[];
+  const ph=PostHog.create({key:'phc_test',
+    store:{read:()=>null,write:()=>{throw new Error('quota')}},   // what a full/private localStorage looks like
+    send:b=>sent.push(...b)});
+  ph.setOptOut(true);ph.track('app_opened');
+  assert.deepStrictEqual(sent,[],'an opt-out that could not be saved must still stop the events');
+  assert.strictEqual(ph.on(),false);
+}
+
 // one anonymous id per device, kept
 const st=store();
 const a=PostHog.create({store:st,send:()=>{}}),b=PostHog.create({store:st,send:()=>{}});

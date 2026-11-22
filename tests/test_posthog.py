@@ -43,6 +43,15 @@ class Analytics(unittest.TestCase):
         a=s.make();a.opt_out()
         events=[e for body in s.batch(a) for e in body['batch']]
         s.assertEqual([e['event'] for e in events],['settings_analytics_opt_out'])
+    def test_default_sender_is_usable(s):
+        a=s.make(send=None)
+        a.send=lambda body:None            # the instance's own sender is _post; the timeout it needs must exist
+        s.assertEqual(a.timeout,5)         # _post() reads s.timeout: a local variable made every desktop event vanish
+    def test_identity_is_persisted_before_the_first_event(s):
+        a=s.make()
+        s.assertEqual(json.loads(a.path.read_text())['distinct_id'],a.state['distinct_id'])
+        b=posthog.Analytics(a.path,'1.0.10',is_enabled=lambda:True,key='',send=Fake())   # a relaunch keeps the same reader
+        s.assertEqual(b.state['distinct_id'],a.state['distinct_id'])
     def test_first_value_only_once(s):
         a=s.make();a.first_value(wpm_bucket='150_249');a.first_value(wpm_bucket='150_249')
         events=[e['event'] for body in s.batch(a) for e in body['batch']]

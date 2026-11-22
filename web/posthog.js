@@ -17,10 +17,6 @@ const PostHog=(function(){
   const VERSION='1.0.10';                    // the reader build: Android's versionName, the iOS bundle version
   const OPT_KEY='sr:analytics', ID_KEY='sr:anon';
   const BLOCKED=/(email|name|token|password|secret|message|text|query|prompt|content|transcript|note|title|file|path|url|book|sentence)/i;
-  const mem={};
-
-  const read=k=>{try{const v=localStorage.getItem(k);return v===null?null:v}catch(e){return k in mem?mem[k]:null}};
-  const write=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){mem[k]=v}};   // private mode still works, it just forgets
 
   function uuid(){
     try{if(crypto&&crypto.randomUUID)return crypto.randomUUID()}catch(e){}
@@ -54,7 +50,12 @@ const PostHog=(function(){
   function create(opts){
     opts=opts||{};
     const key=opts.key===undefined?KEY:opts.key;
-    const rd=opts.store?opts.store.read:read, wr=opts.store?opts.store.write:write;
+    // A write the storage refused stays in `mem`, and that copy wins: a switch that could not be saved still
+    // takes effect now instead of leaving analytics on for the rest of the visit.
+    const mem={},base=opts.store||{read:k=>{try{return localStorage.getItem(k)}catch(e){return null}},
+                                   write:(k,v)=>{localStorage.setItem(k,v)}};   // throws in private mode: mem takes over
+    const rd=k=>{if(k in mem)return mem[k];try{return base.read(k)}catch(e){return null}};
+    const wr=(k,v)=>{try{base.write(k,v);delete mem[k]}catch(e){mem[k]=v}};
     const post=opts.send||function(batch){
       try{
         fetch(HOST,{method:'POST',headers:{'Content-Type':'application/json'},
