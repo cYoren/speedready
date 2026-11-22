@@ -329,6 +329,8 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
   <div class="list" id="natives"></div>
   <h3 data-t="language">Language</h3>
   <div class="list" id="langs"></div>
+  <h3 data-t="privacy">Privacy</h3>
+  <div class="row"><label data-t="analytics_label">Share anonymous usage data<small data-t="analytics_hint">Which screens you open and how fast you read, never your books or the words you look up</small></label><button type="button" role="switch" aria-checked="true" class="sw on" id="t-analytics"></button></div>
   <h3 data-t="about">About</h3>
   <div class="row"><label data-t="version">Version</label><b id="v-num">1.0.8</b></div>
   <div class="row"><label data-t="license">Code: MIT</label>
@@ -343,6 +345,7 @@ body:has(.sheet.on) #toast{bottom:auto;top:calc(16px + env(safe-area-inset-top))
 <script src="reading.js"></script>
 <script src="epub.js"></script>
 <script src="catalog.js"></script>
+<script src="posthog.js"></script>
 <script>
 //////////////////// language ////////////////////
 // The interface language. Written English, translated at runtime; the reader picks on
@@ -681,6 +684,17 @@ Object.assign(UI.nl,{"close": "Sluiten", "no_text_file": "Dit bestand bevat geen
 Object.assign(UI.pl,{"close": "Zamknij", "no_text_file": "Ten plik nie zawiera czytelnego tekstu.", "storage_notice": "Otwarto do czytania, ale nie zapisano offline. Zwolnij miejsce i dodaj ponownie."});
 Object.assign(UI.ru,{"close": "Закрыть", "no_text_file": "В этом файле нет читаемого текста.", "storage_notice": "Книга открыта, но не сохранена для чтения без интернета. Освободите место и добавьте её снова."});
 Object.assign(UI.sv,{"close": "Stäng", "no_text_file": "Den här filen innehåller ingen läsbar text.", "storage_notice": "Öppnad för läsning men inte sparad offline. Frigör utrymme och lägg till den igen."});
+// Anonymous usage data (posthog.js): one switch per build, translated like everything else.
+Object.assign(UI.en,{privacy:'Privacy',analytics_label:'Share anonymous usage data',analytics_hint:'Which screens you open and how fast you read, never your books or the words you look up'});
+Object.assign(UI.pt,{privacy:'Privacidade',analytics_label:'Compartilhar dados de uso anônimos',analytics_hint:'Quais telas você abre e a que velocidade lê, nunca seus livros ou as palavras que consulta'});
+Object.assign(UI.es,{privacy:'Privacidad',analytics_label:'Compartir datos de uso anónimos',analytics_hint:'Qué pantallas abres y a qué velocidad lees, nunca tus libros ni las palabras que consultas'});
+Object.assign(UI.fr,{privacy:'Confidentialité',analytics_label:'Partager des données d’usage anonymes',analytics_hint:'Les écrans que tu ouvres et ta vitesse de lecture, jamais tes livres ni les mots que tu cherches'});
+Object.assign(UI.de,{privacy:'Datenschutz',analytics_label:'Anonyme Nutzungsdaten teilen',analytics_hint:'Welche Ansichten du öffnest und wie schnell du liest, nie deine Bücher oder die Wörter, die du nachschlägst'});
+Object.assign(UI.it,{privacy:'Privacy',analytics_label:'Condividi dati d’uso anonimi',analytics_hint:'Quali schermate apri e quanto veloce leggi, mai i tuoi libri o le parole che cerchi'});
+Object.assign(UI.nl,{privacy:'Privacy',analytics_label:'Anonieme gebruiksgegevens delen',analytics_hint:'Welke schermen je opent en hoe snel je leest, nooit je boeken of de woorden die je opzoekt'});
+Object.assign(UI.pl,{privacy:'Prywatność',analytics_label:'Udostępniaj anonimowe dane o użyciu',analytics_hint:'Które ekrany otwierasz i jak szybko czytasz, nigdy twoje książki ani wyszukiwane słowa'});
+Object.assign(UI.ru,{privacy:'Конфиденциальность',analytics_label:'Делиться анонимными данными об использовании',analytics_hint:'Какие экраны вы открываете и как быстро читаете, но не ваши книги и не слова, которые вы ищете'});
+Object.assign(UI.sv,{privacy:'Integritet',analytics_label:'Dela anonym användningsdata',analytics_hint:'Vilka vyer du öppnar och hur snabbt du läser, aldrig dina böcker eller orden du slår upp'});
 const LANGS=Object.keys(UI).map(c=>{const n=new Intl.DisplayNames([c],{type:'language'}).of(c);return [c,n[0].toUpperCase()+n.slice(1)]});   // every interface language, named in itself
 // Which language this build reads and glosses into comes from bundle.json and the dictionary's own
 // src/tgt fields, so swapping the shipped pair is a rebuild of the assets, not an edit to this file.
@@ -720,7 +734,7 @@ const S={dict:null,bundle:null,book:null,i:0,timer:null,playing:false,cells:[],p
          voice:null,voiceName:LS.get('voiceName',null),rate:LS.get('rate',0.9),speaking:false,warm:false,
          genderOn:LS.get('gender',true),bundled:null,native:LS.get('native',null)};
 const $=s=>document.querySelector(s), page=$('#page');
-function syncSwitches(){for(const id of ['t-gloss','t-gender','t-dark','t-tts'])$('#'+id).setAttribute('aria-checked',String($('#'+id).classList.contains('on')))}
+function syncSwitches(){for(const id of ['t-gloss','t-gender','t-dark','t-tts','t-analytics'])$('#'+id).setAttribute('aria-checked',String($('#'+id).classList.contains('on')))}
 let toastTimer=null;
 function toast(msg){
   const t=$('#toast'); t.textContent=msg; t.classList.add('on');
@@ -809,6 +823,7 @@ async function dictFor(src){
       const r=await fetch(S.bundle.packs+'dict-'+key+'.json.gz?v='+v);if(!r.ok)throw new Error(r.status);
       const buf=await r.arrayBuffer();d=await unpack(buf);   // throws on anything that is not a dictionary, before it is kept
       idb('readwrite',s=>{for(let o=1;o<v;o++)s.delete(o>1?key+'@'+o:key);return s.put(buf,stash)}).catch(()=>{});   // private mode etc.: works, just not offline
+      PostHog.track('pack_downloaded',{pack:key});   // the language pair, never what is in it
     }
   }catch(e){toast(T('dict_failed').replace('{pair}',pairName(src,tgt)));return null}   // not cached: back online, the next try downloads it
   dicts.set(key,d);return d;
@@ -903,7 +918,7 @@ function show(scroll=true){
   if(!S.book?.words.length)return;
   const readerHadFocus=page.contains(document.activeElement);
   if(S.mode!=='rsvp'&&(S.i<S.pageA||S.i>=S.pageB))renderPage(S.i);
-  if(S.playing&&S.i>S.shown&&S.i-S.shown<50)S.readNow=(S.readNow||0)+S.i-S.shown;   // only words read while it runs, not jumps
+  if(S.playing&&S.i>S.shown&&S.i-S.shown<50){const moved=S.i-S.shown;S.readNow=(S.readNow||0)+moved;session&&(session.words+=moved)}   // only words read while it runs, not jumps
   S.shown=S.i;
   if(S.mode==='rsvp')drawRsvp();else{highlight(S.i,scroll);if(readerHadFocus)S.cells[S.i-S.pageA]?.focus({preventScroll:true})}updateHeader();updateStar();saveSoon()}
 
@@ -946,13 +961,13 @@ function step(){
 }
 function play(){
   if(S.playing||!S.book?.words.length)return;
-  S.playing=true; $('#play').textContent=T('pause');
+  S.playing=true; $('#play').textContent=T('pause');sessionStart();
   if(S.tts){speakFrom(S.i)} else {show();S.timer=setTimeout(step,delay(S.i))}
 }
 function pause(){
   S.playing=false; clearTimeout(S.timer); S.timer=null;
   stopSpeech();
-  $('#play').textContent=T('resume'); save();
+  $('#play').textContent=T('resume'); save(); sessionEnd();
 }
 const toggle=()=>S.playing?pause():play();
 
@@ -1201,8 +1216,23 @@ function countRead(){
   $('#n-streak').textContent=fmt(streak());
 }
 function saveSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(save,700)}
-addEventListener('pagehide',save); addEventListener('blur',save);
+addEventListener('pagehide',()=>{save();sessionEnd()}); addEventListener('blur',save);   // closing the tab still closes the session
 document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();save()}});
+
+//////////////////// usage analytics ////////////////////
+// Anonymous only: a reading session is a wpm bucket and a minutes bucket, never what was read.
+// The sender and its off switches live in web/posthog.js; the Settings switch is the one users see.
+let session=null;
+function sessionStart(){if(!session)session={at:Date.now(),words:0}}
+function sessionEnd(){
+  if(!session)return;const s=session;session=null;
+  const ms=Date.now()-s.at;
+  if(ms<20000||s.words<50)return;   // a tap, not a reading session
+  const wpmBucket=S.wpm<150?'under_150':S.wpm<250?'150_249':S.wpm<400?'250_399':S.wpm<600?'400_599':'600_plus';
+  const min=ms/60000,mBucket=min<5?'under_5':min<15?'5_14':min<30?'15_29':min<60?'30_59':'60_plus';
+  PostHog.track('reading_session_completed',{wpm_bucket:wpmBucket,minutes_bucket:mBucket,mode:S.mode});
+  if(!LS.get('first_value',false)){LS.set('first_value',true);PostHog.track('first_value',{wpm_bucket:wpmBucket})}
+}
 
 //////////////////// loading books ////////////////////
 async function loadBook(book,startAt){
@@ -1283,8 +1313,10 @@ async function fetchJSON(url,onProgress){
 async function boot(){
   if(!S.ui){const dev=(navigator.language||'en').slice(0,2).toLowerCase();S.ui=UI[dev]?dev:'en'}  // follow the device, changeable in settings
   applyLang();
+  PostHog.track('app_opened');
   applyTheme(); applySize(); $('#wpm').textContent=S.wpm;
   $('#t-gloss').classList.toggle('on',S.gloss); $('#t-dark').classList.toggle('on',S.dark); $('#t-gender').classList.toggle('on',S.genderOn);
+  $('#t-analytics').classList.toggle('on',!PostHog.optedOut());   // on unless the reader turned it off
   $('#t-tts').classList.toggle('on',S.tts); $('#n-learned').textContent=S.learned.size; $('#n-unknown').textContent=S.unknown.size;
   setRate(S.rate); $('#voice-box').classList.toggle('hidden',!S.tts);
   $('#goal').replaceChildren(...[500,1000,2500,5000].map(n=>new Option(n.toLocaleString(S.ui),n)));
@@ -1369,6 +1401,11 @@ $('#b-library').onclick=()=>{buildMarks();openSheet('#s-library')};
 $('#b-settings').onclick=()=>openSheet('#s-settings');
 $('#t-gloss').onclick=e=>{S.gloss=!S.gloss;LS.set('gloss',S.gloss);e.target.classList.toggle('on',S.gloss);
   document.body.classList.toggle('plain',!S.gloss);refreshGlosses();S.mode==='rsvp'&&drawRsvp();saveBookPrefs()};
+$('#t-analytics').onclick=e=>{   // last event before the switch goes off, then nothing at all
+  const off=e.target.classList.contains('on');e.target.classList.toggle('on',!off);
+  if(off)PostHog.optOut();
+  PostHog.setOptOut(off);
+};
 $('#t-gender').onclick=e=>{S.genderOn=!S.genderOn;LS.set('gender',S.genderOn);e.target.classList.toggle('on',S.genderOn);
   if(S.book){renderPage(S.i);show(false)}};
 $('#t-dark').onclick=e=>{S.dark=!S.dark;LS.set('dark',S.dark);e.target.classList.toggle('on',S.dark);applyTheme()};
@@ -1472,6 +1509,7 @@ async function downloadBook({id,url,title,lang}){
       book.id=key;book.source=url||'https://www.gutenberg.org/ebooks/'+id;
       if(!book.lang&&lang)book.lang=Reading.langCode(lang);
       await saveBook(book); // success means this book really is available offline
+      PostHog.track('book_imported',{format:ext,source:id?'gutenberg':'url'});   // the format, never the title
     }
     pause();await loadBook(book);closeSheets();$('#catalog-status').textContent='';
   }catch(e){$('#catalog-status').textContent=T('download_error');toast(T('download_error'))}
@@ -1559,6 +1597,7 @@ async function addBooks(files){
       if(!book.words.length)throw new Error(T('no_text_file'));
       await saveBook(book).catch(()=>{unsaved=true}); // readable now; report when it cannot be kept offline
       first=first||book;added++;
+      PostHog.track('book_imported',{format:f.name.toLowerCase().endsWith('.epub')?'epub':f.name.toLowerCase().endsWith('.pdf')?'pdf':'txt',source:'file'});
     }catch(err){toast(T('cannot_open')+f.name)}
   }
   if(first)await loadBook(first);

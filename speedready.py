@@ -22,6 +22,8 @@ try:from coreglosses import core   # hand-checked glosses for each language's co
 except ImportError:core=lambda src,tgt:{}
 try:import gender   # German noun genders; lives next to this file, and so does its data
 except ImportError:gender=None
+try:import posthog   # anonymous usage events (posthog.py); the whole of it, with its own off switch
+except ImportError:posthog=None
 
 APP_ID=os.environ.get('SPEEDREADY_APP_ID','io.github.cyoren.speedready');VERSION='1.0.5'
 DIR=Path.home()/'.config/speedready';DIR.mkdir(parents=True,exist_ok=True)
@@ -42,6 +44,7 @@ DEFAULTS={  # change in-app (S) or edit ~/.config/speedready/config.json
  'beginner':False,'native_lang':'en','ui_lang':'en','onboarded':False,'translate_provider':'deepl',
  'gloss_threshold':0,'gloss':'#8ab4f8',
  'noun_gender':True,'masculine':'#6ea8ff','feminine':'#ff7a85','neuter':'#6fd08c',   # German books only: nouns colored by gender (der / die / das)  # beginner mode: mother-tongue gloss above every word you haven't learned yet (offline pack, downloaded once)
+ 'analytics':True,                  # anonymous usage events; off = nothing is sent (Settings → Privacy)
 }
 RANGES={'wpm':(50,1500,5),'chunk':(1,8,1),'text_size':(8,60,1),'word_size':(16,160,2),'long_word_len':(4,30,1),'page_words':(50,2000,50),'context_words':(10,200,10),'follow_margin':(0.0,0.49,0.05),'tts_speed':(0.5,2.0,0.05),'gloss_threshold':(0,5000,100)}
 BOOK_PREFS=('wpm','chunk','mode','beginner')
@@ -158,6 +161,7 @@ TEXT={
   'no_books':'No books yet. Add some, or drag them onto the window.','percent_read':'{percent}% read','not_started':'not started','gone':'file has moved or been deleted',
   'books_added':'{count} books added to the library','not_a_book':'Only .epub and .txt files can be added.',
   'noun_gender':'Color German nouns by gender','masculine':'masculine (der)','feminine':'feminine (die)','neuter':'neuter (das)',
+  'privacy':'Privacy','analytics':'Share anonymous usage data',
  },
  'pt':{
   'open':'Abrir (O)','play':'Reproduzir (espaço)','mode':'Modo (M)','words_step':'palavras por passo ( [ ] )','speed':'palavras por minuto (↑ ↓ = 5, shift = 25)',
@@ -178,6 +182,7 @@ TEXT={
   'no_books':'Nenhum livro ainda. Adicione alguns ou arraste-os para a janela.','percent_read':'{percent}% lido','not_started':'não iniciado','gone':'o arquivo foi movido ou excluído',
   'books_added':'{count} livros adicionados à biblioteca','not_a_book':'Só é possível adicionar arquivos .epub e .txt.',
   'noun_gender':'Cores de gênero nos substantivos (alemão)','masculine':'masculino (der)','feminine':'feminino (die)','neuter':'neutro (das)',
+  'privacy':'Privacidade','analytics':'Compartilhar dados de uso anônimos',
  }
 }
 POS='Noun|Proper noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Numeral|Article|Particle|Determiner|Contraction|Phrase'
@@ -527,6 +532,7 @@ class Gloss:
             note()  # every 64th block: a 33MB pack is ~4000 callbacks, and each one costs a main-loop hop
             urllib.request.urlretrieve(PACK_URL.format(src=s.src,tgt=s.tgt),tmp,lambda n,b,t:t>0 and n%64==0 and note(f' {n*b*100//t}%'))
             tmp.rename(s.path);s.db=sqlite3.connect(s.path,check_same_thread=False);s.progress='';status('')
+            posthog and posthog.track('pack_downloaded',pack=f'{s.src}-{s.tgt}')   # the language pair, never what is in it
         except Exception as e:
             s.error=pack_error(e);s.progress=''
             try:tmp.unlink(missing_ok=True)   # urlretrieve leaves the partial behind
@@ -719,6 +725,10 @@ class Win(Adw.ApplicationWindow):
         s.seen={l.split('\t')[1].lower() for l in VOCAB.read_text().splitlines() if '\t' in l and not l.startswith('#')} if VOCAB.exists() else set()
         s.unknown={w if ':' in w else 'de:'+w for w in UNKNOWN.read_text().split()} if UNKNOWN.exists() else set()
         s.book=None;s.i=0;s.timer=None;s.save_timer=None;s.playing=False;s.ra=False;s.token=0;s.dict=Dict();s.tts=TTS();s.gloss=None;s.lex=None;s.lex_senses=[];s.beginner_row=None;s.req=0;s.resume=False;s.css=Gtk.CssProvider()
+        s.session=None                     # the run between play and stop, for reading_session_completed
+        s.ph=posthog and posthog.configure(DIR/'analytics.json',VERSION,platform='linux',
+            locale=lambda:s.cfg.get('ui_lang','en'),is_enabled=lambda:s.cfg.get('analytics',True))
+        s.ph and s.ph.track('app_opened')
         s.selection_text='';s.selection_owner=None;s.page_selection_anchor=None
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),s.css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         Adw.StyleManager.get_default().set_color_scheme(Adw.ColorScheme.PREFER_DARK)
@@ -830,6 +840,7 @@ class Win(Adw.ApplicationWindow):
             code=row.code if row else current
             s.cfg.update(native_lang=code,ui_lang=code if code in TEXT else 'en',onboarded=True)
             s.write_cfg();s.setup_gloss();s.refresh_ui_text();d.force_close()  # close() is a no-op while can-close is false
+            s.ph and s.ph.track('onboarding_completed')
         go.connect('clicked',done);lb.connect('row-activated',done)
         box.append(go);d.set_child(box);d.present(s);return False
 
@@ -947,6 +958,7 @@ class Win(Adw.ApplicationWindow):
         for p in paths:
             key=str(Path(p).expanduser().resolve())
             if key not in s.pos:s.pos[key]={'position':0,'title':book_title(p),'read_at':time.time()}
+            s.ph and s.ph.track('book_imported',format=Path(p).suffix.lower().lstrip('.'))   # the format, never the title
         s.load(paths[0])
         if len(paths)>1:s.status(s.t('books_added',count=len(paths)))
     def library(s):
@@ -1212,7 +1224,9 @@ class Win(Adw.ApplicationWindow):
         if s.i+n<b.n and b.is_para_start(s.i+n):d=max(d,60000/c['wpm']*c['paragraph_pause'])
         s.timer=GLib.timeout_add(int(d),s.step)
     def step(s):
-        s.timer=None;s.i+=s.chunk_len(s.i)
+        s.timer=None;n=s.chunk_len(s.i)
+        if s.session:s.session['words']+=n
+        s.i+=n
         if s.i<s.book.n:s.tick()
         else:s.i=s.book.n-1;s.stop()
         return False
@@ -1220,11 +1234,26 @@ class Win(Adw.ApplicationWindow):
         s.resume=False
         if not s.book or s.playing:return
         s.playing=True;s.token+=1;s.playbtn.set_icon_name('media-playback-pause-symbolic')
+        s.session=s.session or {'at':time.monotonic(),'words':0}       # a reading session, for the anonymous totals
         if s.cfg['hide_bars_when_playing']:s.tv.set_reveal_top_bars(False)
         s.ra_sentence() if s.ra else s.tick()
     def stop(s):
         if s.timer:GLib.source_remove(s.timer);s.timer=None
         s.playing=False;s.token+=1;s.tts.stop_audio();s.playbtn.set_icon_name('media-playback-start-symbolic');s.tv.set_reveal_top_bars(True);s.save()
+        s.session_end()
+    def session_end(s):
+        """A finished reading session, as two ranges. Never what was read: no title, no words."""
+        x=s.session;s.session=None
+        if not x:return
+        seconds=time.monotonic()-x['at']
+        if seconds<20 or x['words']<50:return               # a tap or a page turn is not a session
+        minutes=seconds/60
+        wpm=s.cfg['wpm']
+        wb='under_150' if wpm<150 else '150_249' if wpm<250 else '250_399' if wpm<400 else '400_599' if wpm<600 else '600_plus'
+        mb='under_5' if minutes<5 else '5_14' if minutes<15 else '15_29' if minutes<30 else '30_59' if minutes<60 else '60_plus'
+        if s.ph:
+            s.ph.track('reading_session_completed',wpm_bucket=wb,minutes_bucket=mb,mode=s.cfg['mode'])
+            s.ph.first_value(wpm_bucket=wb)
     # read-along: piper reads each sentence, the highlight follows the audio, WPM sets the speech speed
     def set_ra(s,on):
         if s.ra==on:return
@@ -1343,9 +1372,11 @@ class Win(Adw.ApplicationWindow):
                 s.t('look'):('font_text','text_size','font_word','word_size','bg','fg','dim','pivot','highlight','panel','accent','unknown'),
                 s.t('dictionary_speech'):('dict_langs','web_dicts','translate_provider','tts_voices','txt_lang','save_vocab'),
                 s.t('beginner_mode'):('beginner','native_lang','ui_lang','gloss_threshold','gloss'),
-                'Deutsch':('noun_gender','masculine','feminine','neuter')}
+                'Deutsch':('noun_gender','masculine','feminine','neuter'),
+                s.t('privacy'):('analytics',)}
         def upd(k,v):
             s.cfg[k]=v;s.write_cfg();k in BOOK_PREFS and s.save_later();k in('beginner','native_lang') and s.setup_gloss();k=='ui_lang' and s.refresh_ui_text();s.apply()
+            k=='analytics' and not v and s.ph and s.ph.opt_out()   # last event, then nothing at all
         for gname,keys in groups.items():
             g=Adw.PreferencesGroup(title=gname);page.add(g)
             for k in keys:
