@@ -791,7 +791,7 @@ class Win(Adw.ApplicationWindow):
         drop.connect('drop',lambda _t,v,_x,_y:bool(s.add_books([f.get_path() for f in v.get_files()])) or True)
         s.add_controller(drop)
         k=Gtk.EventControllerKey();k.connect('key-pressed',s.key);s.add_controller(k)
-        s.connect('close-request',lambda *_:s.save())
+        s.connect('close-request',lambda *_:s.closing())
         s.apply()
         path=path or s.pos.get('_last');path and Path(path).exists() and s.load(path)
         if not s.book and s.cfg['onboarded']:GLib.idle_add(s.library)
@@ -1241,6 +1241,10 @@ class Win(Adw.ApplicationWindow):
         if s.timer:GLib.source_remove(s.timer);s.timer=None
         s.playing=False;s.token+=1;s.tts.stop_audio();s.playbtn.set_icon_name('media-playback-start-symbolic');s.tv.set_reveal_top_bars(True);s.save()
         s.session_end()
+    def closing(s):
+        """Window closing: the run in progress is a finished session, and its event needs a moment to leave."""
+        s.save();s.session_end()
+        s.ph and s.ph.close()
     def session_words(s,n):
         if s.session:s.session['words']+=n     # every path that advances the reader has to count, or the session is dropped
     def session_end(s):

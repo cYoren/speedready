@@ -52,6 +52,17 @@ class Analytics(unittest.TestCase):
         s.assertEqual(json.loads(a.path.read_text())['distinct_id'],a.state['distinct_id'])
         b=posthog.Analytics(a.path,'1.0.10',is_enabled=lambda:True,key='',send=Fake())   # a relaunch keeps the same reader
         s.assertEqual(b.state['distinct_id'],a.state['distinct_id'])
+    def test_close_waits_for_a_slow_event(s):
+        seen=[]
+        def slow(body):
+            import time;time.sleep(0.15);seen.append(body['batch'][0]['event'])
+        a=s.make(send=slow)
+        a.track('reading_session_completed',wpm_bucket='250_399',minutes_bucket='5_14')
+        a.close()                                   # a closing window must not lose it
+        s.assertEqual(seen,['reading_session_completed'])
+    def test_close_with_nothing_pending(s):
+        a=s.make()
+        s.assertIsNone(a.close())                    # an idle window closes without waiting or raising
     def test_first_value_only_once(s):
         a=s.make();a.first_value(wpm_bucket='150_249');a.first_value(wpm_bucket='150_249')
         events=[e['event'] for body in s.batch(a) for e in body['batch']]

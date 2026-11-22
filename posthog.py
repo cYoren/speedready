@@ -13,7 +13,7 @@ The Settings switch ("Share anonymous usage data") stops the calls themselves: e
 configured is_enabled callback, and nothing is sent while it is off. The web reader, Android and iOS
 share web/posthog.js instead; this file is the desktop reader's sender.
 """
-import datetime,json,re,threading,urllib.request,uuid
+import datetime,json,re,threading,time,urllib.request,uuid
 
 KEY='phc_xiF5C5q2NPD6oMh5A2VdUWT7UULDUW8SCGTKZVM7i7mm'
 HOST='https://us.i.posthog.com/batch/'
@@ -32,7 +32,7 @@ class Analytics:
         s.state={'distinct_id':str(uuid.uuid4()),'first_value':False}
         try:s.state.update(json.loads(s.path.read_text()))
         except Exception:pass                  # no state yet, or unreadable: start a fresh anonymous id
-        s.lock=threading.Lock()
+        s.lock=threading.Lock();s.pending=[]
         s.save()   # the anonymous id must survive the first launch, long before any reading milestone
     @property
     def on(s):return bool(s.key) and bool(s.enabled())
@@ -49,18 +49,28 @@ class Analytics:
         return {'event':name,'distinct_id':s.state['distinct_id'],'timestamp':now,'uuid':str(uuid.uuid4()),'properties':clean}
     def track(s,name,**props):
         if not s.on:return
-        batch=[s.event(name,props)]
-        threading.Thread(target=s._flush,args=(batch,),daemon=True).start()
+        s._queue([s.event(name,props)])
     def opt_out(s):
         """Sent once, before the switch goes off: the last event we hear from this device."""
         if not s.key:return
         s.state['opted_out']=True;s.save()
-        threading.Thread(target=s._flush,args=([s.event('settings_analytics_opt_out')],),daemon=True).start()
+        s._queue([s.event('settings_analytics_opt_out')])
     def first_value(s,**props):
         """Once per device, the first time the reader finishes a real reading session."""
         if s.state.get('first_value'):return
         s.state['first_value']=True;s.save()
         s.track('first_value',**props)
+    def _queue(s,batch):
+        """One daemon thread per event: reading never waits for PostHog. close() gives the last ones time."""
+        t=threading.Thread(target=s._flush,args=(batch,),daemon=True);s.pending.append(t);t.start()
+    def close(s,timeout=2.0):
+        """Finalize before the process exits: a closing window's session event must not die with its daemon thread."""
+        end=time.monotonic()+timeout
+        for t in s.pending:
+            left=end-time.monotonic()
+            if left<=0:break
+            t.is_alive() and t.join(left)
+        s.pending=[t for t in s.pending if t.is_alive()]
     def _flush(s,batch):
         try:s.send({'api_key':s.key,'batch':batch})
         except Exception:pass
@@ -78,3 +88,5 @@ def opt_out():
     if _instance:_instance.opt_out()
 def first_value(**props):
     if _instance:_instance.first_value(**props)
+def close(timeout=2.0):
+    if _instance:_instance.close(timeout)
