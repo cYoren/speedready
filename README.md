@@ -236,3 +236,22 @@ It requires an existing Playwright installation/browser and a cached axe-core 4.
 script (`AXE_PATH` can select it); it does not download books from public sources.
 `PLAYWRIGHT_MODULE`, `CHROMIUM`, and `AUDIT_URL` can select local tooling and the preview URL.
 Screenshots and the JSON result are saved under the ignored `dist/audit/` directory.
+
+## Usage data
+
+Anonymous product events go to PostHog (PostHog, Inc., USA): a screen opening, a finished
+reading session as a speed range and a length range, the format of an imported book, the name
+of a downloaded dictionary pair, and the interface language. Never a book title, a file name,
+read text, a looked-up word or a URL. Settings → Privacy → *Share anonymous usage data* turns
+it off, in every interface language; the Chrome, Firefox and Safari extensions send nothing
+(their build ships the module with an empty key).
+
+The sender lives in two files, one per platform: `web/posthog.js` for the website, Android and
+iOS (they run the same page), and `posthog.py` for the desktop reader. Empty the key constant in
+either one and that platform stops sending; resetting the project API key in PostHog rejects
+every installed build at once. The desktop state (anonymous id) is `~/.config/speedready/analytics.json`.
+
+```bash
+/usr/bin/python3 tests/test_posthog.py     # empty key, opt-out, and no free-form property
+node tests/posthog.cjs
+```

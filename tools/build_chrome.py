@@ -25,6 +25,13 @@ shutil.rmtree(OUT, ignore_errors=True)
 shutil.copytree(ROOT / 'chrome', OUT)
 shutil.copytree(WEB, OUT / 'app', ignore=shutil.ignore_patterns('sw.js', 'manifest.webmanifest', 'robots.txt', 'sitemap.xml'))
 shutil.move(OUT / 'bridge.js', OUT / 'app' / 'bridge.js')
+# The extensions collect no usage data, which is what their store listings say: the reader's analytics
+# module ships with an empty key, so it is inert here and the project key is not in the package at all.
+ph = OUT / 'app' / 'posthog.js'
+assert ph.exists(), 'web/posthog.js is the reader\'s only analytics module; update build_chrome.py'
+ph_text = ph.read_text()
+assert "const KEY='phc_" in ph_text, 'the analytics key moved; update build_chrome.py'
+ph.write_text(re.sub(r"const KEY='phc_[^']*'", "const KEY=''", ph_text))
 
 inline = re.findall(r'<script>(.*?)</script>', html, re.S)
 assert len(inline) == 1, 'expected exactly one inline <script> in web/index.html'
