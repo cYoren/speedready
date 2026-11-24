@@ -110,7 +110,7 @@ def web_lookup(d,word):
     if not w:return None,w
     if (o:=d['o'].get(w.lower())):return o[0] or None,o[1]
     g,f=d['g'],d['f']
-    lemma=f.get(w) or (w if w in g else None) or f.get(w.lower()) or f.get(w[0].upper()+w[1:]) or (w.lower() if w.lower() in g else w)
+    lemma=(w if w in g else None) or f.get(w) or f.get(w.lower()) or f.get(w[0].upper()+w[1:]) or (w.lower() if w.lower() in g else w)
     if w in d.get('s',{}):return d['s'][w] or None,lemma
     return g.get(lemma) or g.get(w) or g.get(w.lower()),lemma
 
