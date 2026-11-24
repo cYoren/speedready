@@ -750,7 +750,10 @@ function glossOf(word){            // -> [gloss|null, lemma]
   // An exact-case hit beats any lowercased form lookup: German capitalisation is what separates
   // the noun from the verb, and 'Haus'/'haus' would otherwise resolve through 'hausen' and gloss
   // a house as "to live in squalor". Same reason the desktop scorer prefers an exact match.
-  const lemma=S.dict.f[w]||(S.dict.g[w]?w:null)||S.dict.f[w.toLowerCase()]||
+  // A word that is itself in the dictionary also beats a redirect through the form table: Spanish
+  // 'pueblo' is a village and also a form of 'poblar' (to populate), and going through the form
+  // table first glossed it as the verb.
+  const lemma=(S.dict.g[w]?w:null)||S.dict.f[w]||S.dict.f[w.toLowerCase()]||
               S.dict.f[w[0].toUpperCase()+w.slice(1)]||
               (S.dict.g[w.toLowerCase()]?w.toLowerCase():w);
   // A word and its lemma can be scored differently ('Forscher' is the noun "explorer", not a form of 'forschen').
