@@ -4,7 +4,7 @@
   <name>Speedready</name>
   <summary>Read in another language without losing the flow</summary>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>MIT</project_license>
+  <project_license>AGPL-3.0</project_license>
   <developer id="io.github.cyoren">
     <name>cYoren</name>
   </developer>

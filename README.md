@@ -255,3 +255,10 @@ every installed build at once. The desktop state (anonymous id) is `~/.config/sp
 /usr/bin/python3 tests/test_posthog.py     # empty key, opt-out, and no free-form property
 node tests/posthog.cjs
 ```
+
+## Licence and name
+
+AGPL-3.0, see [LICENSE](LICENSE). A modified copy that people reach over a network has to publish its
+source to those users, which is the point of this licence for a hosted reader.
+
+The name, the logo and the store listings are not part of the grant: a fork ships under its own name.
